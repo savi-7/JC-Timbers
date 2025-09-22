@@ -378,7 +378,7 @@ export default function Furniture() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-cream to-light-cream py-8 lg:py-12 rounded-2xl mb-12">
+        <div className="bg-gradient-to-r from-cream to-light-cream py-4 lg:py-6 rounded-2xl mb-8 relative overflow-hidden">
           <div className="text-center">
             <h1 className="text-4xl lg:text-6xl font-heading text-dark-brown leading-tight mb-6">
               Handcrafted Furniture

@@ -378,7 +378,7 @@ export default function TimberProducts() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-cream to-light-cream py-6 lg:py-8 rounded-2xl mb-8 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-cream to-light-cream py-4 lg:py-6 rounded-2xl mb-8 relative overflow-hidden">
           {/* Decorative elements */}
           <div className="absolute -top-4 -right-4 w-20 h-20 bg-accent-red rounded-full opacity-10"></div>
           <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-dark-brown rounded-full opacity-5"></div>
