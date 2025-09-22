@@ -12,10 +12,86 @@ export default function Furniture() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
+
+  // Click outside handler for profile dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showProfileDropdown && !event.target.closest('.profile-dropdown')) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showProfileDropdown]);
+
+  // Fetch cart count
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const response = await api.get('/cart');
+          const items = response.data.items || [];
+          const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+          setCartCount(totalItems);
+        } catch (error) {
+          setCartCount(0);
+        }
+      } else {
+        // Check guest cart in localStorage
+        const guestCart = localStorage.getItem('guestCart');
+        if (guestCart) {
+          try {
+            const cartData = JSON.parse(guestCart);
+            const totalItems = cartData.items.reduce((sum, item) => sum + item.quantity, 0);
+            setCartCount(totalItems);
+          } catch (error) {
+            setCartCount(0);
+          }
+        } else {
+          setCartCount(0);
+        }
+      }
+    };
+
+    fetchCartCount();
+  }, [isAuthenticated]);
+
+  // Fetch wishlist count
+  useEffect(() => {
+    const fetchWishlistCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const response = await api.get('/wishlist');
+          const wishlistItems = response.data.items || [];
+          setWishlistCount(wishlistItems.length);
+        } catch (error) {
+          console.log('Wishlist fetch error:', error.response?.status, error.message);
+          setWishlistCount(0);
+        }
+      } else {
+        const guestWishlist = localStorage.getItem('guestWishlist');
+        if (guestWishlist) {
+          try {
+            const wishlistData = JSON.parse(guestWishlist);
+            setWishlistCount(wishlistData.items?.length || 0);
+          } catch (error) {
+            setWishlistCount(0);
+          }
+        } else {
+          setWishlistCount(0);
+        }
+      }
+    };
+
+    fetchWishlistCount();
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const handleAddToCart = (product) => {
@@ -94,61 +170,183 @@ export default function Furniture() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/')}
-                className="text-blue-600 hover:text-blue-800 font-medium"
-              >
-                ← Back to Home
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Furniture</h1>
-                <p className="text-sm text-gray-600">Welcome, {user?.name || 'Customer'}</p>
-              </div>
+    <div className="min-h-screen bg-cream">
+      {/* Navigation Header */}
+      <nav className="bg-cream">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            {/* Left - Brand Name */}
+            <div className="text-xl font-paragraph text-dark-brown tracking-wide">
+              JC Timbers
             </div>
+            
+            {/* Center - Navigation Links */}
+            <div className="hidden md:flex items-center space-x-8">
+              <button 
+                onClick={() => navigate('/customer-home')}
+                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              >
+                Home
+              </button>
+              <button className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph">
+                Shop All
+              </button>
+              <button className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph">
+                About
+              </button>
+              <button className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph">
+                Contact
+              </button>
+            </div>
+            
+            {/* Right - Profile and Cart */}
             <div className="flex items-center space-x-4">
-              <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                Customer
-              </span>
+              {/* Profile Dropdown */}
+              <div className="relative profile-dropdown">
+                <button
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  className="flex items-center space-x-2 text-dark-brown hover:text-accent-red transition-colors duration-200 p-2 rounded-lg hover:bg-cream"
+                >
+                  <div className="w-8 h-8 bg-gradient-to-r from-dark-brown to-accent-red rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">
+                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                  <span className="hidden sm:block font-paragraph">{user?.name || 'User'}</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showProfileDropdown && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl py-2 z-50 border border-gray-200">
+                    {/* Profile Header */}
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-semibold text-dark-brown">{user?.name}</p>
+                      <p className="text-xs text-gray-500">{user?.email}</p>
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 mt-2">
+                        Customer
+                      </span>
+                    </div>
+                    
+                    {/* Profile Options */}
+                    <div className="py-1">
+                      <button 
+                        onClick={() => { navigate('/wishlist'); setShowProfileDropdown(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
+                      >
+                        My Wishlist
+                      </button>
+                      <button 
+                        onClick={() => { navigate('/cart'); setShowProfileDropdown(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
+                      >
+                        My Cart
+                      </button>
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button 
+                        onClick={() => {
+                          setShowProfileDropdown(false);
+                          handleLogout();
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Wishlist Icon */}
               <button
-                onClick={() => navigate('/cart')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                Cart
-              </button>
-              <button
+                type="button"
                 onClick={() => navigate('/wishlist')}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="relative cursor-pointer p-2 rounded-full hover:bg-cream focus:outline-none focus:ring-2 focus:ring-accent-red"
+                aria-label="Wishlist"
+                title="Wishlist"
               >
-                Wishlist
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  className="w-6 h-6 text-dark-brown hover:text-accent-red transition-colors duration-200"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                {/* Wishlist Count Badge */}
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-accent-red text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
+                  </span>
+                )}
               </button>
+              
+              {/* Cart Icon */}
               <button
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                type="button"
+                onClick={() => navigate('/cart')}
+                className="relative cursor-pointer p-2 rounded-full hover:bg-cream focus:outline-none focus:ring-2 focus:ring-accent-red"
+                aria-label="Shopping Cart"
+                title="Shopping Cart"
               >
-                Logout
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  className="w-6 h-6 text-dark-brown hover:text-accent-red transition-colors duration-200"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                {/* Cart Count Badge */}
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-accent-red text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
         </div>
-      </header>
+      </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Handcrafted Furniture
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Discover our curated collection of handcrafted furniture pieces. 
-            Each piece is made from the finest materials with attention to detail and craftsmanship.
-          </p>
+        <div className="bg-gradient-to-r from-cream to-light-cream py-16 lg:py-24 rounded-2xl mb-12">
+          <div className="text-center">
+            <h1 className="text-4xl lg:text-6xl font-heading text-dark-brown leading-tight mb-6">
+              Handcrafted Furniture
+            </h1>
+            <p className="text-lg text-gray-700 font-paragraph leading-relaxed max-w-3xl mx-auto mb-8">
+              Discover our curated collection of handcrafted furniture pieces. 
+              Each piece is made from the finest materials with attention to detail and craftsmanship.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => navigate('/timber-products')}
+                className="bg-dark-brown text-white px-8 py-4 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                View Timber Products
+              </button>
+              <button
+                onClick={() => navigate('/construction-materials')}
+                className="border-2 border-dark-brown text-dark-brown px-8 py-4 rounded-lg font-paragraph hover:bg-dark-brown hover:text-white transition-colors duration-200"
+              >
+                Construction Materials
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Loading State */}
@@ -171,11 +369,11 @@ export default function Furniture() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <div className="text-center py-12 bg-white rounded-lg shadow-sm">
                 <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                 </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Furniture Available</h3>
+                <h3 className="text-lg font-medium text-dark-brown mb-2">No Furniture Available</h3>
                 <p className="text-gray-500">Check back later for new furniture pieces.</p>
               </div>
             )}
@@ -183,12 +381,12 @@ export default function Furniture() {
         )}
 
         {/* Footer CTA */}
-        <div className="mt-16 bg-blue-600 rounded-lg p-8 text-center text-white">
-          <h3 className="text-2xl font-bold mb-4">Need Help Finding Furniture?</h3>
-          <p className="text-blue-100 mb-6">
+        <div className="mt-16 bg-gradient-to-r from-dark-brown to-accent-red rounded-2xl p-8 text-center text-white">
+          <h3 className="text-2xl font-heading mb-4">Need Help Finding Furniture?</h3>
+          <p className="text-cream mb-6 font-paragraph">
             Our team is here to help you find the perfect furniture pieces for your home or office.
           </p>
-          <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+          <button className="bg-white text-dark-brown px-6 py-3 rounded-lg font-paragraph hover:bg-cream transition-colors">
             Contact Us
           </button>
         </div>

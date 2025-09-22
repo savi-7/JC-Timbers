@@ -12,6 +12,10 @@ const productSchema = new mongoose.Schema({
     enum: ["timber", "furniture", "construction"],
     trim: true
   },
+  subcategory: {
+    type: String,
+    trim: true
+  },
   quantity: {
     type: Number,
     default: 0,
@@ -19,7 +23,7 @@ const productSchema = new mongoose.Schema({
   },
   unit: {
     type: String,
-    enum: ["cubic ft", "pieces"],
+    enum: ["cubic ft", "pieces", "piece"],
     default: "pieces"
   },
   price: {
@@ -60,7 +64,7 @@ const productSchema = new mongoose.Schema({
   },
   featuredType: {
     type: String,
-    enum: ["best", "new", "discount", "none"],
+    enum: ["best", "new", "discount", "none", "featured"],
     default: "none"
   }
 }, {
@@ -77,6 +81,7 @@ productSchema.pre('save', function(next) {
 
 // Index for better query performance
 productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ category: 1, subcategory: 1, isActive: 1 });
 productSchema.index({ name: 1 });
 productSchema.index({ price: 1 });
 productSchema.index({ featuredType: 1, isActive: 1 });

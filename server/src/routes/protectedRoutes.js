@@ -3,34 +3,13 @@ import { authorizeRole, requireAdmin, requireCustomer, authorizeRoles } from "..
 
 const router = express.Router();
 
-// Admin-only routes
-router.get("/admin/dashboard", requireAdmin, (req, res) => {
-  res.json({
-    message: "Welcome to Admin Dashboard",
-    user: req.user,
-    adminData: {
-      totalUsers: 150,
-      totalOrders: 89,
-      revenue: 45000
-    }
-  });
-});
-
 // Admin Overview API - Comprehensive dashboard data
 // NOTE: This route is now handled by adminRoutes.js with real database data
 // router.get("/admin/overview", requireAdmin, (req, res) => {
 //   // Mock data removed - now using real data from adminController.js
 // });
 
-router.get("/admin/users", requireAdmin, (req, res) => {
-  res.json({
-    message: "Admin: List all users",
-    users: [
-      { id: 1, name: "John Doe", email: "john@example.com", role: "customer" },
-      { id: 2, name: "Admin User", email: "adminjctimber@12", role: "admin" }
-    ]
-  });
-});
+// Admin users route moved to adminRoutes.js for proper database integration
 
 // Customer-only routes
 router.get("/customer/profile", requireCustomer, (req, res) => {

@@ -36,17 +36,44 @@ export const addToCart = async (req, res) => {
 // Get current user's cart with product info and totals
 export const getCart = async (req, res) => {
   try {
+    console.log('Cart API - User from token:', req.user);
     const userId = req.user.id || req.user._id;
+    console.log('Cart API - Extracted userId:', userId);
+    
+    if (!userId) {
+      console.log('Cart API - No userId found in token');
+      return res.status(400).json({ message: "User ID not found in token" });
+    }
+
+    // Check if user exists in database
+    const User = (await import("../models/User.js")).default;
+    const userExists = await User.findById(userId).select('_id');
+    if (!userExists) {
+      console.log('Cart API - User not found in database:', userId);
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const cart = await Cart.findOne({ user: userId }).populate({
       path: "items.product",
       select: "name price images quantity"
     });
 
+    console.log('Cart API - Found cart:', cart);
+
     if (!cart || cart.items.length === 0) {
+      console.log('Cart API - Empty cart or no cart found');
       return res.status(200).json({ items: [], total: 0 });
     }
 
     const items = cart.items.map(({ product, quantity }) => {
+      console.log('Cart API - Processing item:', { product: product?._id, quantity });
+      
+      // Skip items with invalid products
+      if (!product || !product._id) {
+        console.log('Cart API - Skipping invalid product item');
+        return null;
+      }
+      
       // Handle image data similar to ProductCard component
       let imagePath = undefined;
       if (product?.images && product.images.length > 0) {
@@ -83,11 +110,14 @@ export const getCart = async (req, res) => {
         subtotal,
         available: product.quantity
       };
-    });
+    }).filter(item => item !== null); // Remove null items
 
     const total = items.reduce((sum, i) => sum + i.subtotal, 0);
     return res.status(200).json({ items, total });
   } catch (err) {
+    console.error('Cart API - Error details:', err);
+    console.error('Cart API - Error message:', err.message);
+    console.error('Cart API - Error stack:', err.stack);
     return res.status(500).json({ message: "Failed to fetch cart", error: err.message });
   }
 };

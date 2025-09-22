@@ -23,6 +23,10 @@ export default function AdminVendors() {
   const [selectedWoodIntake, setSelectedWoodIntake] = useState(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   
+  // Validation state
+  const [vendorValidationErrors, setVendorValidationErrors] = useState({});
+  const [intakeValidationErrors, setIntakeValidationErrors] = useState({});
+  
   // Vendor form data
   const [vendorForm, setVendorForm] = useState({
     name: '',
@@ -125,8 +129,416 @@ export default function AdminVendors() {
     navigate('/login');
   };
 
+  // Vendor validation functions
+  const validateVendorField = (field, value) => {
+    const errors = { ...vendorValidationErrors };
+    
+    switch (field) {
+      case 'name':
+        if (!value || value.trim() === '') {
+          errors.name = 'Vendor name is required';
+        } else if (value.trim().length < 2) {
+          errors.name = 'Vendor name must be at least 2 characters long';
+        } else if (value.trim().length > 100) {
+          errors.name = 'Vendor name must not exceed 100 characters';
+        } else if (!/^[a-zA-Z\s]+$/.test(value.trim())) {
+          errors.name = 'Vendor name can only contain letters and spaces';
+        } else {
+          delete errors.name;
+        }
+        break;
+        
+      case 'email':
+        if (value && value.trim() !== '') {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) {
+            errors.email = 'Please enter a valid email address';
+          } else if (value.trim().length > 100) {
+            errors.email = 'Email must not exceed 100 characters';
+          } else {
+            delete errors.email;
+          }
+        } else {
+          delete errors.email;
+        }
+        break;
+        
+      case 'phone':
+        if (!value || value.trim() === '') {
+          errors.phone = 'Phone number is required';
+        } else {
+          const phoneRegex = /^[6-9]\d{9}$/;
+          const cleanPhone = value.replace(/\D/g, '');
+          if (!phoneRegex.test(cleanPhone)) {
+            errors.phone = 'Please enter a valid 10-digit Indian mobile number';
+          } else if (cleanPhone.length !== 10) {
+            errors.phone = 'Phone number must be exactly 10 digits';
+          } else {
+            delete errors.phone;
+          }
+        }
+        break;
+        
+      case 'street':
+        if (value && value.trim().length > 200) {
+          errors.street = 'Street address must not exceed 200 characters';
+        } else {
+          delete errors.street;
+        }
+        break;
+        
+      case 'city':
+        if (value && value.trim().length > 50) {
+          errors.city = 'City name must not exceed 50 characters';
+        } else if (value && !/^[a-zA-Z\s]+$/.test(value.trim())) {
+          errors.city = 'City name can only contain letters and spaces';
+        } else {
+          delete errors.city;
+        }
+        break;
+        
+      case 'state':
+        if (value && value.trim().length > 50) {
+          errors.state = 'State name must not exceed 50 characters';
+        } else if (value && !/^[a-zA-Z\s]+$/.test(value.trim())) {
+          errors.state = 'State name can only contain letters and spaces';
+        } else {
+          delete errors.state;
+        }
+        break;
+        
+      case 'pincode':
+        if (value && value.trim() !== '') {
+          const pincodeRegex = /^[1-9][0-9]{5}$/;
+          const cleanPincode = value.replace(/\D/g, '');
+          if (!pincodeRegex.test(cleanPincode)) {
+            errors.pincode = 'Please enter a valid 6-digit Indian pincode';
+          } else if (cleanPincode.length !== 6) {
+            errors.pincode = 'Pincode must be exactly 6 digits';
+          } else {
+            delete errors.pincode;
+          }
+        } else {
+          delete errors.pincode;
+        }
+        break;
+        
+      case 'country':
+        if (value && value.trim().length > 50) {
+          errors.country = 'Country name must not exceed 50 characters';
+        } else if (value && !/^[a-zA-Z\s]+$/.test(value.trim())) {
+          errors.country = 'Country name can only contain letters and spaces';
+        } else {
+          delete errors.country;
+        }
+        break;
+        
+      case 'gstNumber':
+        if (value && value.trim() !== '') {
+          const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+          if (!gstRegex.test(value.trim().toUpperCase())) {
+            errors.gstNumber = 'Please enter a valid GST number (format: 22AAAAA0000A1Z5)';
+          } else {
+            delete errors.gstNumber;
+          }
+        } else {
+          delete errors.gstNumber;
+        }
+        break;
+        
+      case 'panNumber':
+        if (value && value.trim() !== '') {
+          const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+          if (!panRegex.test(value.trim().toUpperCase())) {
+            errors.panNumber = 'Please enter a valid PAN number (format: ABCDE1234F)';
+          } else {
+            delete errors.panNumber;
+          }
+        } else {
+          delete errors.panNumber;
+        }
+        break;
+    }
+    
+    setVendorValidationErrors(errors);
+  };
+
+  const handleVendorFieldChange = (field, value) => {
+    const newForm = { ...vendorForm };
+    
+    if (field.includes('.')) {
+      const [parent, child, grandchild] = field.split('.');
+      if (grandchild) {
+        newForm[parent][child][grandchild] = value;
+      } else {
+        newForm[parent][child] = value;
+      }
+    } else {
+      newForm[field] = value;
+    }
+    
+    setVendorForm(newForm);
+    validateVendorField(field.split('.').pop(), value);
+  };
+
+  // Wood intake validation functions
+  const validateIntakeField = (field, value) => {
+    const errors = { ...intakeValidationErrors };
+    
+    switch (field) {
+      case 'vendorId':
+        if (!value || value.trim() === '') {
+          errors.vendorId = 'Vendor selection is required';
+        } else {
+          delete errors.vendorId;
+        }
+        break;
+        
+      case 'woodType':
+        if (!value || value.trim() === '') {
+          errors.woodType = 'Wood type is required';
+        } else {
+          delete errors.woodType;
+        }
+        break;
+        
+      case 'quantity':
+        if (!value || value === '') {
+          errors.quantity = 'Quantity is required';
+        } else if (isNaN(value) || parseFloat(value) <= 0) {
+          errors.quantity = 'Quantity must be a positive number';
+        } else if (parseInt(value) > 10000) {
+          errors.quantity = 'Quantity cannot exceed 10,000 pieces';
+        } else if (parseInt(value) < 1) {
+          errors.quantity = 'Quantity must be at least 1 piece';
+        } else {
+          delete errors.quantity;
+        }
+        break;
+        
+      case 'length':
+        if (!value || value === '') {
+          errors.length = 'Length is required';
+        } else if (isNaN(value) || parseFloat(value) <= 0) {
+          errors.length = 'Length must be a positive number';
+        } else if (parseFloat(value) > 100) {
+          errors.length = 'Length cannot exceed 100 feet';
+        } else if (parseFloat(value) < 0.1) {
+          errors.length = 'Length must be at least 0.1 feet';
+        } else {
+          delete errors.length;
+        }
+        break;
+        
+      case 'width':
+        if (!value || value === '') {
+          errors.width = 'Width is required';
+        } else if (isNaN(value) || parseFloat(value) <= 0) {
+          errors.width = 'Width must be a positive number';
+        } else if (parseFloat(value) > 120) {
+          errors.width = 'Width cannot exceed 120 inches';
+        } else if (parseFloat(value) < 0.1) {
+          errors.width = 'Width must be at least 0.1 inches';
+        } else {
+          delete errors.width;
+        }
+        break;
+        
+      case 'thickness':
+        if (!value || value === '') {
+          errors.thickness = 'Thickness is required';
+        } else if (isNaN(value) || parseFloat(value) <= 0) {
+          errors.thickness = 'Thickness must be a positive number';
+        } else if (parseFloat(value) > 12) {
+          errors.thickness = 'Thickness cannot exceed 12 inches';
+        } else if (parseFloat(value) < 0.1) {
+          errors.thickness = 'Thickness must be at least 0.1 inches';
+        } else {
+          delete errors.thickness;
+        }
+        break;
+        
+      case 'unitPrice':
+        if (!value || value === '') {
+          errors.unitPrice = 'Unit price is required';
+        } else if (isNaN(value) || parseFloat(value) <= 0) {
+          errors.unitPrice = 'Unit price must be a positive number';
+        } else if (parseFloat(value) > 100000) {
+          errors.unitPrice = 'Unit price cannot exceed ₹1,00,000';
+        } else if (parseFloat(value) < 1) {
+          errors.unitPrice = 'Unit price must be at least ₹1';
+        } else {
+          delete errors.unitPrice;
+        }
+        break;
+        
+      case 'deliveryDate':
+        if (!value || value.trim() === '') {
+          errors.deliveryDate = 'Delivery date is required';
+        } else {
+          const selectedDate = new Date(value);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          if (selectedDate < today) {
+            errors.deliveryDate = 'Delivery date cannot be in the past';
+          } else if (selectedDate > new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)) {
+            errors.deliveryDate = 'Delivery date cannot be more than 1 year in the future';
+          } else {
+            delete errors.deliveryDate;
+          }
+        }
+        break;
+        
+      case 'notes':
+        if (value && value.trim().length > 500) {
+          errors.notes = 'Notes must not exceed 500 characters';
+        } else {
+          delete errors.notes;
+        }
+        break;
+        
+      case 'subtype':
+        if (value && value.trim().length > 50) {
+          errors.subtype = 'Wood subtype must not exceed 50 characters';
+        } else {
+          delete errors.subtype;
+        }
+        break;
+        
+      case 'warehouse':
+        if (value && value.trim().length > 50) {
+          errors.warehouse = 'Warehouse name must not exceed 50 characters';
+        } else {
+          delete errors.warehouse;
+        }
+        break;
+        
+      case 'section':
+        if (value && value.trim().length > 30) {
+          errors.section = 'Section name must not exceed 30 characters';
+        } else {
+          delete errors.section;
+        }
+        break;
+        
+      case 'rack':
+        if (value && value.trim().length > 20) {
+          errors.rack = 'Rack identifier must not exceed 20 characters';
+        } else {
+          delete errors.rack;
+        }
+        break;
+    }
+    
+    setIntakeValidationErrors(errors);
+  };
+
+  const handleIntakeFieldChange = (field, value) => {
+    const newForm = { ...intakeForm };
+    
+    if (field.includes('.')) {
+      const [parent, child, grandchild] = field.split('.');
+      if (grandchild) {
+        newForm[parent][child][grandchild] = value;
+      } else {
+        newForm[parent][child] = value;
+      }
+    } else {
+      newForm[field] = value;
+    }
+    
+    setIntakeForm(newForm);
+    validateIntakeField(field.split('.').pop(), value);
+  };
+
   const handleVendorSubmit = async (e) => {
     e.preventDefault();
+    
+    // Comprehensive validation before submission
+    const errors = [];
+    
+    // Required field validations
+    if (!vendorForm.name || vendorForm.name.trim() === '') {
+      errors.push('Vendor name is required');
+    } else if (vendorForm.name.trim().length < 2) {
+      errors.push('Vendor name must be at least 2 characters long');
+    } else if (vendorForm.name.trim().length > 100) {
+      errors.push('Vendor name must not exceed 100 characters');
+    } else if (!/^[a-zA-Z\s]+$/.test(vendorForm.name.trim())) {
+      errors.push('Vendor name can only contain letters and spaces');
+    }
+    
+    if (!vendorForm.contact.phone || vendorForm.contact.phone.trim() === '') {
+      errors.push('Phone number is required');
+    } else {
+      const phoneRegex = /^[6-9]\d{9}$/;
+      const cleanPhone = vendorForm.contact.phone.replace(/\D/g, '');
+      if (!phoneRegex.test(cleanPhone)) {
+        errors.push('Please enter a valid 10-digit Indian mobile number');
+      }
+    }
+    
+    // Email validation (optional field)
+    if (vendorForm.contact.email && vendorForm.contact.email.trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(vendorForm.contact.email.trim())) {
+        errors.push('Please enter a valid email address');
+      }
+    }
+    
+    // Address validations
+    if (vendorForm.contact.address.street && vendorForm.contact.address.street.trim().length > 200) {
+      errors.push('Street address must not exceed 200 characters');
+    }
+    
+    if (vendorForm.contact.address.city && vendorForm.contact.address.city.trim().length > 50) {
+      errors.push('City name must not exceed 50 characters');
+    } else if (vendorForm.contact.address.city && !/^[a-zA-Z\s]+$/.test(vendorForm.contact.address.city.trim())) {
+      errors.push('City name can only contain letters and spaces');
+    }
+    
+    if (vendorForm.contact.address.state && vendorForm.contact.address.state.trim().length > 50) {
+      errors.push('State name must not exceed 50 characters');
+    } else if (vendorForm.contact.address.state && !/^[a-zA-Z\s]+$/.test(vendorForm.contact.address.state.trim())) {
+      errors.push('State name can only contain letters and spaces');
+    }
+    
+    if (vendorForm.contact.address.pincode && vendorForm.contact.address.pincode.trim() !== '') {
+      const pincodeRegex = /^[1-9][0-9]{5}$/;
+      const cleanPincode = vendorForm.contact.address.pincode.replace(/\D/g, '');
+      if (!pincodeRegex.test(cleanPincode)) {
+        errors.push('Please enter a valid 6-digit Indian pincode');
+      }
+    }
+    
+    if (vendorForm.contact.address.country && vendorForm.contact.address.country.trim().length > 50) {
+      errors.push('Country name must not exceed 50 characters');
+    } else if (vendorForm.contact.address.country && !/^[a-zA-Z\s]+$/.test(vendorForm.contact.address.country.trim())) {
+      errors.push('Country name can only contain letters and spaces');
+    }
+    
+    // Business details validations
+    if (vendorForm.businessDetails.gstNumber && vendorForm.businessDetails.gstNumber.trim() !== '') {
+      const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      if (!gstRegex.test(vendorForm.businessDetails.gstNumber.trim().toUpperCase())) {
+        errors.push('Please enter a valid GST number (format: 22AAAAA0000A1Z5)');
+      }
+    }
+    
+    if (vendorForm.businessDetails.panNumber && vendorForm.businessDetails.panNumber.trim() !== '') {
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+      if (!panRegex.test(vendorForm.businessDetails.panNumber.trim().toUpperCase())) {
+        errors.push('Please enter a valid PAN number (format: ABCDE1234F)');
+      }
+    }
+    
+    // Check for any validation errors
+    if (errors.length > 0) {
+      showError('Please fix the following errors:\n' + errors.join('\n'));
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post('http://localhost:5001/api/vendors', vendorForm, {
@@ -141,6 +553,7 @@ export default function AdminVendors() {
         businessDetails: { gstNumber: '', panNumber: '', businessType: 'individual' },
         status: 'active'
       });
+      setVendorValidationErrors({});
       fetchAllData();
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to create vendor');
@@ -150,27 +563,112 @@ export default function AdminVendors() {
   const handleIntakeSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form data
-    if (!intakeForm.vendorId) {
-      showError('Please select a vendor');
-      return;
+    // Comprehensive validation before submission
+    const errors = [];
+    
+    // Required field validations
+    if (!intakeForm.vendorId || intakeForm.vendorId.trim() === '') {
+      errors.push('Vendor selection is required');
     }
     
-    if (!intakeForm.woodDetails.dimensions.length || 
-        !intakeForm.woodDetails.dimensions.width || 
-        !intakeForm.woodDetails.dimensions.thickness || 
-        !intakeForm.woodDetails.dimensions.quantity) {
-      showError('Please fill in all wood dimensions');
-      return;
+    if (!intakeForm.woodDetails.type || intakeForm.woodDetails.type.trim() === '') {
+      errors.push('Wood type is required');
     }
     
-    if (!intakeForm.costDetails.unitPrice) {
-      showError('Please enter unit price');
-      return;
+    // Quantity validation
+    if (!intakeForm.woodDetails.dimensions.quantity || intakeForm.woodDetails.dimensions.quantity === '') {
+      errors.push('Quantity is required');
+    } else if (isNaN(intakeForm.woodDetails.dimensions.quantity) || parseFloat(intakeForm.woodDetails.dimensions.quantity) <= 0) {
+      errors.push('Quantity must be a positive number');
+    } else if (parseInt(intakeForm.woodDetails.dimensions.quantity) > 10000) {
+      errors.push('Quantity cannot exceed 10,000 pieces');
+    } else if (parseInt(intakeForm.woodDetails.dimensions.quantity) < 1) {
+      errors.push('Quantity must be at least 1 piece');
     }
     
-    if (!intakeForm.logistics.deliveryDate) {
-      showError('Please select delivery date');
+    // Length validation
+    if (!intakeForm.woodDetails.dimensions.length || intakeForm.woodDetails.dimensions.length === '') {
+      errors.push('Length is required');
+    } else if (isNaN(intakeForm.woodDetails.dimensions.length) || parseFloat(intakeForm.woodDetails.dimensions.length) <= 0) {
+      errors.push('Length must be a positive number');
+    } else if (parseFloat(intakeForm.woodDetails.dimensions.length) > 100) {
+      errors.push('Length cannot exceed 100 feet');
+    } else if (parseFloat(intakeForm.woodDetails.dimensions.length) < 0.1) {
+      errors.push('Length must be at least 0.1 feet');
+    }
+    
+    // Width validation
+    if (!intakeForm.woodDetails.dimensions.width || intakeForm.woodDetails.dimensions.width === '') {
+      errors.push('Width is required');
+    } else if (isNaN(intakeForm.woodDetails.dimensions.width) || parseFloat(intakeForm.woodDetails.dimensions.width) <= 0) {
+      errors.push('Width must be a positive number');
+    } else if (parseFloat(intakeForm.woodDetails.dimensions.width) > 120) {
+      errors.push('Width cannot exceed 120 inches');
+    } else if (parseFloat(intakeForm.woodDetails.dimensions.width) < 0.1) {
+      errors.push('Width must be at least 0.1 inches');
+    }
+    
+    // Thickness validation
+    if (!intakeForm.woodDetails.dimensions.thickness || intakeForm.woodDetails.dimensions.thickness === '') {
+      errors.push('Thickness is required');
+    } else if (isNaN(intakeForm.woodDetails.dimensions.thickness) || parseFloat(intakeForm.woodDetails.dimensions.thickness) <= 0) {
+      errors.push('Thickness must be a positive number');
+    } else if (parseFloat(intakeForm.woodDetails.dimensions.thickness) > 12) {
+      errors.push('Thickness cannot exceed 12 inches');
+    } else if (parseFloat(intakeForm.woodDetails.dimensions.thickness) < 0.1) {
+      errors.push('Thickness must be at least 0.1 inches');
+    }
+    
+    // Unit price validation
+    if (!intakeForm.costDetails.unitPrice || intakeForm.costDetails.unitPrice === '') {
+      errors.push('Unit price is required');
+    } else if (isNaN(intakeForm.costDetails.unitPrice) || parseFloat(intakeForm.costDetails.unitPrice) <= 0) {
+      errors.push('Unit price must be a positive number');
+    } else if (parseFloat(intakeForm.costDetails.unitPrice) > 100000) {
+      errors.push('Unit price cannot exceed ₹1,00,000');
+    } else if (parseFloat(intakeForm.costDetails.unitPrice) < 1) {
+      errors.push('Unit price must be at least ₹1');
+    }
+    
+    // Delivery date validation
+    if (!intakeForm.logistics.deliveryDate || intakeForm.logistics.deliveryDate.trim() === '') {
+      errors.push('Delivery date is required');
+    } else {
+      const selectedDate = new Date(intakeForm.logistics.deliveryDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (selectedDate < today) {
+        errors.push('Delivery date cannot be in the past');
+      } else if (selectedDate > new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)) {
+        errors.push('Delivery date cannot be more than 1 year in the future');
+      }
+    }
+    
+    // Optional field validations
+    if (intakeForm.woodDetails.subtype && intakeForm.woodDetails.subtype.trim().length > 50) {
+      errors.push('Wood subtype must not exceed 50 characters');
+    }
+    
+    if (intakeForm.notes && intakeForm.notes.trim().length > 500) {
+      errors.push('Notes must not exceed 500 characters');
+    }
+    
+    if (intakeForm.logistics.location.warehouse && intakeForm.logistics.location.warehouse.trim().length > 50) {
+      errors.push('Warehouse name must not exceed 50 characters');
+    }
+    
+    if (intakeForm.logistics.location.section && intakeForm.logistics.location.section.trim().length > 30) {
+      errors.push('Section name must not exceed 30 characters');
+    }
+    
+    if (intakeForm.logistics.location.rack && intakeForm.logistics.location.rack.trim().length > 20) {
+      errors.push('Rack identifier must not exceed 20 characters');
+    }
+    
+    // Check for any validation errors
+    if (errors.length > 0) {
+      showError('Please fix the following errors:\n' + errors.join('\n'));
       return;
     }
     
@@ -208,6 +706,7 @@ export default function AdminVendors() {
         logistics: { deliveryDate: '', deliveryMethod: 'delivery', location: { warehouse: '', section: '', rack: '' } },
         notes: ''
       });
+      setIntakeValidationErrors({});
       fetchAllData();
     } catch (err) {
       console.error('Wood intake error:', err);
@@ -541,46 +1040,51 @@ export default function AdminVendors() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Vendor</h3>
               <form onSubmit={handleVendorSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Vendor Name</label>
+                  <label className="block text-sm font-medium text-gray-700">Vendor Name *</label>
                   <input
                     type="text"
                     required
                     value={vendorForm.name}
-                    onChange={(e) => {
-                      const newForm = { ...vendorForm };
-                      newForm.name = e.target.value;
-                      setVendorForm(newForm);
-                    }}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    onChange={(e) => handleVendorFieldChange('name', e.target.value)}
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                      vendorValidationErrors.name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
+                    placeholder="Enter vendor name"
                   />
+                  {vendorValidationErrors.name && (
+                    <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.name}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email (Optional)</label>
                   <input
                     type="email"
                     value={vendorForm.contact.email}
-                    onChange={(e) => {
-                      const newForm = { ...vendorForm };
-                      newForm.contact.email = e.target.value;
-                      setVendorForm(newForm);
-                    }}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    onChange={(e) => handleVendorFieldChange('contact.email', e.target.value)}
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                      vendorValidationErrors.email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
                     placeholder="Enter email (optional for local vendors)"
                   />
+                  {vendorValidationErrors.email && (
+                    <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.email}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Phone</label>
+                  <label className="block text-sm font-medium text-gray-700">Phone *</label>
                   <input
                     type="tel"
                     required
                     value={vendorForm.contact.phone}
-                    onChange={(e) => {
-                      const newForm = { ...vendorForm };
-                      newForm.contact.phone = e.target.value;
-                      setVendorForm(newForm);
-                    }}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    onChange={(e) => handleVendorFieldChange('contact.phone', e.target.value)}
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                      vendorValidationErrors.phone ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
+                    placeholder="Enter 10-digit mobile number"
                   />
+                  {vendorValidationErrors.phone && (
+                    <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.phone}</p>
+                  )}
                 </div>
                 
                 {/* Address Fields */}
@@ -592,84 +1096,86 @@ export default function AdminVendors() {
                       <input
                         type="text"
                         value={vendorForm.contact.address.street}
-                        onChange={(e) => {
-                          const newForm = { ...vendorForm };
-                          newForm.contact.address.street = e.target.value;
-                          setVendorForm(newForm);
-                        }}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        onChange={(e) => handleVendorFieldChange('contact.address.street', e.target.value)}
+                        className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                          vendorValidationErrors.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
                         placeholder="Street address"
                       />
+                      {vendorValidationErrors.street && (
+                        <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.street}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">City</label>
                       <input
                         type="text"
                         value={vendorForm.contact.address.city}
-                        onChange={(e) => {
-                          const newForm = { ...vendorForm };
-                          newForm.contact.address.city = e.target.value;
-                          setVendorForm(newForm);
-                        }}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        onChange={(e) => handleVendorFieldChange('contact.address.city', e.target.value)}
+                        className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                          vendorValidationErrors.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
                         placeholder="City"
                       />
+                      {vendorValidationErrors.city && (
+                        <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.city}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">State</label>
                       <input
                         type="text"
                         value={vendorForm.contact.address.state}
-                        onChange={(e) => {
-                          const newForm = { ...vendorForm };
-                          newForm.contact.address.state = e.target.value;
-                          setVendorForm(newForm);
-                        }}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        onChange={(e) => handleVendorFieldChange('contact.address.state', e.target.value)}
+                        className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                          vendorValidationErrors.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
                         placeholder="State"
                       />
+                      {vendorValidationErrors.state && (
+                        <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.state}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Pincode</label>
                       <input
                         type="text"
                         value={vendorForm.contact.address.pincode}
-                        onChange={(e) => {
-                          const newForm = { ...vendorForm };
-                          newForm.contact.address.pincode = e.target.value;
-                          setVendorForm(newForm);
-                        }}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        placeholder="Pincode"
+                        onChange={(e) => handleVendorFieldChange('contact.address.pincode', e.target.value)}
+                        className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                          vendorValidationErrors.pincode ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
+                        placeholder="6-digit pincode"
+                        maxLength="6"
                       />
+                      {vendorValidationErrors.pincode && (
+                        <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.pincode}</p>
+                      )}
                     </div>
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-gray-700">Country</label>
                       <input
                         type="text"
                         value={vendorForm.contact.address.country}
-                        onChange={(e) => {
-                          const newForm = { ...vendorForm };
-                          newForm.contact.address.country = e.target.value;
-                          setVendorForm(newForm);
-                        }}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        onChange={(e) => handleVendorFieldChange('contact.address.country', e.target.value)}
+                        className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                          vendorValidationErrors.country ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
                         placeholder="Country"
                       />
+                      {vendorValidationErrors.country && (
+                        <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.country}</p>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Business Type</label>
+                  <label className="block text-sm font-medium text-gray-700">Business Type *</label>
                   <select
                     value={vendorForm.businessDetails.businessType}
-                    onChange={(e) => {
-                      const newForm = { ...vendorForm };
-                      newForm.businessDetails.businessType = e.target.value;
-                      setVendorForm(newForm);
-                    }}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    onChange={(e) => handleVendorFieldChange('businessDetails.businessType', e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="individual">Individual</option>
                     <option value="company">Company</option>
@@ -679,15 +1185,11 @@ export default function AdminVendors() {
                 
                 {/* Status Field */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <label className="block text-sm font-medium text-gray-700">Status *</label>
                   <select
                     value={vendorForm.status}
-                    onChange={(e) => {
-                      const newForm = { ...vendorForm };
-                      newForm.status = e.target.value;
-                      setVendorForm(newForm);
-                    }}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    onChange={(e) => handleVendorFieldChange('status', e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -704,28 +1206,32 @@ export default function AdminVendors() {
                       <input
                         type="text"
                         value={vendorForm.businessDetails.gstNumber}
-                        onChange={(e) => {
-                          const newForm = { ...vendorForm };
-                          newForm.businessDetails.gstNumber = e.target.value;
-                          setVendorForm(newForm);
-                        }}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        onChange={(e) => handleVendorFieldChange('businessDetails.gstNumber', e.target.value)}
+                        className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                          vendorValidationErrors.gstNumber ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
                         placeholder="GST Number (optional)"
+                        style={{ textTransform: 'uppercase' }}
                       />
+                      {vendorValidationErrors.gstNumber && (
+                        <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.gstNumber}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">PAN Number</label>
                       <input
                         type="text"
                         value={vendorForm.businessDetails.panNumber}
-                        onChange={(e) => {
-                          const newForm = { ...vendorForm };
-                          newForm.businessDetails.panNumber = e.target.value;
-                          setVendorForm(newForm);
-                        }}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        onChange={(e) => handleVendorFieldChange('businessDetails.panNumber', e.target.value)}
+                        className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                          vendorValidationErrors.panNumber ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
                         placeholder="PAN Number (optional)"
+                        style={{ textTransform: 'uppercase' }}
                       />
+                      {vendorValidationErrors.panNumber && (
+                        <p className="mt-1 text-sm text-red-600">{vendorValidationErrors.panNumber}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -759,35 +1265,34 @@ export default function AdminVendors() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Log Wood Intake</h3>
               <form onSubmit={handleIntakeSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Vendor</label>
+                  <label className="block text-sm font-medium text-gray-700">Vendor *</label>
                   <select
                     required
                     value={intakeForm.vendorId}
-                    onChange={(e) => {
-                      const newForm = { ...intakeForm };
-                      newForm.vendorId = e.target.value;
-                      setIntakeForm(newForm);
-                    }}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    onChange={(e) => handleIntakeFieldChange('vendorId', e.target.value)}
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                      intakeValidationErrors.vendorId ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
                   >
                     <option value="">Select Vendor</option>
                     {vendors.map(vendor => (
                       <option key={vendor._id} value={vendor._id}>{vendor.name}</option>
                     ))}
                   </select>
+                  {intakeValidationErrors.vendorId && (
+                    <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.vendorId}</p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Wood Type</label>
+                    <label className="block text-sm font-medium text-gray-700">Wood Type *</label>
                     <select
                       required
                       value={intakeForm.woodDetails.type}
-                      onChange={(e) => {
-                        const newForm = { ...intakeForm };
-                        newForm.woodDetails.type = e.target.value;
-                        setIntakeForm(newForm);
-                      }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                      onChange={(e) => handleIntakeFieldChange('woodDetails.type', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.woodType ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
                     >
                       <option value="teak">Teak</option>
                       <option value="rosewood">Rosewood</option>
@@ -799,123 +1304,143 @@ export default function AdminVendors() {
                       <option value="plywood">Plywood</option>
                       <option value="other">Other</option>
                     </select>
+                    {intakeValidationErrors.woodType && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.woodType}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                    <label className="block text-sm font-medium text-gray-700">Quantity *</label>
                     <input
                       type="number"
                       required
                       min="1"
+                      max="10000"
                       step="1"
                       value={intakeForm.woodDetails.dimensions.quantity}
-                      onChange={(e) => {
-                        const newForm = { ...intakeForm };
-                        newForm.woodDetails.dimensions.quantity = e.target.value;
-                        setIntakeForm(newForm);
-                      }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                      onChange={(e) => handleIntakeFieldChange('woodDetails.dimensions.quantity', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.quantity ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
                       placeholder="Number of pieces"
                     />
+                    {intakeValidationErrors.quantity && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.quantity}</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Length (ft)</label>
+                    <label className="block text-sm font-medium text-gray-700">Length (ft) *</label>
                     <input
                       type="number"
                       required
-                      min="0"
+                      min="0.1"
+                      max="100"
                       step="0.1"
                       value={intakeForm.woodDetails.dimensions.length}
-                      onChange={(e) => {
-                        const newForm = { ...intakeForm };
-                        newForm.woodDetails.dimensions.length = e.target.value;
-                        setIntakeForm(newForm);
-                      }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                      onChange={(e) => handleIntakeFieldChange('woodDetails.dimensions.length', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.length ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
                       placeholder="Length in feet"
                     />
+                    {intakeValidationErrors.length && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.length}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Width (inches)</label>
+                    <label className="block text-sm font-medium text-gray-700">Width (inches) *</label>
                     <input
                       type="number"
                       required
-                      min="0"
+                      min="0.1"
+                      max="120"
                       step="0.1"
                       value={intakeForm.woodDetails.dimensions.width}
-                      onChange={(e) => {
-                        const newForm = { ...intakeForm };
-                        newForm.woodDetails.dimensions.width = e.target.value;
-                        setIntakeForm(newForm);
-                      }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                      onChange={(e) => handleIntakeFieldChange('woodDetails.dimensions.width', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.width ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
                       placeholder="Width in inches"
                     />
+                    {intakeValidationErrors.width && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.width}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Thickness (inches)</label>
+                    <label className="block text-sm font-medium text-gray-700">Thickness (inches) *</label>
                     <input
                       type="number"
                       required
-                      min="0"
+                      min="0.1"
+                      max="12"
                       step="0.1"
                       value={intakeForm.woodDetails.dimensions.thickness}
-                      onChange={(e) => {
-                        const newForm = { ...intakeForm };
-                        newForm.woodDetails.dimensions.thickness = e.target.value;
-                        setIntakeForm(newForm);
-                      }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                      onChange={(e) => handleIntakeFieldChange('woodDetails.dimensions.thickness', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.thickness ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
                       placeholder="Thickness in inches"
                     />
+                    {intakeValidationErrors.thickness && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.thickness}</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Unit Price (₹)</label>
+                    <label className="block text-sm font-medium text-gray-700">Unit Price (₹) *</label>
                     <input
                       type="number"
                       required
-                      min="0"
+                      min="1"
+                      max="100000"
                       step="0.01"
                       value={intakeForm.costDetails.unitPrice}
-                      onChange={(e) => {
-                        const newForm = { ...intakeForm };
-                        newForm.costDetails.unitPrice = e.target.value;
-                        setIntakeForm(newForm);
-                      }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                      onChange={(e) => handleIntakeFieldChange('costDetails.unitPrice', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.unitPrice ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
                       placeholder="Price per piece"
                     />
+                    {intakeValidationErrors.unitPrice && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.unitPrice}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Delivery Date</label>
+                    <label className="block text-sm font-medium text-gray-700">Delivery Date *</label>
                     <input
                       type="date"
                       required
                       value={intakeForm.logistics.deliveryDate}
-                      onChange={(e) => {
-                        const newForm = { ...intakeForm };
-                        newForm.logistics.deliveryDate = e.target.value;
-                        setIntakeForm(newForm);
-                      }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                      onChange={(e) => handleIntakeFieldChange('logistics.deliveryDate', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.deliveryDate ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
                     />
+                    {intakeValidationErrors.deliveryDate && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.deliveryDate}</p>
+                    )}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Notes</label>
                   <textarea
                     value={intakeForm.notes}
-                    onChange={(e) => {
-                      const newForm = { ...intakeForm };
-                      newForm.notes = e.target.value;
-                      setIntakeForm(newForm);
-                    }}
+                    onChange={(e) => handleIntakeFieldChange('notes', e.target.value)}
                     rows={3}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    maxLength="500"
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                      intakeValidationErrors.notes ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
+                    placeholder="Additional notes (optional, max 500 characters)"
                   />
+                  <div className="mt-1 flex justify-between text-xs text-gray-500">
+                    <span>{intakeForm.notes ? intakeForm.notes.length : 0}/500 characters</span>
+                    {intakeValidationErrors.notes && (
+                      <span className="text-red-600">{intakeValidationErrors.notes}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex space-x-3">
                   <button

@@ -109,12 +109,31 @@ export const handleUploadError = (error, req, res, next) => {
 // Helper function to convert image to base64
 export const convertImageToBase64 = (filePath) => {
   try {
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      console.error(`File does not exist: ${filePath}`);
+      return null;
+    }
+
+    // Check file size
+    const stats = fs.statSync(filePath);
+    if (stats.size === 0) {
+      console.error(`File is empty: ${filePath}`);
+      return null;
+    }
+
+    if (stats.size > 5 * 1024 * 1024) { // 5MB limit
+      console.error(`File too large: ${filePath}, size: ${stats.size} bytes`);
+      return null;
+    }
+
     const imageBuffer = fs.readFileSync(filePath);
     const base64String = imageBuffer.toString('base64');
     console.log(`Converting image: ${filePath}, size: ${imageBuffer.length} bytes`);
     return base64String;
   } catch (error) {
     console.error('Error converting image to base64:', error);
+    console.error('File path:', filePath);
     return null;
   }
 };

@@ -12,6 +12,7 @@ export default function CustomerHero() {
   const [showShopDropdown, setShowShopDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
 
   // Click outside handler for dropdowns
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function CustomerHero() {
           const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
           setCartCount(totalItems);
         } catch (error) {
+          console.log('Cart fetch error:', error.response?.status, error.message);
           setCartCount(0);
         }
       } else {
@@ -57,6 +59,37 @@ export default function CustomerHero() {
     };
 
     fetchCartCount();
+  }, [isAuthenticated]);
+
+  // Fetch wishlist count
+  useEffect(() => {
+    const fetchWishlistCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const response = await api.get('/wishlist');
+          const wishlistItems = response.data.items || [];
+          setWishlistCount(wishlistItems.length);
+        } catch (error) {
+          console.log('Wishlist fetch error:', error.response?.status, error.message);
+          setWishlistCount(0);
+        }
+      } else {
+        // Check guest wishlist in localStorage
+        const guestWishlist = localStorage.getItem('guestWishlist');
+        if (guestWishlist) {
+          try {
+            const wishlistData = JSON.parse(guestWishlist);
+            setWishlistCount(wishlistData.items?.length || 0);
+          } catch (error) {
+            setWishlistCount(0);
+          }
+        } else {
+          setWishlistCount(0);
+        }
+      }
+    };
+
+    fetchWishlistCount();
   }, [isAuthenticated]);
 
   const handleLogout = () => {
@@ -186,6 +219,34 @@ export default function CustomerHero() {
                   </div>
                 )}
               </div>
+              
+              {/* Wishlist Icon */}
+              <button
+                type="button"
+                onClick={() => navigate('/wishlist')}
+                className="relative cursor-pointer p-2 rounded-full hover:bg-cream focus:outline-none focus:ring-2 focus:ring-accent-red"
+                aria-label="Wishlist"
+                title="Wishlist"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  className="w-6 h-6 text-dark-brown hover:text-accent-red transition-colors duration-200"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                {/* Wishlist Count Badge */}
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-accent-red text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
+                  </span>
+                )}
+              </button>
               
               {/* Cart Icon */}
               <button

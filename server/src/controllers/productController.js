@@ -266,6 +266,12 @@ export const updateProduct = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
+    console.log('Update product request:', {
+      productId: id,
+      hasFiles: !!req.files,
+      filesCount: req.files ? req.files.length : 0
+    });
+
     // Parse attributes if provided
     if (updateData.attributes) {
       try {
@@ -273,41 +279,10 @@ export const updateProduct = async (req, res) => {
           ? JSON.parse(updateData.attributes) 
           : updateData.attributes;
       } catch (error) {
+        console.error('Error parsing attributes:', error);
         return res.status(400).json({
           message: 'Invalid attributes format'
         });
-      }
-    }
-
-    // Process new images if uploaded
-    if (req.files && req.files.length > 0) {
-      const newImages = [];
-      for (const file of req.files) {
-        const base64Data = convertImageToBase64(file.path);
-        if (base64Data) {
-          // Store as data URL for easier frontend handling
-          const dataUrl = `data:${file.mimetype};base64,${base64Data}`;
-          newImages.push({
-            data: dataUrl,
-            contentType: file.mimetype,
-            filename: file.originalname
-          });
-          console.log(`New image converted: ${file.originalname}, size: ${base64Data.length} chars`);
-        } else {
-          console.error(`Failed to convert new image: ${file.originalname}`);
-        }
-      }
-
-      // Get existing product to check current image count
-      const existingProduct = await Product.findById(id);
-      if (existingProduct) {
-        const totalImages = existingProduct.images.length + newImages.length;
-        if (totalImages > 5) {
-          return res.status(400).json({
-            message: 'Total images cannot exceed 5'
-          });
-        }
-        updateData.images = [...existingProduct.images, ...newImages];
       }
     }
 
@@ -318,6 +293,53 @@ export const updateProduct = async (req, res) => {
     if (updateData.quantity) {
       updateData.quantity = parseInt(updateData.quantity);
     }
+
+    // Process uploaded images if any
+    if (req.files && req.files.length > 0) {
+      console.log(`Processing ${req.files.length} uploaded images for update`);
+      const images = [];
+      
+      for (const file of req.files) {
+        console.log('File details:', {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          path: file.path,
+          filename: file.filename
+        });
+        
+        // Convert image to base64
+        const base64Data = convertImageToBase64(file.path);
+        if (base64Data) {
+          // Store as data URL for easier frontend handling
+          const dataUrl = `data:${file.mimetype};base64,${base64Data}`;
+          images.push({
+            data: dataUrl,
+            contentType: file.mimetype,
+            filename: file.originalname
+          });
+          console.log(`Image converted: ${file.originalname}, size: ${base64Data.length} chars`);
+        } else {
+          console.error(`Failed to convert image: ${file.originalname}`);
+        }
+      }
+      
+      if (images.length > 0) {
+        updateData.images = images;
+        console.log(`Added ${images.length} images to update data`);
+      }
+      
+      // Clean up temporary files
+      cleanupTempFiles(req.files);
+    }
+
+    console.log('About to update product with data:', {
+      name: updateData.name,
+      category: updateData.category,
+      price: updateData.price,
+      quantity: updateData.quantity
+    });
 
     const product = await Product.findByIdAndUpdate(
       id,
@@ -331,15 +353,14 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    // Clean up temporary files
-    cleanupTempFiles(req.files);
-
+    console.log('Product updated successfully:', product.name);
     res.json({
       message: 'Product updated successfully',
       product
     });
   } catch (error) {
     console.error('Error updating product:', error);
+    
     res.status(500).json({
       message: 'Failed to update product',
       error: error.message

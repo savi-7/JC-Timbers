@@ -7,13 +7,22 @@ const userSchema = new mongoose.Schema({
   // For Google users, password can be null
   password: { type: String, required: false, default: null },
   phone: { type: String, required: false },
+  address: { type: String, required: false },
   role: { 
     type: String, 
     enum: ['admin', 'customer'], 
     default: 'customer',
     required: true
   },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  },
+  lastLogin: { type: Date, default: null },
   wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: [] }]
+}, {
+  timestamps: true  // This will automatically add createdAt and updatedAt fields
 });
 
 // Hash password before saving

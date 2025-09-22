@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { useNotification } from './NotificationProvider';
 
-export default function ProductForm({ product, onClose, onSuccess }) {
+export default function ProductForm({ product, defaultCategory, onClose, onSuccess }) {
   const isEdit = !!product;
   const { showSuccess, showError } = useNotification();
   
@@ -10,6 +10,7 @@ export default function ProductForm({ product, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     name: '',
     category: 'timber',
+    subcategory: '',
     quantity: '',
     unit: 'pieces',
     price: '',
@@ -24,12 +25,38 @@ export default function ProductForm({ product, onClose, onSuccess }) {
   const [existingImages, setExistingImages] = useState([]);
   const [imagesToRemove, setImagesToRemove] = useState([]);
   const [uploading, setUploading] = useState(false);
+  
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Timber subcategories
+  const timberSubcategories = [
+    { value: '', label: 'Select Timber Type' },
+    { value: 'planks', label: 'Planks' },
+    { value: 'beams', label: 'Beams' },
+    { value: 'billet', label: 'Billet' },
+    { value: 'venners', label: 'Venners' },
+    { value: 'board_and_slabs', label: 'Board & Slabs' },
+    { value: 'laths', label: 'Laths' },
+    { value: 'stumps_blocks', label: 'Stumps & Blocks' }
+  ];
+
+  // Furniture subcategories
+  const furnitureSubcategories = [
+    { value: '', label: 'Select Furniture Type' },
+    { value: 'study table', label: 'Study Table' },
+    { value: 'dining table', label: 'Dining Table' },
+    { value: 'chairs', label: 'Chairs' },
+    { value: 'bed', label: 'Bed' }
+  ];
 
   // Category-specific attribute configurations
   const categoryAttributes = {
     timber: {
       woodType: '',
-      dimension: '',
+      length: '',
+      width: '',
+      thickness: '',
       grade: ''
     },
     furniture: {
@@ -48,12 +75,11 @@ export default function ProductForm({ product, onClose, onSuccess }) {
 
   // Initialize form data
   useEffect(() => {
-    console.log('Initializing form data, isEdit:', isEdit, 'product:', product);
-    
     if (isEdit && product) {
       setFormData({
         name: product.name || '',
         category: product.category || 'timber',
+        subcategory: product.subcategory || '',
         quantity: product.quantity || '',
         unit: product.unit || 'pieces',
         price: product.price || '',
@@ -66,35 +92,100 @@ export default function ProductForm({ product, onClose, onSuccess }) {
     } else {
       setFormData({
         name: '',
-        category: 'timber',
+        category: defaultCategory || 'timber',
+        subcategory: '',
         quantity: '',
         unit: 'pieces',
         price: '',
         size: '',
         description: '',
-        attributes: categoryAttributes.timber,
+        attributes: categoryAttributes[defaultCategory || 'timber'] || categoryAttributes.timber,
         featuredType: 'none'
       });
     }
-  }, [product, isEdit]);
+  }, [product, isEdit, defaultCategory]);
 
   // Update attributes when category changes
   useEffect(() => {
     if (!isEdit || !product) {
       setFormData(prev => ({
         ...prev,
-        attributes: categoryAttributes[formData.category] || {}
+        category: (defaultCategory === 'timber' || defaultCategory === 'furniture') ? defaultCategory : prev.category,
+        attributes: categoryAttributes[(defaultCategory === 'timber' || defaultCategory === 'furniture') ? defaultCategory : prev.category] || {}
       }));
     }
-  }, [formData.category]);
+  }, [formData.category, defaultCategory]);
+
+  // Real-time validation functions
+  const validateField = (name, value) => {
+    const errors = { ...validationErrors };
+    
+    switch (name) {
+      case 'name':
+        if (!value || value.trim() === '') {
+          errors.name = 'Product name is required';
+        } else if (value.trim().length < 3) {
+          errors.name = 'Product name must be at least 3 characters long';
+        } else if (value.trim().length > 100) {
+          errors.name = 'Product name must not exceed 100 characters';
+        } else {
+          delete errors.name;
+        }
+        break;
+        
+      case 'price':
+        if (!value || value === '') {
+          errors.price = 'Price is required';
+        } else if (isNaN(value) || parseFloat(value) <= 0) {
+          errors.price = 'Price must be a positive number';
+        } else if (parseFloat(value) > 1000000) {
+          errors.price = 'Price cannot exceed ₹10,00,000';
+        } else {
+          delete errors.price;
+        }
+        break;
+        
+      case 'quantity':
+        if (value === '' || value === null || value === undefined) {
+          errors.quantity = 'Quantity is required';
+        } else if (isNaN(value) || parseInt(value) < 0) {
+          errors.quantity = 'Quantity must be a non-negative number';
+        } else if (parseInt(value) > 10000) {
+          errors.quantity = 'Quantity cannot exceed 10,000 units';
+        } else {
+          delete errors.quantity;
+        }
+        break;
+        
+      case 'size':
+        if (value && value.trim().length > 50) {
+          errors.size = 'Size description must not exceed 50 characters';
+        } else {
+          delete errors.size;
+        }
+        break;
+        
+      case 'description':
+        if (value && value.trim().length > 1000) {
+          errors.description = 'Description must not exceed 1000 characters';
+        } else {
+          delete errors.description;
+        }
+        break;
+    }
+    
+    setValidationErrors(errors);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    console.log(`Updating ${name}:`, value);
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+    
+    // Real-time validation
+    validateField(name, value);
   };
 
   const handleAttributeChange = (key, value) => {
@@ -105,17 +196,70 @@ export default function ProductForm({ product, onClose, onSuccess }) {
         [key]: value
       }
     }));
+    
+    // Validate attribute fields
+    const errors = { ...validationErrors };
+    
+    if (key === 'woodType') {
+      if (!value || value.trim() === '') {
+        errors.woodType = 'Wood type is required';
+      } else if (value.trim().length > 30) {
+        errors.woodType = 'Wood type must not exceed 30 characters';
+      } else {
+        delete errors.woodType;
+      }
+    } else if (key === 'grade') {
+      if (!value || value.trim() === '') {
+        errors.grade = 'Grade is required';
+      } else if (!['A', 'A+', 'B', 'C'].includes(value.trim())) {
+        errors.grade = 'Grade must be A, A+, B, or C';
+      } else {
+        delete errors.grade;
+      }
+    } else if (['length', 'width', 'thickness'].includes(key)) {
+      if (value && value !== '') {
+        if (isNaN(value) || parseFloat(value) <= 0) {
+          errors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} must be a positive number`;
+        } else if (parseFloat(value) > 100) {
+          errors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} cannot exceed 100`;
+        } else {
+          delete errors[key];
+        }
+      } else {
+        delete errors[key];
+      }
+    } else if (key === 'finish' && value && value.trim().length > 50) {
+      errors.finish = 'Finish description must not exceed 50 characters';
+    } else if (key === 'style' && value && value.trim().length > 50) {
+      errors.style = 'Style description must not exceed 50 characters';
+    } else if (key === 'productType') {
+      if (!value || value.trim() === '') {
+        errors.productType = 'Product type is required';
+      } else if (value.trim().length > 50) {
+        errors.productType = 'Product type must not exceed 50 characters';
+      } else {
+        delete errors.productType;
+      }
+    } else if (key === 'usage' && value && value.trim().length > 100) {
+      errors.usage = 'Usage description must not exceed 100 characters';
+    } else {
+      delete errors[key];
+    }
+    
+    setValidationErrors(errors);
   };
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
     const maxFiles = 5 - existingImages.length + imagesToRemove.length;
     
+    // Check if too many files selected
     if (files.length > maxFiles) {
-      showError(`You can only select up to ${maxFiles} more images`);
+      showError(`You can only select up to ${maxFiles} more images (maximum 5 total)`);
       return;
     }
-
+    
+    // Accept all selected files without validation
     setSelectedFiles(files);
   };
 
@@ -131,24 +275,143 @@ export default function ProductForm({ product, onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    console.log('Form submission - Current form data:', formData);
-    
-    // Validate required fields with more detailed checks
+    // Comprehensive validation for all fields
     const errors = [];
     
+    // Product Name Validation
     if (!formData.name || formData.name.trim() === '') {
       errors.push('Product name is required');
+    } else if (formData.name.trim().length < 3) {
+      errors.push('Product name must be at least 3 characters long');
+    } else if (formData.name.trim().length > 100) {
+      errors.push('Product name must not exceed 100 characters');
     }
     
-    if (!formData.category || formData.category.trim() === '') {
-      errors.push('Category is required');
+    // Category/Subcategory Validation
+    if (defaultCategory === 'timber' || defaultCategory === 'furniture') {
+      if (!formData.subcategory || formData.subcategory.trim() === '') {
+        errors.push(`${defaultCategory === 'timber' ? 'Timber' : 'Furniture'} category is required`);
+      }
+    } else {
+      if (!formData.category || formData.category.trim() === '') {
+        errors.push('Category is required');
+      }
     }
     
-    if (!formData.price || formData.price <= 0) {
-      errors.push('Price must be greater than 0');
+    // Price Validation
+    if (!formData.price || formData.price === '') {
+      errors.push('Price is required');
+    } else if (isNaN(formData.price) || parseFloat(formData.price) <= 0) {
+      errors.push('Price must be a positive number');
+    } else if (parseFloat(formData.price) > 1000000) {
+      errors.push('Price cannot exceed ₹10,00,000');
     }
     
-    console.log('Validation errors:', errors);
+    // Quantity Validation
+    if (formData.quantity === '' || formData.quantity === null || formData.quantity === undefined) {
+      errors.push('Quantity is required');
+    } else if (isNaN(formData.quantity) || parseInt(formData.quantity) < 0) {
+      errors.push('Quantity must be a non-negative number');
+    } else if (parseInt(formData.quantity) > 10000) {
+      errors.push('Quantity cannot exceed 10,000 units');
+    }
+    
+    // Unit Validation
+    if (!formData.unit || formData.unit.trim() === '') {
+      errors.push('Unit is required');
+    }
+    
+    // Size Validation
+    if (formData.size && formData.size.trim().length > 50) {
+      errors.push('Size description must not exceed 50 characters');
+    }
+    
+    // Description Validation
+    if (formData.description && formData.description.trim().length > 1000) {
+      errors.push('Description must not exceed 1000 characters');
+    }
+    
+    // Category-specific validations
+    if (defaultCategory === 'timber') {
+      // Timber-specific validations
+      const timberAttrs = formData.attributes || {};
+      
+      // Wood Type Validation
+      if (!timberAttrs.woodType || timberAttrs.woodType.trim() === '') {
+        errors.push('Wood type is required for timber products');
+      } else if (timberAttrs.woodType.trim().length > 30) {
+        errors.push('Wood type must not exceed 30 characters');
+      }
+      
+      // Grade Validation
+      if (!timberAttrs.grade || timberAttrs.grade.trim() === '') {
+        errors.push('Grade is required for timber products');
+      } else if (!['A', 'A+', 'B', 'C'].includes(timberAttrs.grade.trim())) {
+        errors.push('Grade must be A, A+, B, or C');
+      }
+      
+      // Dimensions Validation
+      const dimensions = ['length', 'width', 'thickness'];
+      dimensions.forEach(dim => {
+        const value = timberAttrs[dim];
+        if (value && value !== '') {
+          if (isNaN(value) || parseFloat(value) <= 0) {
+            errors.push(`${dim.charAt(0).toUpperCase() + dim.slice(1)} must be a positive number`);
+          } else if (parseFloat(value) > 100) {
+            errors.push(`${dim.charAt(0).toUpperCase() + dim.slice(1)} cannot exceed 100`);
+          }
+        }
+      });
+      
+    } else if (defaultCategory === 'furniture') {
+      // Furniture-specific validations
+      const furnitureAttrs = formData.attributes || {};
+      
+      // Wood Type Validation
+      if (!furnitureAttrs.woodType || furnitureAttrs.woodType.trim() === '') {
+        errors.push('Wood type is required for furniture products');
+      } else if (furnitureAttrs.woodType.trim().length > 30) {
+        errors.push('Wood type must not exceed 30 characters');
+      }
+      
+      // Grade Validation
+      if (!furnitureAttrs.grade || furnitureAttrs.grade.trim() === '') {
+        errors.push('Grade is required for furniture products');
+      } else if (!['A', 'A+', 'B', 'C'].includes(furnitureAttrs.grade.trim())) {
+        errors.push('Grade must be A, A+, B, or C');
+      }
+      
+      // Finish Validation
+      if (furnitureAttrs.finish && furnitureAttrs.finish.trim().length > 50) {
+        errors.push('Finish description must not exceed 50 characters');
+      }
+      
+      // Style Validation
+      if (furnitureAttrs.style && furnitureAttrs.style.trim().length > 50) {
+        errors.push('Style description must not exceed 50 characters');
+      }
+      
+    } else if (defaultCategory === 'construction') {
+      // Construction-specific validations
+      const constructionAttrs = formData.attributes || {};
+      
+      // Product Type Validation
+      if (!constructionAttrs.productType || constructionAttrs.productType.trim() === '') {
+        errors.push('Product type is required for construction materials');
+      } else if (constructionAttrs.productType.trim().length > 50) {
+        errors.push('Product type must not exceed 50 characters');
+      }
+      
+      // Finish Validation
+      if (constructionAttrs.finish && constructionAttrs.finish.trim().length > 50) {
+        errors.push('Finish description must not exceed 50 characters');
+      }
+      
+      // Usage Validation
+      if (constructionAttrs.usage && constructionAttrs.usage.trim().length > 100) {
+        errors.push('Usage description must not exceed 100 characters');
+      }
+    }
     
     if (errors.length > 0) {
       showError('Please fix the following errors:\n' + errors.join('\n'));
@@ -162,7 +425,17 @@ export default function ProductForm({ product, onClose, onSuccess }) {
       
       // Add form fields
       submitData.append('name', formData.name.trim());
-      submitData.append('category', formData.category);
+      
+      // For timber and furniture products, use subcategory as the main category
+      if (defaultCategory === 'timber' || defaultCategory === 'furniture') {
+        submitData.append('category', defaultCategory);
+        if (formData.subcategory) {
+          submitData.append('subcategory', formData.subcategory);
+        }
+      } else {
+        submitData.append('category', formData.category);
+      }
+      
       submitData.append('quantity', formData.quantity || 0);
       submitData.append('unit', formData.unit);
       submitData.append('price', formData.price);
@@ -176,33 +449,49 @@ export default function ProductForm({ product, onClose, onSuccess }) {
         submitData.append('images', file);
       });
 
-      console.log('Submitting product with data:', {
-        name: formData.name,
-        category: formData.category,
-        price: formData.price,
-        imagesCount: selectedFiles.length
+      console.log('Submitting product data:', {
+        isEdit,
+        productId: isEdit ? product._id : 'new',
+        formData: {
+          name: formData.name,
+          category: defaultCategory,
+          subcategory: formData.subcategory,
+          price: formData.price,
+          quantity: formData.quantity
+        }
       });
 
       if (isEdit) {
         // Update existing product
-        await api.put(`/products/${product._id}`, submitData, {
+        console.log(`Updating product ${product._id}...`);
+        const response = await api.put(`/products/${product._id}`, submitData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         });
+        console.log('Update response:', response.data);
       } else {
         // Create new product
-        await api.post('/products', submitData, {
+        console.log('Creating new product...');
+        const response = await api.post('/products', submitData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         });
+        console.log('Create response:', response.data);
       }
 
       showSuccess(`Product ${isEdit ? 'updated' : 'created'} successfully!`);
       onSuccess();
     } catch (error) {
-      console.error('Error submitting product:', error);
+      console.error('Product submission error:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
       const errorMessage = error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} product`;
       showError(`Error: ${errorMessage}`);
     } finally {
@@ -213,20 +502,46 @@ export default function ProductForm({ product, onClose, onSuccess }) {
   const renderCategoryFields = () => {
     const fields = categoryAttributes[formData.category] || {};
     
-    return Object.keys(fields).map(key => (
-      <div key={key}>
-        <label className="block text-sm font-medium text-gray-700 capitalize">
-          {key.replace(/([A-Z])/g, ' $1').trim()}
-        </label>
-        <input
-          type="text"
-          value={formData.attributes[key] || ''}
-          onChange={(e) => handleAttributeChange(key, e.target.value)}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-          placeholder={`Enter ${key.replace(/([A-Z])/g, ' $1').trim().toLowerCase()}`}
-        />
-      </div>
-    ));
+    return Object.keys(fields).map(key => {
+      // Special handling for timber dimensions
+      if (formData.category === 'timber' && ['length', 'width', 'thickness'].includes(key)) {
+        const unit = key === 'thickness' ? 'inches' : 'ft';
+        const label = key.charAt(0).toUpperCase() + key.slice(1);
+        
+        return (
+          <div key={key}>
+            <label className="block text-sm font-medium text-gray-700">
+              {label} ({unit})
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.attributes[key] || ''}
+              onChange={(e) => handleAttributeChange(key, e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder={`Enter ${label.toLowerCase()} in ${unit}`}
+            />
+          </div>
+        );
+      }
+      
+      // Default handling for other fields
+      return (
+        <div key={key}>
+          <label className="block text-sm font-medium text-gray-700 capitalize">
+            {key.replace(/([A-Z])/g, ' $1').trim()}
+          </label>
+          <input
+            type="text"
+            value={formData.attributes[key] || ''}
+            onChange={(e) => handleAttributeChange(key, e.target.value)}
+            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+            placeholder={`Enter ${key.replace(/([A-Z])/g, ' $1').trim().toLowerCase()}`}
+          />
+        </div>
+      );
+    });
   };
 
   return (
@@ -236,13 +551,6 @@ export default function ProductForm({ product, onClose, onSuccess }) {
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             {isEdit ? 'Edit Product' : 'Add New Product'}
           </h3>
-          
-          {/* Debug info - remove this in production */}
-          <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
-            <strong>Debug Info:</strong><br/>
-            Name: "{formData.name}" | Category: "{formData.category}" | Price: "{formData.price}"<br/>
-            Form valid: {formData.name && formData.category && formData.price ? 'Yes' : 'No'}
-          </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
@@ -255,25 +563,72 @@ export default function ProductForm({ product, onClose, onSuccess }) {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                    validationErrors.name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  }`}
                   placeholder="Enter product name"
                 />
+                {validationErrors.name && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Category *</label>
-                <select
-                  required
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                >
-                  <option value="timber">Timber</option>
-                  <option value="furniture">Furniture</option>
-                  <option value="construction">Construction</option>
-                </select>
+            {/* Category selection - different for timber vs furniture vs other products */}
+            {defaultCategory === 'timber' ? (
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Timber Category *</label>
+                  <select
+                    required
+                    name="subcategory"
+                    value={formData.subcategory}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    {timberSubcategories.filter(sub => sub.value !== '').map((subcategory) => (
+                      <option key={subcategory.value} value={subcategory.value}>
+                        {subcategory.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
+            ) : defaultCategory === 'furniture' ? (
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Furniture Category *</label>
+                  <select
+                    required
+                    name="subcategory"
+                    value={formData.subcategory}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    {furnitureSubcategories.filter(sub => sub.value !== '').map((subcategory) => (
+                      <option key={subcategory.value} value={subcategory.value}>
+                        {subcategory.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Category *</label>
+                  <select
+                    required
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    <option value="timber">Timber</option>
+                    <option value="furniture">Furniture</option>
+                    <option value="construction">Construction</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -305,16 +660,21 @@ export default function ProductForm({ product, onClose, onSuccess }) {
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                <label className="block text-sm font-medium text-gray-700">Quantity *</label>
                 <input
                   type="number"
                   min="0"
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                    validationErrors.quantity ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  }`}
                   placeholder="Enter quantity"
                 />
+                {validationErrors.quantity && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.quantity}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Unit</label>
@@ -338,9 +698,14 @@ export default function ProductForm({ product, onClose, onSuccess }) {
                   name="price"
                   value={formData.price}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                    validationErrors.price ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  }`}
                   placeholder="Enter price"
                 />
+                {validationErrors.price && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.price}</p>
+                )}
               </div>
             </div>
 
@@ -418,9 +783,11 @@ export default function ProductForm({ product, onClose, onSuccess }) {
                   onChange={handleFileSelect}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Maximum 5 images total. Selected: {selectedFiles.length}
-                </p>
+                <div className="mt-1">
+                  <p className="text-xs text-gray-500">
+                    Maximum 5 images total. Selected: {selectedFiles.length}
+                  </p>
+                </div>
               </div>
 
               {/* Selected Files Preview */}
@@ -448,8 +815,9 @@ export default function ProductForm({ product, onClose, onSuccess }) {
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Form Actions */}
+          {/* Form Actions */}
             <div className="flex space-x-3 pt-4">
               <button
                 type="submit"

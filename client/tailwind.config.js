@@ -8,6 +8,7 @@ export default {
     extend: {
       colors: {
         'cream': '#FEFAF0',
+        'light-cream': '#F5F1E8',
         'dark-brown': '#2E0F13',
         'accent-red': '#913F4A',
         'light-pink': '#EAB9B3',

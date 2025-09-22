@@ -1,18 +1,22 @@
 import express from "express";
 import { authenticateToken, authorizeAdmin } from "../middleware/auth.js";
-import { getDashboardOverview, getAllUsers, getAllProducts, getAllOrders, getCustomerDetails } from "../controllers/adminController.js";
+import { 
+  getAllUsers, 
+  getUserOrders, 
+  updateUserStatus,
+  getUserCart,
+  getUserWishlist,
+  getDashboardOverview
+} from "../controllers/adminController.js";
 
 const router = express.Router();
 
-// Admin dashboard overview
-router.get("/admin/overview", authenticateToken, authorizeAdmin, getDashboardOverview);
-
-// Admin detailed data endpoints
-router.get("/users", authenticateToken, authorizeAdmin, getAllUsers);
-router.get("/products", authenticateToken, authorizeAdmin, getAllProducts);
-router.get("/orders", authenticateToken, authorizeAdmin, getAllOrders);
-router.get("/users/:userId", authenticateToken, authorizeAdmin, getCustomerDetails);
+// Admin-only routes
+router.get("/admin/dashboard", authenticateToken, authorizeAdmin, getDashboardOverview);
+router.get("/admin/users", authenticateToken, authorizeAdmin, getAllUsers);
+router.get("/admin/users/:userId/orders", authenticateToken, authorizeAdmin, getUserOrders);
+router.get("/admin/users/:userId/cart", authenticateToken, authorizeAdmin, getUserCart);
+router.get("/admin/users/:userId/wishlist", authenticateToken, authorizeAdmin, getUserWishlist);
+router.patch("/admin/users/:userId/status", authenticateToken, authorizeAdmin, updateUserStatus);
 
 export default router;
-
-

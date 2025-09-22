@@ -14,13 +14,13 @@ export default function AdminUsers() {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5001/api/users', {
+      const res = await fetch('http://localhost:5001/api/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.status === 403) throw new Error('Admin access required');
       if (!res.ok) throw new Error('Failed to load customers');
       const data = await res.json();
-      setCustomers(Array.isArray(data) ? data : []);
+      setCustomers(data.users || []);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -32,12 +32,34 @@ export default function AdminUsers() {
     try {
       setDetails(null);
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5001/api/users/${userId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      
+      // Fetch user orders, cart, and wishlist in parallel
+      const [ordersRes, cartRes, wishlistRes] = await Promise.all([
+        fetch(`http://localhost:5001/api/admin/users/${userId}/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`http://localhost:5001/api/admin/users/${userId}/cart`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`http://localhost:5001/api/admin/users/${userId}/wishlist`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+      
+      // Get user data from customers list
+      const user = customers.find(c => c._id === userId);
+      
+      // Parse responses
+      const orders = ordersRes.ok ? (await ordersRes.json()).orders || [] : [];
+      const cart = cartRes.ok ? (await cartRes.json()).cart || { items: [], total: 0 } : { items: [], total: 0 };
+      const wishlist = wishlistRes.ok ? (await wishlistRes.json()).wishlist || [] : [];
+      
+      setDetails({
+        user: user,
+        cart: cart,
+        orders: orders,
+        wishlist: wishlist
       });
-      if (!res.ok) throw new Error('Failed to load user details');
-      const data = await res.json();
-      setDetails(data);
     } catch (e) {
       setError(e.message);
     }
@@ -110,20 +132,65 @@ export default function AdminUsers() {
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Cart Items</h3>
+                    <h3 className="font-semibold text-gray-900 mb-2">Cart Items ({details.cart.items?.length || 0})</h3>
                     <div className="space-y-2">
                       {details.cart.items?.length === 0 && (
                         <div className="text-sm text-gray-500">Cart is empty.</div>
                       )}
-                      {details.cart.items?.map((ci, idx) => (
+                      {details.cart.items?.map((item, idx) => (
                         <div key={idx} className="p-3 rounded-lg border border-gray-200 flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-gray-900">{ci.product?.name || 'Unknown Product'}</div>
-                            <div className="text-xs text-gray-500">Qty: {ci.quantity}</div>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                              {item.image ? (
+                                <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                              ) : (
+                                <span className="text-gray-400 text-xs">No Image</span>
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{item.name}</div>
+                              <div className="text-xs text-gray-500">Qty: {item.quantity} | {item.category}/{item.subcategory}</div>
+                            </div>
                           </div>
-                          <div className="text-sm font-medium text-gray-900">
-                            ₹{(ci.product?.price || 0).toLocaleString('en-IN')}
+                          <div className="text-right">
+                            <div className="text-sm font-medium text-gray-900">₹{item.price.toLocaleString('en-IN')}</div>
+                            <div className="text-xs text-gray-500">Subtotal: ₹{item.subtotal.toLocaleString('en-IN')}</div>
                           </div>
+                        </div>
+                      ))}
+                      {details.cart.items?.length > 0 && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-gray-900">Cart Total:</span>
+                            <span className="font-bold text-lg text-gray-900">₹{details.cart.total.toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Wishlist ({details.wishlist?.length || 0})</h3>
+                    <div className="space-y-2">
+                      {details.wishlist?.length === 0 && (
+                        <div className="text-sm text-gray-500">Wishlist is empty.</div>
+                      )}
+                      {details.wishlist?.map((item, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border border-gray-200 flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                              {item.image ? (
+                                <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                              ) : (
+                                <span className="text-gray-400 text-xs">No Image</span>
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{item.name}</div>
+                              <div className="text-xs text-gray-500">{item.category}/{item.subcategory}</div>
+                            </div>
+                          </div>
+                          <div className="text-sm font-medium text-gray-900">₹{item.price.toLocaleString('en-IN')}</div>
                         </div>
                       ))}
                     </div>

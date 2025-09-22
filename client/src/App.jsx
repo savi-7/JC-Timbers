@@ -10,6 +10,7 @@ import AdminUsers from "./pages/AdminUsers";
 import TimberProducts from "./pages/TimberProducts";
 import Furniture from "./pages/Furniture";
 import ConstructionMaterials from "./pages/ConstructionMaterials";
+import ProductDetail from "./pages/ProductDetail";
 import CustomerHomePage from "./pages/CustomerHomePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Cart from "./pages/Cart";
@@ -84,6 +85,9 @@ export default function App() {
         <Route path="/timber-products" element={<TimberProducts />} />
         <Route path="/furniture" element={<Furniture />} />
         <Route path="/construction-materials" element={<ConstructionMaterials />} />
+        
+        {/* Product Detail Route */}
+        <Route path="/product/:id" element={<ProductDetail />} />
         
         {/* Public Cart Route */}
         <Route path="/cart" element={<Cart />} />
