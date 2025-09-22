@@ -500,7 +500,7 @@ export default function ProductDetail() {
 
             {/* Key Specifications */}
             <div className="bg-gray-50 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-dark-brown mb-4">Key Specifications</h3>
+              <h3 className="text-lg font-semibold text-dark-brown mb-4">Specifications</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {product.size && (
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
@@ -514,8 +514,46 @@ export default function ProductDetail() {
                     <span className="text-sm font-semibold text-dark-brown">{product.unit}</span>
                   </div>
                 )}
+                {product.material && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Material</span>
+                    <span className="text-sm font-semibold text-dark-brown">{product.material}</span>
+                  </div>
+                )}
+                {product.color && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Color</span>
+                    <span className="text-sm font-semibold text-dark-brown">{product.color}</span>
+                  </div>
+                )}
+                {product.brand && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Brand</span>
+                    <span className="text-sm font-semibold text-dark-brown">{product.brand}</span>
+                  </div>
+                )}
+                {product.weight && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Weight</span>
+                    <span className="text-sm font-semibold text-dark-brown">{product.weight}</span>
+                  </div>
+                )}
+                {product.featuredType && product.featuredType !== 'none' && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Featured Type</span>
+                    <span className="text-sm font-semibold text-dark-brown capitalize">
+                      {product.featuredType === 'best' ? 'Best Seller' : product.featuredType === 'new' ? 'New Arrival' : 'Discounted'}
+                    </span>
+                  </div>
+                )}
+                {product.quantity && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Stock Available</span>
+                    <span className="text-sm font-semibold text-dark-brown">{product.quantity} units</span>
+                  </div>
+                )}
                 {product.attributes && Object.keys(product.attributes).length > 0 && (
-                  Object.entries(product.attributes).slice(0, 4).map(([key, value]) => (
+                  Object.entries(product.attributes).map(([key, value]) => (
                     <div key={key} className="flex justify-between items-center py-2 border-b border-gray-200">
                       <span className="text-sm font-medium text-gray-600 capitalize">
                         {key.replace(/([A-Z])/g, ' $1').trim()}
@@ -524,6 +562,8 @@ export default function ProductDetail() {
                         {value}
                         {key === 'length' || key === 'width' ? ' ft' : ''}
                         {key === 'thickness' ? ' in' : ''}
+                        {key === 'height' ? ' ft' : ''}
+                        {key === 'diameter' ? ' in' : ''}
                       </span>
                     </div>
                   ))
@@ -584,44 +624,6 @@ export default function ProductDetail() {
                 </div>
               </div>
             </div>
-
-            {/* Additional Specifications */}
-            {product.attributes && Object.keys(product.attributes).length > 4 && (
-              <div>
-                <button
-                  onClick={() => setShowSpecifications(!showSpecifications)}
-                  className="flex items-center justify-between w-full text-left text-lg font-semibold text-dark-brown mb-4 hover:text-accent-red transition-colors duration-200"
-                >
-                  <span>View All Specifications</span>
-                  <svg
-                    className={`w-5 h-5 transition-transform duration-200 ${showSpecifications ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {showSpecifications && (
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {Object.entries(product.attributes).slice(4).map(([key, value]) => (
-                        <div key={key} className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="text-sm font-medium text-gray-600 capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}
-                          </span>
-                          <span className="text-sm font-semibold text-dark-brown">
-                            {value}
-                            {key === 'length' || key === 'width' ? ' ft' : ''}
-                            {key === 'thickness' ? ' in' : ''}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </main>
