@@ -10,11 +10,15 @@ export default function TimberProducts() {
   const { user, logout, isAuthenticated } = useAuth();
   const { showSuccess, showError } = useNotification();
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   // Click outside handler for profile dropdown
   useEffect(() => {
@@ -131,6 +135,7 @@ export default function TimberProducts() {
         // Filter only timber products
         const timberProducts = allProducts.filter(product => product.category === 'timber');
         setProducts(timberProducts);
+        setFilteredProducts(timberProducts);
         setError(null);
       } catch (err) {
         console.error('Error fetching products:', err);
@@ -142,6 +147,56 @@ export default function TimberProducts() {
 
     fetchProducts();
   }, []);
+
+  // Filter and sort products
+  useEffect(() => {
+    let filtered = [...products];
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.material?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.brand?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'price':
+          aValue = a.price;
+          bValue = b.price;
+          break;
+        case 'material':
+          aValue = a.material?.toLowerCase() || '';
+          bValue = b.material?.toLowerCase() || '';
+          break;
+        case 'brand':
+          aValue = a.brand?.toLowerCase() || '';
+          bValue = b.brand?.toLowerCase() || '';
+          break;
+        default:
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    setFilteredProducts(filtered);
+  }, [products, searchTerm, sortBy, sortOrder]);
 
   // Loading spinner component
   const LoadingSpinner = () => (
@@ -353,8 +408,85 @@ export default function TimberProducts() {
           </div>
         </div>
 
-        {/* Loading State */}
-        {loading && <LoadingSpinner />}
+        {/* Search and Filter Section */}
+        {!loading && !error && products.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search Bar */}
+              <div className="flex-1">
+                <div className="relative">
+                  <svg
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search timber products..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              {/* Sort Options */}
+              <div className="flex gap-3">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 bg-white"
+                >
+                  <option value="name">Sort by Name</option>
+                  <option value="price">Sort by Price</option>
+                  <option value="material">Sort by Material</option>
+                  <option value="brand">Sort by Brand</option>
+                </select>
+
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 flex items-center gap-2"
+                  title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+                >
+                  <svg
+                    className={`w-4 h-4 transition-transform duration-200 ${sortOrder === 'desc' ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                    />
+                  </svg>
+                  {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                </button>
+              </div>
+            </div>
+
+            {/* Results Summary */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Showing {filteredProducts.length} of {products.length} products
+                {searchTerm && (
+                  <span className="ml-2">
+                    for "<span className="font-medium text-dark-brown">{searchTerm}</span>"
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Error State */}
         {error && <ErrorMessage message={error} />}
@@ -362,30 +494,46 @@ export default function TimberProducts() {
         {/* Products Section */}
         {!loading && !error && (
           <>
-            {products.length > 0 ? (
+            {filteredProducts.length > 0 ? (
               <div className="space-y-8">
                 {/* Products Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">Premium Timber Collection</h2>
-                    <p className="text-gray-600 mt-1">Explore {products.length} high-quality timber products</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-sm text-gray-500">
-                      Showing {products.length} products
-                    </div>
+                    <p className="text-gray-600 mt-1">Explore {filteredProducts.length} high-quality timber products</p>
                   </div>
                 </div>
 
                 {/* Products Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  {products.map((product) => (
+                  {filteredProducts.map((product) => (
                     <ProductCard
                       key={product._id}
                       product={product}
                       onAddToCart={handleAddToCart}
                     />
                   ))}
+                </div>
+              </div>
+            ) : products.length > 0 ? (
+              <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
+                <div className="max-w-md mx-auto">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+                  <p className="text-gray-500 mb-6">No timber products match your search criteria. Try adjusting your search terms or filters.</p>
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="inline-flex items-center gap-2 bg-dark-brown text-white px-6 py-3 rounded-lg font-medium hover:bg-accent-red transition-colors duration-200"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear Search
+                  </button>
                 </div>
               </div>
             ) : (
