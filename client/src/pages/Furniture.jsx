@@ -323,7 +323,7 @@ export default function Furniture() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-cream to-light-cream py-16 lg:py-24 rounded-2xl mb-12">
+        <div className="bg-gradient-to-r from-cream to-light-cream py-8 lg:py-12 rounded-2xl mb-12">
           <div className="text-center">
             <h1 className="text-4xl lg:text-6xl font-heading text-dark-brown leading-tight mb-6">
               Handcrafted Furniture
@@ -355,26 +355,55 @@ export default function Furniture() {
         {/* Error State */}
         {error && <ErrorMessage message={error} />}
 
-        {/* Products Grid */}
+        {/* Products Section */}
         {!loading && !error && (
           <>
             {products.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-                {products.map((product) => (
-                  <ProductCard
-                    key={product._id}
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                  />
-                ))}
+              <div className="space-y-8">
+                {/* Products Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Our Furniture Collection</h2>
+                    <p className="text-gray-600 mt-1">Discover {products.length} handcrafted furniture pieces</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-gray-500">
+                      Showing {products.length} products
+                    </div>
+                  </div>
+                </div>
+
+                {/* Products Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                    />
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-                <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                </svg>
-                <h3 className="text-lg font-medium text-dark-brown mb-2">No Furniture Available</h3>
-                <p className="text-gray-500">Check back later for new furniture pieces.</p>
+              <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
+                <div className="max-w-md mx-auto">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Furniture Available</h3>
+                  <p className="text-gray-500 mb-6">We're working on adding new furniture pieces. Check back soon!</p>
+                  <button
+                    onClick={() => navigate('/customer-home')}
+                    className="inline-flex items-center gap-2 bg-dark-brown text-white px-6 py-3 rounded-lg font-medium hover:bg-accent-red transition-colors duration-200"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Home
+                  </button>
+                </div>
               </div>
             )}
           </>
