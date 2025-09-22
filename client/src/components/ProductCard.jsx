@@ -109,11 +109,11 @@ const ProductCard = ({ product, onAddToCart, onWishlistUpdate }) => {
     >
       {/* Product Image Container */}
       <div className="relative overflow-hidden bg-gray-50">
-        <div className="aspect-square w-full flex items-center justify-center">
+        <div className="aspect-square w-full">
           <img
             src={getMainImage()}
             alt={product.name}
-            className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300 ease-out"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out"
             onError={(e) => {
               e.target.src = 'https://via.placeholder.com/300x300/f8fafc/e2e8f0?text=No+Image';
             }}
