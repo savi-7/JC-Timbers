@@ -376,18 +376,18 @@ export default function TimberProducts() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-4">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-cream to-light-cream py-4 lg:py-6 rounded-2xl mb-8 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-cream to-light-cream py-2 lg:py-3 rounded-2xl mb-6 relative overflow-hidden">
           {/* Decorative elements */}
-          <div className="absolute -top-4 -right-4 w-20 h-20 bg-accent-red rounded-full opacity-10"></div>
-          <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-dark-brown rounded-full opacity-5"></div>
+          <div className="absolute -top-4 -right-4 w-16 h-16 bg-accent-red rounded-full opacity-10"></div>
+          <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-dark-brown rounded-full opacity-5"></div>
           
           <div className="text-center relative z-10">
-            <h1 className="text-2xl lg:text-4xl font-heading text-dark-brown leading-tight mb-4">
+            <h1 className="text-xl lg:text-3xl font-heading text-dark-brown leading-tight mb-2">
               Premium Timber Products
             </h1>
-            <p className="text-base text-gray-700 font-paragraph leading-relaxed max-w-2xl mx-auto mb-6">
+            <p className="text-sm text-gray-700 font-paragraph leading-relaxed max-w-xl mx-auto mb-3">
               Discover our curated collection of high-quality timber products. 
               Each piece is carefully selected for its durability, beauty, and craftsmanship.
             </p>

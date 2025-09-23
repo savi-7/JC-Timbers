@@ -376,27 +376,31 @@ export default function Furniture() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-4">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-cream to-light-cream py-4 lg:py-6 rounded-2xl mb-8 relative overflow-hidden">
-          <div className="text-center">
-            <h1 className="text-4xl lg:text-6xl font-heading text-dark-brown leading-tight mb-6">
+        <div className="bg-gradient-to-r from-cream to-light-cream py-2 lg:py-3 rounded-2xl mb-6 relative overflow-hidden">
+          {/* Decorative elements */}
+          <div className="absolute -top-4 -right-4 w-16 h-16 bg-accent-red rounded-full opacity-10"></div>
+          <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-dark-brown rounded-full opacity-5"></div>
+          
+          <div className="text-center relative z-10">
+            <h1 className="text-xl lg:text-3xl font-heading text-dark-brown leading-tight mb-2">
               Handcrafted Furniture
             </h1>
-            <p className="text-lg text-gray-700 font-paragraph leading-relaxed max-w-3xl mx-auto mb-8">
+            <p className="text-sm text-gray-700 font-paragraph leading-relaxed max-w-xl mx-auto mb-3">
               Discover our curated collection of handcrafted furniture pieces. 
               Each piece is made from the finest materials with attention to detail and craftsmanship.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={() => navigate('/timber-products')}
-                className="bg-dark-brown text-white px-8 py-4 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="bg-dark-brown text-white px-6 py-3 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
               >
                 View Timber Products
               </button>
               <button
                 onClick={() => navigate('/construction-materials')}
-                className="border-2 border-dark-brown text-dark-brown px-8 py-4 rounded-lg font-paragraph hover:bg-dark-brown hover:text-white transition-colors duration-200"
+                className="border-2 border-dark-brown text-dark-brown px-6 py-3 rounded-lg font-paragraph hover:bg-dark-brown hover:text-white transition-colors duration-200 text-sm"
               >
                 Construction Materials
               </button>
