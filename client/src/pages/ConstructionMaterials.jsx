@@ -286,20 +286,16 @@ export default function ConstructionMaterials() {
                     
                     {/* Profile Options */}
                     <div className="py-1">
-                      <button 
-                        onClick={() => { 
-                          console.log('Profile clicked - isAuthenticated:', isAuthenticated, 'user:', user);
-                          if (isAuthenticated) {
-                            navigate('/customer-profile'); 
-                          } else {
-                            navigate('/login');
-                          }
-                          setShowProfileDropdown(false); 
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
-                      >
-                        My Profile
-                      </button>
+                <button
+                  onClick={() => {
+                    console.log('Profile clicked - navigating to customer profile');
+                    navigate('/customer-profile');
+                    setShowProfileDropdown(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
+                >
+                  My Profile
+                </button>
                       <button 
                         onClick={() => { navigate('/wishlist'); setShowProfileDropdown(false); }}
                         className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
