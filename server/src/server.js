@@ -12,6 +12,7 @@ import cartRoutes from "./routes/cartRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import addressRoutes from "./routes/addressRoutes.js";
 import { getProductImage } from "./controllers/imageController.js";
 import Product from "./models/Product.js";
 
@@ -52,7 +53,8 @@ app.use("/api/products", productRoutes);
 app.use("/api", cartRoutes);
 app.use("/api", orderRoutes);
 app.use("/api", wishlistRoutes);
-app.use("/api", adminRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/addresses", addressRoutes);
 
 // Image serving route
 app.get("/api/images/:productId/:imageIndex", getProductImage);

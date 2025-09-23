@@ -287,6 +287,12 @@ export default function ConstructionMaterials() {
                     {/* Profile Options */}
                     <div className="py-1">
                       <button 
+                        onClick={() => { navigate('/customer-profile'); setShowProfileDropdown(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
+                      >
+                        My Profile
+                      </button>
+                      <button 
                         onClick={() => { navigate('/wishlist'); setShowProfileDropdown(false); }}
                         className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
                       >

@@ -12,6 +12,9 @@ import Furniture from "./pages/Furniture";
 import ConstructionMaterials from "./pages/ConstructionMaterials";
 import ProductDetail from "./pages/ProductDetail";
 import CustomerHomePage from "./pages/CustomerHomePage";
+import CustomerProfile from "./pages/CustomerProfile";
+import LoginSecurity from "./pages/LoginSecurity";
+import AddressManagement from "./pages/AddressManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Cart from "./pages/Cart";
 import Wishlist from "./pages/Wishlist";
@@ -106,6 +109,30 @@ export default function App() {
           element={
             <ProtectedRoute role="customer">
               <Wishlist />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/customer-profile" 
+          element={
+            <ProtectedRoute role="customer">
+              <CustomerProfile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/login-security" 
+          element={
+            <ProtectedRoute role="customer">
+              <LoginSecurity />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/addresses" 
+          element={
+            <ProtectedRoute role="customer">
+              <AddressManagement />
             </ProtectedRoute>
           } 
         />
