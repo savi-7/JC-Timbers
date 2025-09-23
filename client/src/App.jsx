@@ -114,27 +114,15 @@ export default function App() {
         />
         <Route 
           path="/customer-profile" 
-          element={
-            <ProtectedRoute role="customer">
-              <CustomerProfile />
-            </ProtectedRoute>
-          } 
+          element={<CustomerProfile />}
         />
         <Route 
           path="/login-security" 
-          element={
-            <ProtectedRoute role="customer">
-              <LoginSecurity />
-            </ProtectedRoute>
-          } 
+          element={<LoginSecurity />}
         />
         <Route 
           path="/addresses" 
-          element={
-            <ProtectedRoute role="customer">
-              <AddressManagement />
-            </ProtectedRoute>
-          } 
+          element={<AddressManagement />}
         />
 
         {/* Catch all - redirect to home */}
