@@ -12,20 +12,22 @@ export default function LoginSecurity() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    mobileNumber: '',
+    phone: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
 
   useEffect(() => {
+    console.log('LoginSecurity useEffect - isAuthenticated:', isAuthenticated, 'user:', user);
     if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
       navigate('/login');
     } else {
       setFormData({
         name: user?.name || '',
         email: user?.email || '',
-        mobileNumber: user?.mobileNumber || '',
+        phone: user?.phone || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
@@ -49,7 +51,7 @@ export default function LoginSecurity() {
       const response = await api.put('/auth/profile', {
         name: formData.name,
         email: formData.email,
-        mobileNumber: formData.mobileNumber
+        phone: formData.phone
       });
 
       showSuccess('Profile updated successfully');
@@ -168,8 +170,8 @@ export default function LoginSecurity() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
                 <input
                   type="tel"
-                  name="mobileNumber"
-                  value={formData.mobileNumber}
+                  name="phone"
+                  value={formData.phone}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
                   placeholder="Enter your mobile number"

@@ -11,7 +11,9 @@ export default function CustomerProfile() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    console.log('CustomerProfile useEffect - isAuthenticated:', isAuthenticated, 'user:', user);
     if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);

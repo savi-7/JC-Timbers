@@ -25,7 +25,9 @@ export default function AddressManagement() {
   });
 
   useEffect(() => {
+    console.log('AddressManagement useEffect - isAuthenticated:', isAuthenticated);
     if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
       navigate('/login');
     } else {
       fetchAddresses();
