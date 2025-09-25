@@ -19,6 +19,32 @@ export const useAuth = () => {
       console.log('useAuth checkAuthStatus - token:', !!token, 'userData:', !!userData, 'userRole:', userRole);
 
       if (token && userData && userRole) {
+        // Check if token is expired
+        try {
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          const currentTime = Date.now() / 1000;
+          
+          if (tokenPayload.exp && tokenPayload.exp < currentTime) {
+            console.log('Token expired, clearing auth data');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('role');
+            setIsAuthenticated(false);
+            setUser(null);
+            setRole(null);
+            return;
+          }
+        } catch (tokenError) {
+          console.log('Invalid token format, clearing auth data');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('role');
+          setIsAuthenticated(false);
+          setUser(null);
+          setRole(null);
+          return;
+        }
+
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setRole(userRole);
@@ -62,6 +88,12 @@ export const useAuth = () => {
     setUser(null);
     setRole(null);
     setIsAuthenticated(false);
+    
+    // Clear browser history to prevent back navigation to protected routes
+    window.history.replaceState(null, '', '/');
+    
+    // Force a page reload to clear any cached state
+    window.location.href = '/';
   };
 
   const hasRole = (requiredRole) => {

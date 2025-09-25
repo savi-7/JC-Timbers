@@ -63,10 +63,34 @@ export default function Hero() {
                   </div>
                 )}
               </div>
-              <button className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph">
+              <button 
+                onClick={() => {
+                  navigate('/customer-home');
+                  // Scroll to about us section after navigation
+                  setTimeout(() => {
+                    const aboutSection = document.getElementById('about-us');
+                    if (aboutSection) {
+                      aboutSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }, 100);
+                }}
+                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              >
                 About
               </button>
-              <button className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph">
+              <button 
+                onClick={() => {
+                  navigate('/customer-home');
+                  // Scroll to contact form after navigation
+                  setTimeout(() => {
+                    const contactSection = document.getElementById('contact-form');
+                    if (contactSection) {
+                      contactSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }, 100);
+                }}
+                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              >
                 Contact
               </button>
             </div>

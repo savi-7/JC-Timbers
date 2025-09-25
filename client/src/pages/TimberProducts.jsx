@@ -40,7 +40,7 @@ export default function TimberProducts() {
           const items = response.data.items || [];
           const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
           setCartCount(totalItems);
-        } catch (error) {
+        } catch {
           setCartCount(0);
         }
       } else {
@@ -51,7 +51,7 @@ export default function TimberProducts() {
             const cartData = JSON.parse(guestCart);
             const totalItems = cartData.items.reduce((sum, item) => sum + item.quantity, 0);
             setCartCount(totalItems);
-          } catch (error) {
+          } catch {
             setCartCount(0);
           }
         } else {
@@ -81,7 +81,7 @@ export default function TimberProducts() {
           try {
             const wishlistData = JSON.parse(guestWishlist);
             setWishlistCount(wishlistData.items?.length || 0);
-          } catch (error) {
+          } catch {
             setWishlistCount(0);
           }
         } else {
@@ -95,7 +95,7 @@ export default function TimberProducts() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    // Navigation is handled by the logout function in useAuth hook
   };
 
   const handleAddToCart = (product) => {

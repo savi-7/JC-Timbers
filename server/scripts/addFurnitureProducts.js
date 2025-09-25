@@ -254,3 +254,8 @@ const addFurnitureProducts = async () => {
 
 // Run the script
 addFurnitureProducts();
+
+
+
+
+

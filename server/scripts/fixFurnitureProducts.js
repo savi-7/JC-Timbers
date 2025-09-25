@@ -100,3 +100,8 @@ const fixFurnitureProducts = async () => {
 
 // Run the fix
 fixFurnitureProducts();
+
+
+
+
+

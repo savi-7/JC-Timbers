@@ -4,7 +4,7 @@ export default function AboutUsSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="py-24 bg-cream">
+    <section id="about-us" className="py-24 bg-cream">
       <div className="max-w-7xl mx-auto px-6">
         {/* About Us Layout */}
         <div className="grid md:grid-cols-2 gap-12 items-start">

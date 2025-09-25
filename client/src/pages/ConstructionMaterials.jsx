@@ -95,7 +95,7 @@ export default function ConstructionMaterials() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    // Navigation is handled by the logout function in useAuth hook
   };
 
   const handleAddToCart = (product) => {

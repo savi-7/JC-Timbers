@@ -1,30 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function FAQ() {
   const [openItems, setOpenItems] = useState(new Set());
   const [openCategories, setOpenCategories] = useState(new Set());
+  const [faqData, setFaqData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const toggleItem = (index) => {
-    const newOpenItems = new Set(openItems);
-    if (newOpenItems.has(index)) {
-      newOpenItems.delete(index);
-    } else {
-      newOpenItems.add(index);
+  useEffect(() => {
+    fetchFAQs();
+  }, []);
+
+  const fetchFAQs = async () => {
+    try {
+      const response = await fetch('http://localhost:5001/api/faqs');
+      if (response.ok) {
+        const data = await response.json();
+        setFaqData(data.faqs || []);
+      } else {
+        console.error('Failed to fetch FAQs');
+        // Fallback to static data if API fails
+        setFaqData(getStaticFAQs());
+      }
+    } catch (error) {
+      console.error('Error fetching FAQs:', error);
+      // Fallback to static data if API fails
+      setFaqData(getStaticFAQs());
+    } finally {
+      setLoading(false);
     }
-    setOpenItems(newOpenItems);
   };
 
-  const toggleCategory = (categoryIndex) => {
-    const newOpenCategories = new Set(openCategories);
-    if (newOpenCategories.has(categoryIndex)) {
-      newOpenCategories.delete(categoryIndex);
-    } else {
-      newOpenCategories.add(categoryIndex);
-    }
-    setOpenCategories(newOpenCategories);
-  };
-
-  const faqData = [
+  const getStaticFAQs = () => [
     {
       category: "Shipping & Delivery",
       questions: [
@@ -77,6 +83,39 @@ export default function FAQ() {
       ]
     }
   ];
+
+  const toggleItem = (index) => {
+    const newOpenItems = new Set(openItems);
+    if (newOpenItems.has(index)) {
+      newOpenItems.delete(index);
+    } else {
+      newOpenItems.add(index);
+    }
+    setOpenItems(newOpenItems);
+  };
+
+  const toggleCategory = (categoryIndex) => {
+    const newOpenCategories = new Set(openCategories);
+    if (newOpenCategories.has(categoryIndex)) {
+      newOpenCategories.delete(categoryIndex);
+    } else {
+      newOpenCategories.add(categoryIndex);
+    }
+    setOpenCategories(newOpenCategories);
+  };
+
+  if (loading) {
+    return (
+      <section className="py-24 bg-cream">
+        <div className="max-w-5xl mx-auto px-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-dark-brown mx-auto"></div>
+            <p className="mt-4 text-dark-brown">Loading FAQs...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-24 bg-cream">
@@ -165,27 +204,6 @@ export default function FAQ() {
               </div>
             );
           })}
-        </div>
-
-        {/* Contact Section */}
-        <div className="mt-12 text-center">
-          <p className="text-dark-brown/80 font-paragraph mb-4">
-            Still have questions? We're here to help!
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href="mailto:support@jctimbers.com"
-              className="bg-accent-red hover:bg-dark-brown text-white px-6 py-3 rounded-lg font-paragraph transition-colors duration-200"
-            >
-              Email Us
-            </a>
-            <a
-              href="tel:+919876543210"
-              className="bg-white hover:bg-gray-50 text-dark-brown border border-gray-300 px-6 py-3 rounded-lg font-paragraph transition-colors duration-200"
-            >
-              Call Us
-            </a>
-          </div>
         </div>
       </div>
     </section>

@@ -12,6 +12,7 @@ export default function AddressManagement() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
+  const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     fullName: '',
     mobileNumber: '',
@@ -24,15 +25,93 @@ export default function AddressManagement() {
     isDefault: false
   });
 
+  // Validation functions
+  const validateName = (name) => {
+    return name.trim().length >= 2 && name.trim().length <= 50;
+  };
+
+  const validateMobile = (mobile) => {
+    const mobileRegex = /^[6-9]\d{9}$/;
+    return mobileRegex.test(mobile.replace(/\D/g, ''));
+  };
+
+  const validatePincode = (pincode) => {
+    const pincodeRegex = /^[1-9][0-9]{5}$/;
+    return pincodeRegex.test(pincode);
+  };
+
+  const validateAddress = (address) => {
+    return address.trim().length >= 10 && address.trim().length <= 200;
+  };
+
+  const validateCity = (city) => {
+    return city.trim().length >= 2 && city.trim().length <= 50;
+  };
+
+  const validateState = (state) => {
+    return state.trim().length >= 2 && state.trim().length <= 50;
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Full Name validation
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
+    } else if (!validateName(formData.fullName)) {
+      newErrors.fullName = 'Name must be between 2 and 50 characters';
+    }
+
+    // Mobile Number validation
+    if (!formData.mobileNumber.trim()) {
+      newErrors.mobileNumber = 'Mobile number is required';
+    } else if (!validateMobile(formData.mobileNumber)) {
+      newErrors.mobileNumber = 'Please enter a valid 10-digit mobile number';
+    }
+
+    // Pincode validation
+    if (!formData.pincode.trim()) {
+      newErrors.pincode = 'Pincode is required';
+    } else if (!validatePincode(formData.pincode)) {
+      newErrors.pincode = 'Please enter a valid 6-digit pincode';
+    }
+
+    // State validation
+    if (!formData.state.trim()) {
+      newErrors.state = 'State is required';
+    } else if (!validateState(formData.state)) {
+      newErrors.state = 'State must be between 2 and 50 characters';
+    }
+
+    // Address validation
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    } else if (!validateAddress(formData.address)) {
+      newErrors.address = 'Address must be between 10 and 200 characters';
+    }
+
+    // City validation
+    if (!formData.city.trim()) {
+      newErrors.city = 'City/Town is required';
+    } else if (!validateCity(formData.city)) {
+      newErrors.city = 'City must be between 2 and 50 characters';
+    }
+
+    // Landmark validation (optional but if provided, must be valid)
+    if (formData.landmark.trim() && formData.landmark.trim().length > 100) {
+      newErrors.landmark = 'Landmark must be less than 100 characters';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   useEffect(() => {
     console.log('AddressManagement useEffect - isAuthenticated:', isAuthenticated);
-    if (!isAuthenticated) {
-      console.log('User not authenticated, redirecting to login');
-      navigate('/login');
-    } else {
+    if (isAuthenticated) {
       fetchAddresses();
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated]);
 
   const fetchAddresses = async () => {
     try {
@@ -53,10 +132,23 @@ export default function AddressManagement() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      showError('Please fix the validation errors');
+      return;
+    }
     
     try {
       if (editingAddress) {
@@ -80,6 +172,7 @@ export default function AddressManagement() {
         addressType: 'home',
         isDefault: false
       });
+      setErrors({});
       fetchAddresses();
     } catch (error) {
       console.error('Error saving address:', error);
@@ -141,10 +234,63 @@ export default function AddressManagement() {
       addressType: 'home',
       isDefault: false
     });
+    setErrors({});
   };
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Navigation */}
+        <nav className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate('/customer-profile')}
+                  className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
+                <h1 className="text-2xl font-heading text-dark-brown">Address Management</h1>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate('/customer-profile')}
+                  className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+                >
+                  Back to Profile
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        {/* Not Authenticated Message */}
+        <main className="max-w-4xl mx-auto px-6 py-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-heading text-dark-brown mb-4">Login Required</h2>
+            <p className="text-gray-600 mb-6">
+              Please log in to manage your delivery addresses.
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-dark-brown text-white px-6 py-3 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200"
+            >
+              Go to Login
+            </button>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -206,9 +352,14 @@ export default function AddressManagement() {
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
+                      errors.fullName ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     required
                   />
+                  {errors.fullName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -218,9 +369,14 @@ export default function AddressManagement() {
                     name="mobileNumber"
                     value={formData.mobileNumber}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
+                      errors.mobileNumber ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     required
                   />
+                  {errors.mobileNumber && (
+                    <p className="mt-1 text-sm text-red-600">{errors.mobileNumber}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -230,9 +386,14 @@ export default function AddressManagement() {
                     name="pincode"
                     value={formData.pincode}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
+                      errors.pincode ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     required
                   />
+                  {errors.pincode && (
+                    <p className="mt-1 text-sm text-red-600">{errors.pincode}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -242,9 +403,14 @@ export default function AddressManagement() {
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
+                      errors.state ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     required
                   />
+                  {errors.state && (
+                    <p className="mt-1 text-sm text-red-600">{errors.state}</p>
+                  )}
                 </div>
                 
                 <div className="md:col-span-2">
@@ -254,10 +420,15 @@ export default function AddressManagement() {
                     value={formData.address}
                     onChange={handleInputChange}
                     rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
+                      errors.address ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="Flat/House/Company address"
                     required
                   />
+                  {errors.address && (
+                    <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -267,9 +438,14 @@ export default function AddressManagement() {
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
+                      errors.city ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     required
                   />
+                  {errors.city && (
+                    <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -279,9 +455,14 @@ export default function AddressManagement() {
                     name="landmark"
                     value={formData.landmark}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
+                      errors.landmark ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="Optional"
                   />
+                  {errors.landmark && (
+                    <p className="mt-1 text-sm text-red-600">{errors.landmark}</p>
+                  )}
                 </div>
                 
                 <div>

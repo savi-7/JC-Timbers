@@ -2,7 +2,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import api from '../api/axios';
-import timberProductImg from "../assets/timberproduct.png";
 import { useNotification } from './NotificationProvider';
 import { useAuth } from '../hooks/useAuth';
 
@@ -41,17 +40,6 @@ export default function ProductShowcase() {
   const [products, setProducts] = useState([]);
   const [pin, setPin] = useState('');
   const [pinResult, setPinResult] = useState(null);
-  const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem("cart");
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
-
-  // Callback to update wishlist count in parent component
-  const handleWishlistUpdate = () => {
-    // This will trigger a re-render and update the wishlist count
-    // The actual count update happens in CustomerHero component
-    window.dispatchEvent(new CustomEvent('wishlistUpdated'));
-  };
 
   useEffect(() => {
     let mounted = true;
@@ -149,7 +137,7 @@ export default function ProductShowcase() {
   const constructionProducts = products.filter(product => product.category === 'construction').slice(0, 3);
 
   // Product card component
-  const ProductCard = ({ product, category, onWishlistUpdate }) => {
+  const ProductCard = ({ product, category }) => {
     const getCategoryRoute = (category) => {
       switch (category) {
         case 'timber':

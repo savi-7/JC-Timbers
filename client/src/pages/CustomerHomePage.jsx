@@ -4,6 +4,7 @@ import ProductShowcase from "../components/ProductShowcase";
 import WhyChooseUs from "../components/WhyChooseUs";
 import BlogInspiration from "../components/BlogInspiration";
 import FAQ from "../components/FAQ";
+import ContactForm from "../components/ContactForm";
 import Footer from "../components/Footer";
 
 export default function CustomerHomePage() {
@@ -15,6 +16,7 @@ export default function CustomerHomePage() {
       <BlogInspiration />
       <AboutUsSection />
       <FAQ />
+      <ContactForm />
       <Footer />
     </div>
   );

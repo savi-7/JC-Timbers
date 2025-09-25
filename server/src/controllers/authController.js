@@ -51,7 +51,7 @@ export const login = async (req, res) => {
       name: user.name, 
       email: user.email,
       role: user.role
-    }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    }, process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-jc-timbers-2024', { expiresIn: "1h" });
     
     res.json({ 
       token,
@@ -138,7 +138,7 @@ export const googleSignIn = async (req, res) => {
       name: user.name, 
       email: user.email,
       role: user.role
-    }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    }, process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-jc-timbers-2024', { expiresIn: "1h" });
     
     res.json({ 
       token,

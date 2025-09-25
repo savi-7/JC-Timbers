@@ -100,3 +100,8 @@ const checkAllProducts = async () => {
 
 // Run the check
 checkAllProducts();
+
+
+
+
+

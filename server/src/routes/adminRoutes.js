@@ -12,11 +12,11 @@ import {
 const router = express.Router();
 
 // Admin-only routes
-router.get("/admin/dashboard", authenticateToken, authorizeAdmin, getDashboardOverview);
-router.get("/admin/users", authenticateToken, authorizeAdmin, getAllUsers);
-router.get("/admin/users/:userId/orders", authenticateToken, authorizeAdmin, getUserOrders);
-router.get("/admin/users/:userId/cart", authenticateToken, authorizeAdmin, getUserCart);
-router.get("/admin/users/:userId/wishlist", authenticateToken, authorizeAdmin, getUserWishlist);
-router.patch("/admin/users/:userId/status", authenticateToken, authorizeAdmin, updateUserStatus);
+router.get("/dashboard", authenticateToken, authorizeAdmin, getDashboardOverview);
+router.get("/users", authenticateToken, authorizeAdmin, getAllUsers);
+router.get("/users/:userId/orders", authenticateToken, authorizeAdmin, getUserOrders);
+router.get("/users/:userId/cart", authenticateToken, authorizeAdmin, getUserCart);
+router.get("/users/:userId/wishlist", authenticateToken, authorizeAdmin, getUserWishlist);
+router.patch("/users/:userId/status", authenticateToken, authorizeAdmin, updateUserStatus);
 
 export default router;

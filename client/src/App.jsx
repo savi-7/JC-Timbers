@@ -7,6 +7,7 @@ import AdminVendors from "./pages/AdminVendors";
 import AdminStock from "./pages/AdminStock";
 import AdminProducts from "./pages/AdminProducts";
 import AdminUsers from "./pages/AdminUsers";
+import AdminSupport from "./pages/AdminSupport";
 import TimberProducts from "./pages/TimberProducts";
 import Furniture from "./pages/Furniture";
 import ConstructionMaterials from "./pages/ConstructionMaterials";
@@ -78,6 +79,14 @@ export default function App() {
           element={
             <ProtectedRoute role="admin">
               <AdminUsers />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/support" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminSupport />
             </ProtectedRoute>
           } 
         />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../api/axios';
 
 export function useDashboardData() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -16,35 +17,23 @@ export function useDashboardData() {
           throw new Error('No authentication token found. Please login again.');
         }
 
-        const response = await fetch(`http://localhost:5001/api/admin/dashboard?t=${Date.now()}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
-          }
-        });
+        const response = await api.get(`/admin/dashboard?t=${Date.now()}`);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          if (response.status === 401) {
-            throw new Error('Authentication failed. Please login again.');
-          } else if (response.status === 403) {
-            throw new Error('Access denied. Admin privileges required.');
-          } else {
-            throw new Error(errorData.message || `Server error: ${response.status}`);
-          }
-        }
-
-        const data = await response.json();
-        console.log('Dashboard API Response:', data); // Debug logging
-        if (data && typeof data === 'object') {
-          setDashboardData(data);
+        console.log('Dashboard API Response:', response.data); // Debug logging
+        if (response.data && typeof response.data === 'object') {
+          setDashboardData(response.data);
         } else {
           setDashboardData(null);
         }
       } catch (err) {
-        setError(err.message);
+        console.error('Dashboard API Error:', err);
+        if (err.response?.status === 401) {
+          setError('Authentication failed. Please login again.');
+        } else if (err.response?.status === 403) {
+          setError('Access denied. Admin privileges required.');
+        } else {
+          setError(err.response?.data?.message || err.message || 'Server error');
+        }
         setDashboardData(null);
       } finally {
         setLoading(false);
@@ -70,27 +59,14 @@ export function useDetailedData() {
     const fetchUserData = async () => {
       try {
         setDetailedLoading(true);
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setDetailedLoading(false);
-          return;
-        }
 
-        const response = await fetch('http://localhost:5001/api/admin/users', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setDetailedData(prev => ({
-            ...prev,
-            users: data.users || []
-          }));
-        }
+        const response = await api.get('/admin/users');
+        const data = response.data;
+        
+        setDetailedData(prev => ({
+          ...prev,
+          users: data.users || []
+        }));
       } catch (error) {
         console.error('Error fetching user data:', error);
       } finally {
@@ -105,26 +81,16 @@ export function useDetailedData() {
   useEffect(() => {
     const fetchProductData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        const response = await fetch('http://localhost:5001/api/products?limit=50', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Product API Response:', data); // Debug logging
-          console.log('Products in response:', data.products?.length || 0); // Debug logging
-          setDetailedData(prev => ({
-            ...prev,
-            products: data.products || []
-          }));
-        }
+        const response = await api.get('/products?limit=50');
+        const data = response.data;
+        
+        console.log('Product API Response:', data); // Debug logging
+        console.log('Products in response:', data.products?.length || 0); // Debug logging
+        
+        setDetailedData(prev => ({
+          ...prev,
+          products: data.products || []
+        }));
       } catch (error) {
         console.error('Error fetching product data:', error);
       }
@@ -136,41 +102,30 @@ export function useDetailedData() {
   // Fetch detailed data for modals
   const fetchDetailedData = async (type) => {
     try {
-      const token = localStorage.getItem('token');
-      let url = `http://localhost:5001/api/${type}`;
+      let url = `/${type}`;
       
       // Handle different API endpoints
       if (type === 'products') {
-        url = 'http://localhost:5001/api/products?limit=50';
+        url = '/products?limit=50';
       } else if (type === 'users') {
-        url = 'http://localhost:5001/api/admin/users';
+        url = '/admin/users';
       } else if (type === 'orders') {
-        url = 'http://localhost:5001/api/orders';
+        url = '/orders';
       }
       
       console.log(`Fetching ${type} data from:`, url); // Debug logging
       
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`${type} API Response:`, data); // Debug logging
-        
-        setDetailedData(prev => ({
-          ...prev,
-          [type]: type === 'users' ? (data.users || []) : 
-                  type === 'products' ? (data.products || []) :
-                  type === 'orders' ? (data.orders || data || []) : data
-        }));
-      } else {
-        console.error(`Failed to fetch ${type} data:`, response.status, response.statusText);
-      }
+      const response = await api.get(url);
+      const data = response.data;
+      
+      console.log(`${type} API Response:`, data); // Debug logging
+      
+      setDetailedData(prev => ({
+        ...prev,
+        [type]: type === 'users' ? (data.users || []) : 
+                type === 'products' ? (data.products || []) :
+                type === 'orders' ? (data.orders || data || []) : data
+      }));
     } catch (error) {
       console.error(`Error fetching ${type} data:`, error);
     }

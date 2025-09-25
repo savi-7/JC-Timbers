@@ -99,3 +99,8 @@ const checkFurnitureProducts = async () => {
 
 // Run the check
 checkFurnitureProducts();
+
+
+
+
+

@@ -49,7 +49,7 @@ export default function CustomerHero() {
             const cartData = JSON.parse(guestCart);
             const totalItems = cartData.items.reduce((sum, item) => sum + item.quantity, 0);
             setCartCount(totalItems);
-          } catch (error) {
+          } catch {
             setCartCount(0);
           }
         } else {
@@ -80,7 +80,7 @@ export default function CustomerHero() {
           try {
             const wishlistData = JSON.parse(guestWishlist);
             setWishlistCount(wishlistData.items?.length || 0);
-          } catch (error) {
+          } catch {
             setWishlistCount(0);
           }
         } else {
@@ -94,7 +94,7 @@ export default function CustomerHero() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    // Navigation is handled by the logout function in useAuth hook
   };
 
   return (
@@ -143,10 +143,34 @@ export default function CustomerHero() {
                   </div>
                 )}
               </div>
-              <button className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph">
+              <button 
+                onClick={() => {
+                  navigate('/customer-home');
+                  // Scroll to about us section after navigation
+                  setTimeout(() => {
+                    const aboutSection = document.getElementById('about-us');
+                    if (aboutSection) {
+                      aboutSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }, 100);
+                }}
+                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              >
                 About
               </button>
-              <button className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph">
+              <button 
+                onClick={() => {
+                  navigate('/customer-home');
+                  // Scroll to contact form after navigation
+                  setTimeout(() => {
+                    const contactSection = document.getElementById('contact-form');
+                    if (contactSection) {
+                      contactSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }, 100);
+                }}
+                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              >
                 Contact
               </button>
             </div>
@@ -183,6 +207,16 @@ export default function CustomerHero() {
                     
                     {/* Profile Options */}
                     <div className="py-1">
+                      <button
+                        onClick={() => {
+                          console.log('Profile clicked - navigating to customer profile');
+                          navigate('/customer-profile');
+                          setShowProfileDropdown(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
+                      >
+                        My Profile
+                      </button>
                       <button 
                         onClick={() => { navigate('/wishlist'); setShowProfileDropdown(false); }}
                         className="block w-full text-left px-4 py-2 text-sm text-dark-brown hover:bg-cream transition-colors duration-150"
@@ -352,9 +386,4 @@ export default function CustomerHero() {
     </section>
   );
 }
-
-
-
-
-
 

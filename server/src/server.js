@@ -13,6 +13,9 @@ import orderRoutes from "./routes/orderRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import addressRoutes from "./routes/addressRoutes.js";
+import faqRoutes from "./routes/faqRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 import { getProductImage } from "./controllers/imageController.js";
 import Product from "./models/Product.js";
 
@@ -55,6 +58,9 @@ app.use("/api", orderRoutes);
 app.use("/api", wishlistRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/addresses", addressRoutes);
+app.use("/api/faqs", faqRoutes);
+app.use("/api/blogs", blogRoutes);
+app.use("/api/contacts", contactRoutes);
 
 // Image serving route
 app.get("/api/images/:productId/:imageIndex", getProductImage);
