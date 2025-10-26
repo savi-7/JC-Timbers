@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useNotification } from '../components/NotificationProvider';
+import { API_BASE } from '../config';
 
 export default function AdminStock() {
   const { user, logout } = useAuth();
@@ -73,7 +74,7 @@ export default function AdminStock() {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const response = await axios.get('http://localhost:5001/api/stock', { headers });
+      const response = await axios.get(API_BASE + '/stock', { headers });
       setStockItems(response.data.stockItems);
       setStats(response.data.stats);
     } catch (err) {
@@ -99,7 +100,7 @@ export default function AdminStock() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5001/api/stock', stockForm, {
+      const response = await axios.post(API_BASE + '/stock', stockForm, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

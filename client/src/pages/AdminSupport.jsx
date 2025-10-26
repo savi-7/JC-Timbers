@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/admin/Sidebar';
 import Header from '../components/admin/Header';
 import { useNotification } from '../components/NotificationProvider';
+import { API_BASE } from '../config';
 
 export default function AdminSupport() {
   const { user, logout } = useAuth();
@@ -81,7 +82,7 @@ export default function AdminSupport() {
   const fetchBlogs = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/blogs/admin/all', {
+      const response = await fetch(API_BASE + '/blogs/admin/all', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

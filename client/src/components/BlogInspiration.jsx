@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE } from '../config';
 
 export default function BlogInspiration() {
   const [posts, setPosts] = useState([]);
@@ -10,7 +11,7 @@ export default function BlogInspiration() {
 
   const fetchBlogs = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/blogs');
+      const response = await fetch(API_BASE + '/blogs');
       if (response.ok) {
         const data = await response.json();
         setPosts(data.blogs || []);

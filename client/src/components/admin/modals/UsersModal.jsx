@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../api/axios';
+import { API_BASE } from '../../../config';
 
-export default function UsersModal({ showUsersModal, setShowUsersModal, detailedData, safeStats }) {
+export default function UsersModal({ showUsersModal, setShowUsersModal, detailedData }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,7 +59,7 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
       const token = localStorage.getItem('token');
       console.log('Token exists:', !!token);
       
-      const response = await fetch('http://localhost:5001/api/health', {
+      const response = await fetch(API_BASE + '/health', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -110,7 +111,7 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
       
       // Use fetch instead of axios to ensure fresh data
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/admin/users?t=${Date.now()}`, {
+      const response = await fetch(`${API_BASE}/admin/users?t=${Date.now()}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -140,15 +141,15 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
     }
   };
 
-  const fetchUserOrders = async (userId) => {
-    try {
-      const response = await api.get(`/admin/users/${userId}/orders`);
-      setUserOrders(response.data.orders || []);
-    } catch (error) {
-      console.error('Error fetching user orders:', error);
-      setUserOrders([]);
-    }
-  };
+  // const fetchUserOrders = async (userId) => {
+  //   try {
+  //     const response = await api.get(`/admin/users/${userId}/orders`);
+  //     setUserOrders(response.data.orders || []);
+  //   } catch (error) {
+  //     console.error('Error fetching user orders:', error);
+  //     setUserOrders([]);
+  //   }
+  // };
 
   const toggleUserStatus = async (userId, currentStatus) => {
     try {
@@ -160,11 +161,11 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
     }
   };
 
-  const handleViewProfile = (user) => {
-    setSelectedUser(user);
-    setShowUserProfile(true);
-    fetchUserOrders(user._id);
-  };
+  // const handleViewProfile = (user) => {
+  //   setSelectedUser(user);
+  //   setShowUserProfile(true);
+  //   fetchUserOrders(user._id);
+  // };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

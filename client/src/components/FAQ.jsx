@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE } from '../config';
 
 export default function FAQ() {
   const [openItems, setOpenItems] = useState(new Set());
@@ -12,7 +13,7 @@ export default function FAQ() {
 
   const fetchFAQs = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/faqs');
+      const response = await fetch(API_BASE + '/faqs');
       if (response.ok) {
         const data = await response.json();
         setFaqData(data.faqs || []);
