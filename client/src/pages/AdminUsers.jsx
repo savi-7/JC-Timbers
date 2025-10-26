@@ -215,7 +215,7 @@ export default function AdminUsers() {
                                 o.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
                                 o.status === 'Delivered' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                               }`}>{o.status}</span>
-                              <div className="text-sm font-semibold text-gray-900 mt-1">₹{o.totalAmount.toLocaleString('en-IN')}</div>
+                              <div className="text-sm font-semibold text-gray-900 mt-1">₹{o.items.reduce((sum, i) => sum + i.price * i.quantity, 0)}</div>
                             </div>
                           </div>
                           <div className="mt-2 text-xs text-gray-600">Payment: {o.paymentMethod}</div>
