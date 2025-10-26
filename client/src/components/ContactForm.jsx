@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useNotification } from './NotificationProvider';
-import { useAuth } from '../hooks/useAuth';
 import api from '../api/axios';
 
 export default function ContactForm() {
   const { showSuccess, showError } = useNotification();
-  const { isAuthenticated, user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '',

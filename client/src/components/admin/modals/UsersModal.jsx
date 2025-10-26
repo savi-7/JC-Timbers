@@ -9,12 +9,48 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [userOrders, setUserOrders] = useState([]);
+  const [userCart, setUserCart] = useState(null);
+  const [userWishlist, setUserWishlist] = useState([]);
+  const [customerAnalytics, setCustomerAnalytics] = useState({
+    totalCustomers: 0,
+    activeCustomers: 0,
+    newThisMonth: 0,
+    customersWithOrders: 0,
+    averageOrderValue: 0,
+    topCustomers: []
+  });
 
   useEffect(() => {
     if (showUsersModal) {
       fetchUsers();
+      calculateCustomerAnalytics();
     }
   }, [showUsersModal]);
+
+  const calculateCustomerAnalytics = () => {
+    const totalCustomers = users.filter(user => user.role === 'customer').length;
+    const activeCustomers = users.filter(user => user.role === 'customer' && user.status === 'active').length;
+    
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    const newThisMonth = users.filter(user => {
+      const userDate = new Date(user.createdAt);
+      return user.role === 'customer' && 
+             userDate.getMonth() === currentMonth && 
+             userDate.getFullYear() === currentYear;
+    }).length;
+
+    setCustomerAnalytics({
+      totalCustomers,
+      activeCustomers,
+      newThisMonth,
+      customersWithOrders: 0, // Will be calculated when we have order data
+      averageOrderValue: 0,   // Will be calculated when we have order data
+      topCustomers: []
+    });
+  };
 
   const testConnection = async () => {
     try {
@@ -36,6 +72,35 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
     } catch (error) {
       console.error('Connection test failed:', error);
     }
+  };
+
+  const fetchUserDetails = async (userId) => {
+    try {
+      setLoading(true);
+      
+      // Fetch user orders
+      const ordersResponse = await api.get(`/admin/users/${userId}/orders`);
+      setUserOrders(ordersResponse.data.orders || []);
+      
+      // Fetch user cart
+      const cartResponse = await api.get(`/admin/users/${userId}/cart`);
+      setUserCart(cartResponse.data.cart || null);
+      
+      // Fetch user wishlist
+      const wishlistResponse = await api.get(`/admin/users/${userId}/wishlist`);
+      setUserWishlist(wishlistResponse.data.wishlist || []);
+      
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewUserProfile = async (user) => {
+    setSelectedUser(user);
+    setShowUserProfile(true);
+    await fetchUserDetails(user._id);
   };
 
   const fetchUsers = async () => {
@@ -173,37 +238,73 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(95vh-80px)]">
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {/* Enhanced Customer Analytics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <h3 className="text-sm font-medium text-blue-800">Total Customers</h3>
-              <p className="text-2xl font-semibold text-blue-900">
-                {users.filter(user => user.role === 'customer').length}
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800">Total Customers</h3>
+                  <p className="text-2xl font-semibold text-blue-900">{customerAnalytics.totalCustomers}</p>
+                  <p className="text-xs text-blue-600 mt-1">All registered users</p>
+                </div>
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                </div>
+              </div>
             </div>
+            
             <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-              <h3 className="text-sm font-medium text-green-800">Active Users</h3>
-              <p className="text-2xl font-semibold text-green-900">
-                {users.filter(user => user.role === 'customer' && user.status === 'active').length}
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-green-800">Active Customers</h3>
+                  <p className="text-2xl font-semibold text-green-900">{customerAnalytics.activeCustomers}</p>
+                  <p className="text-xs text-green-600 mt-1">
+                    {customerAnalytics.totalCustomers > 0 
+                      ? `${Math.round((customerAnalytics.activeCustomers / customerAnalytics.totalCustomers) * 100)}% of total`
+                      : '0% of total'
+                    }
+                  </p>
+                </div>
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
             </div>
-            <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-              <h3 className="text-sm font-medium text-yellow-800">Inactive Users</h3>
-              <p className="text-2xl font-semibold text-yellow-900">
-                {users.filter(user => user.role === 'customer' && user.status === 'inactive').length}
-              </p>
-            </div>
+            
             <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-              <h3 className="text-sm font-medium text-purple-800">New This Month</h3>
-              <p className="text-2xl font-semibold text-purple-900">
-                {users.filter(user => {
-                  const userDate = new Date(user.createdAt);
-                  const currentDate = new Date();
-                  return user.role === 'customer' && 
-                         userDate.getMonth() === currentDate.getMonth() && 
-                         userDate.getFullYear() === currentDate.getFullYear();
-                }).length}
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-purple-800">New This Month</h3>
+                  <p className="text-2xl font-semibold text-purple-900">{customerAnalytics.newThisMonth}</p>
+                  <p className="text-xs text-purple-600 mt-1">Recent registrations</p>
+                </div>
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-orange-800">Customer Growth</h3>
+                  <p className="text-2xl font-semibold text-orange-900">
+                    {customerAnalytics.newThisMonth > 0 ? '+' : ''}{customerAnalytics.newThisMonth}
+                  </p>
+                  <p className="text-xs text-orange-600 mt-1">This month</p>
+                </div>
+                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -302,7 +403,7 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => handleViewProfile(user)}
+                              onClick={() => handleViewUserProfile(user)}
                               className="text-blue-600 hover:text-blue-900 font-medium"
                             >
                               View Profile
@@ -463,6 +564,88 @@ export default function UsersModal({ showUsersModal, setShowUsersModal, detailed
                         </svg>
                         <h4 className="text-sm font-medium text-gray-900 mb-1">No Orders Yet</h4>
                         <p className="text-sm text-gray-500">This customer hasn't made any purchases.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Current Cart */}
+                <div>
+                  <h3 className="text-lg font-heading text-dark-brown mb-4">Current Cart</h3>
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    {userCart && userCart.items && userCart.items.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-sm font-medium text-gray-700">
+                            {userCart.items.length} item(s) in cart
+                          </span>
+                          <span className="text-lg font-semibold text-gray-900">
+                            Total: ₹{userCart.total.toLocaleString()}
+                          </span>
+                        </div>
+                        {userCart.items.map((item, index) => (
+                          <div key={index} className="bg-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-medium text-gray-900">{item.name}</h4>
+                                <p className="text-sm text-gray-600">{item.category} - {item.subcategory}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium text-gray-900">₹{item.price.toLocaleString()}</p>
+                                <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                                <p className="text-sm font-medium text-gray-700">
+                                  Subtotal: ₹{(item.price * item.quantity).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+                        </svg>
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">Empty Cart</h4>
+                        <p className="text-sm text-gray-500">This customer's cart is currently empty.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Wishlist */}
+                <div>
+                  <h3 className="text-lg font-heading text-dark-brown mb-4">Wishlist</h3>
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    {userWishlist && userWishlist.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-sm font-medium text-gray-700">
+                            {userWishlist.length} item(s) in wishlist
+                          </span>
+                        </div>
+                        {userWishlist.map((item, index) => (
+                          <div key={index} className="bg-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-medium text-gray-900">{item.name}</h4>
+                                <p className="text-sm text-gray-600">{item.category} - {item.subcategory}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium text-gray-900">₹{item.price.toLocaleString()}</p>
+                                <p className="text-sm text-gray-600">Added to wishlist</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">Empty Wishlist</h4>
+                        <p className="text-sm text-gray-500">This customer hasn't added any items to their wishlist.</p>
                       </div>
                     )}
                   </div>

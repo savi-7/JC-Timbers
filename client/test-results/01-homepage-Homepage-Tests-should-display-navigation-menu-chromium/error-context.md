@@ -1,0 +1,181 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7] [cursor=pointer]: JC Timbers
+      - generic [ref=e8]:
+        - button "Home" [ref=e9] [cursor=pointer]
+        - button "Shop All" [ref=e11] [cursor=pointer]:
+          - text: Shop All
+          - img [ref=e12]
+        - button "About" [ref=e14] [cursor=pointer]
+        - button "Contact" [ref=e15] [cursor=pointer]
+      - generic [ref=e16]:
+        - button "Profile / Login" [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+        - button "Shopping Cart" [ref=e21] [cursor=pointer]:
+          - img [ref=e22]
+  - generic [ref=e28]:
+    - heading "JC Timbers" [level=1] [ref=e30]
+    - img "Living room" [ref=e33]
+    - generic [ref=e34]:
+      - paragraph [ref=e36]: Discover handcrafted rustic furniture that brings a warm touch to your home. Explore our unique designs and sustainable sourcing to create a cozy and inviting atmosphere.
+      - button "Explore Now" [ref=e38] [cursor=pointer]
+  - generic [ref=e40]:
+    - generic [ref=e41]:
+      - heading "Shop by Category" [level=2] [ref=e42]
+      - paragraph [ref=e43]: Discover our premium collection of timber products, furniture, and construction materials
+    - generic [ref=e44]: Failed to load products
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - heading "Timber Products" [level=2] [ref=e48]
+          - paragraph [ref=e49]: Premium quality timber for all your woodworking needs
+        - button "View All Timber Products" [ref=e50] [cursor=pointer]
+      - generic [ref=e51]:
+        - img [ref=e52]
+        - heading "No Timber Products Available" [level=3] [ref=e54]
+        - paragraph [ref=e55]: Check back later for new timber products products.
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - heading "Furniture" [level=2] [ref=e59]
+          - paragraph [ref=e60]: Handcrafted furniture pieces made from the finest materials
+        - button "View All Furniture" [ref=e61] [cursor=pointer]
+      - generic [ref=e62]:
+        - img [ref=e63]
+        - heading "No Furniture Available" [level=3] [ref=e65]
+        - paragraph [ref=e66]: Check back later for new furniture products.
+    - generic [ref=e67]:
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - heading "Construction Materials" [level=2] [ref=e70]
+          - paragraph [ref=e71]: Durable construction materials for your building projects
+        - button "View All Construction Materials" [ref=e72] [cursor=pointer]
+      - generic [ref=e73]:
+        - img [ref=e74]
+        - heading "No Construction Materials Available" [level=3] [ref=e76]
+        - paragraph [ref=e77]: Check back later for new construction materials products.
+    - generic [ref=e79]:
+      - generic [ref=e80]:
+        - heading "Check Delivery Availability" [level=3] [ref=e81]
+        - paragraph [ref=e82]: Enter your pincode to check service in your area.
+      - generic [ref=e83]:
+        - textbox "e.g. 560001" [ref=e84]
+        - button "Check" [ref=e85] [cursor=pointer]
+  - generic [ref=e87]:
+    - heading "Why Choose Us" [level=2] [ref=e88]
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - img [ref=e92]
+        - generic [ref=e94]: Sustainably Sourced Wood
+      - generic [ref=e95]:
+        - img [ref=e97]
+        - generic [ref=e99]: High-Quality Craftsmanship
+      - generic [ref=e100]:
+        - img [ref=e102]
+        - generic [ref=e104]: Fast Delivery
+      - generic [ref=e105]:
+        - img [ref=e107]
+        - generic [ref=e109]: After-Sales Support
+  - generic [ref=e111]:
+    - heading "What Our Customers Say" [level=2] [ref=e112]
+    - generic [ref=e113]:
+      - paragraph [ref=e114]: Customer testimonials will be displayed here.
+      - paragraph [ref=e115]: No testimonials available at the moment.
+  - generic [ref=e117]:
+    - heading "From the Blog" [level=2] [ref=e118]
+    - generic [ref=e119]:
+      - generic [ref=e120]:
+        - heading "How to Choose the Right Wood" [level=3] [ref=e122]
+        - paragraph [ref=e123]: Understand hardwood vs softwood, grain, and durability.
+        - button "Read Article" [ref=e124] [cursor=pointer]
+      - generic [ref=e125]:
+        - heading "Sustainable Timber Practices" [level=3] [ref=e127]
+        - paragraph [ref=e128]: Learn how we source eco-friendly wood responsibly.
+        - button "Learn More" [ref=e129] [cursor=pointer]
+      - generic [ref=e130]:
+        - heading "Care Tips for Your Furniture" [level=3] [ref=e132]
+        - paragraph [ref=e133]: Extend the life of your wooden furniture with these tips.
+        - button "Get Tips" [ref=e134] [cursor=pointer]
+  - generic [ref=e137]:
+    - generic [ref=e138]:
+      - img "Cozy living room with rustic furniture" [ref=e140]
+      - generic:
+        - paragraph
+    - generic [ref=e142]:
+      - heading "About Us" [level=2] [ref=e143]
+      - paragraph [ref=e144]: Our Story
+      - paragraph [ref=e145]: JC Timbers is a family-owned business dedicated to delivering the finest timber and furniture products in India. With over 20 years of experience, we blend traditional craftsmanship with modern design, ensuring every piece is both beautiful and durable. Our commitment to sustainability means we source our materials responsibly, supporting local communities and the environment. From custom furniture to construction timber, we take pride in our attention to detail and customer satisfaction. Join us on our journey to create spaces that inspire and endure.
+      - button "Learn More" [ref=e147] [cursor=pointer]
+  - generic [ref=e149]:
+    - generic [ref=e150]:
+      - heading "FAQs" [level=1] [ref=e151]
+      - heading "Common Questions" [level=2] [ref=e152]
+      - paragraph [ref=e153]: Have a question? Check out our FAQs to find answers to commonly asked questions about our products and services.
+    - generic [ref=e154]:
+      - button "Shipping & Delivery" [ref=e156] [cursor=pointer]:
+        - generic [ref=e157]:
+          - heading "Shipping & Delivery" [level=3] [ref=e158]
+          - img [ref=e159]
+      - button "Returns & Exchanges" [ref=e162] [cursor=pointer]:
+        - generic [ref=e163]:
+          - heading "Returns & Exchanges" [level=3] [ref=e164]
+          - img [ref=e165]
+      - button "Product Information" [ref=e168] [cursor=pointer]:
+        - generic [ref=e169]:
+          - heading "Product Information" [level=3] [ref=e170]
+          - img [ref=e171]
+  - contentinfo [ref=e173]:
+    - generic [ref=e174]:
+      - generic [ref=e175]:
+        - generic [ref=e176]:
+          - heading "JC Timbers" [level=3] [ref=e177]
+          - paragraph [ref=e178]: Your trusted partner for premium timber products, handcrafted furniture, and quality construction materials. We bring decades of expertise and craftsmanship to every project.
+          - generic [ref=e179]:
+            - link [ref=e180] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e181]
+            - link [ref=e183] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e184]
+            - link [ref=e186] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e187]
+            - link [ref=e189] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e190]
+        - generic [ref=e192]:
+          - generic [ref=e193]:
+            - heading "Quick Links" [level=4] [ref=e194]
+            - list [ref=e195]:
+              - listitem [ref=e196]:
+                - button "Home" [ref=e197] [cursor=pointer]
+              - listitem [ref=e198]:
+                - button "Timber" [ref=e199] [cursor=pointer]
+              - listitem [ref=e200]:
+                - button "Furniture" [ref=e201] [cursor=pointer]
+              - listitem [ref=e202]:
+                - button "Construction" [ref=e203] [cursor=pointer]
+          - generic [ref=e204]:
+            - heading "Our Services" [level=4] [ref=e205]
+            - list [ref=e206]:
+              - listitem [ref=e207]:
+                - button "About Us" [ref=e208] [cursor=pointer]
+              - listitem [ref=e209]:
+                - button "Contact Us" [ref=e210] [cursor=pointer]
+              - listitem [ref=e211]:
+                - button "Our Blog" [ref=e212] [cursor=pointer]
+      - generic [ref=e213]:
+        - generic [ref=e214]: © 2025 JC Timbers. All rights reserved.
+        - generic [ref=e215]:
+          - generic [ref=e216]: Made with ❤️ in India
+          - generic [ref=e217]:
+            - generic [ref=e218]: "Secure Payment:"
+            - generic [ref=e219]:
+              - generic [ref=e221]: VISA
+              - generic [ref=e223]: MC
+              - generic [ref=e225]: UPI
+```

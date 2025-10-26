@@ -34,7 +34,8 @@ export const useAuth = () => {
             setRole(null);
             return;
           }
-        } catch (tokenError) {
+          // eslint-disable-next-line no-unused-vars
+        } catch (error) {
           console.log('Invalid token format, clearing auth data');
           localStorage.removeItem('token');
           localStorage.removeItem('user');

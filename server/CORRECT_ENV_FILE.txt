@@ -1,0 +1,18 @@
+# MongoDB Connection
+MONGODB_URI=mongodb://localhost:27017/jc-timbers
+
+# JWT Secret for authentication
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# Razorpay Configuration - YOUR CREDENTIALS
+RAZORPAY_KEY_ID=rzp_test_RL7iTlLIMH8nZY
+RAZORPAY_KEY_SECRET=rwk1544M3HCWZOAb7E6A2X07
+
+# Frontend URL (for CORS)
+CLIENT_URL=http://localhost:5173
+
+

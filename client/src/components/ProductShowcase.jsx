@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import api from '../api/axios';
 import { useNotification } from './NotificationProvider';
 import { useAuth } from '../hooks/useAuth';
+import { useCart } from '../contexts/CartContext';
 
 const formatINR = (paise) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((paise||0)/100);
 
@@ -35,6 +36,7 @@ export default function ProductShowcase() {
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
   const { isAuthenticated } = useAuth();
+  const { refreshCartCount } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [products, setProducts] = useState([]);
@@ -47,8 +49,11 @@ export default function ProductShowcase() {
       try {
         setLoading(true);
         setError(null);
-        const res = await api.get('/products?limit=50');
-        if (mounted) setProducts(res.data.products || []);
+        const res = await api.get('/products?limit=100');
+        if (mounted) {
+          const fetchedProducts = res.data.products || [];
+          setProducts(fetchedProducts);
+        }
       } catch (err) {
         if (mounted) setError(err.response?.data?.message || 'Failed to load products');
       } finally {
@@ -77,6 +82,8 @@ export default function ProductShowcase() {
     try {
       await api.post('/cart', { productId: product._id, quantity: 1 });
       showSuccess(`${product.name} added to cart!`);
+      // Refresh cart count in header
+      refreshCartCount();
     } catch (err) {
       if (err.response?.status === 401) {
         // Store the product that user wants to add to cart
@@ -131,10 +138,16 @@ export default function ProductShowcase() {
     setPinResult({ ok, msg: ok ? 'Delivery available in your area' : 'Delivery not available yet' });
   };
 
-  // Filter products by category
-  const timberProducts = products.filter(product => product.category === 'timber').slice(0, 3);
-  const furnitureProducts = products.filter(product => product.category === 'furniture').slice(0, 3);
-  const constructionProducts = products.filter(product => product.category === 'construction').slice(0, 3);
+  // Filter products by category (case-insensitive) - Show 3 products from each
+  const timberProducts = products.filter(product => 
+    product.category && product.category.toLowerCase() === 'timber'
+  ).slice(0, 3);
+  const furnitureProducts = products.filter(product => 
+    product.category && product.category.toLowerCase() === 'furniture'
+  ).slice(0, 3);
+  const constructionProducts = products.filter(product => 
+    product.category && product.category.toLowerCase() === 'construction'
+  ).slice(0, 3);
 
   // Product card component
   const ProductCard = ({ product, category }) => {

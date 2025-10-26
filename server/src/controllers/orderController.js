@@ -31,14 +31,44 @@ export const checkout = async (req, res) => {
       }
     }
 
-    // Prepare order items and total
-    const orderItems = cart.items.map(({ product, quantity }) => ({
-      product: product._id,
-      name: product.name,
-      price: product.price,
-      quantity,
-      image: product?.images?.[0]?.filename ? `/uploads/${product.images[0].filename}` : undefined
-    }));
+    // Prepare order items with proper base64 encoding
+    const orderItems = cart.items.map(({ product, quantity }) => {
+      let imageUrl = null;
+      
+      if (product?.images?.[0]?.data && product?.images?.[0]?.contentType) {
+        const imageData = product.images[0].data;
+        
+        // Convert Buffer to string if needed
+        const dataAsString = Buffer.isBuffer(imageData)
+          ? imageData.toString('utf8')  // Convert to string first
+          : imageData;
+        
+        // Check if it's already a complete data URL
+        if (typeof dataAsString === 'string' && dataAsString.startsWith('data:')) {
+          imageUrl = dataAsString;
+          console.log(`checkout - Using existing data URL for ${product.name}`);
+        } else {
+          // Convert to base64 and create data URL
+          const base64Data = Buffer.isBuffer(imageData)
+            ? imageData.toString('base64')
+            : imageData;
+          
+          imageUrl = `data:${product.images[0].contentType};base64,${base64Data}`;
+          console.log(`checkout - Created new data URL for ${product.name}`);
+        }
+        console.log(`  Image: ${imageUrl.substring(0, 100)}... (${imageUrl.length} chars)`);
+      } else {
+        console.log(`checkout - No image found for ${product.name}`);
+      }
+      
+      return {
+        product: product._id,
+        name: product.name,
+        price: product.price,
+        quantity,
+        image: imageUrl
+      };
+    });
     const totalAmount = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
     // Create order
@@ -73,6 +103,22 @@ export const getMyOrders = async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;
     const orders = await Order.find({ user: userId }).sort({ createdAt: -1 });
+    
+    // Log order details for debugging
+    console.log(`getMyOrders - Found ${orders.length} orders for user ${userId}`);
+    orders.forEach((order, index) => {
+      console.log(`\n  Order ${index + 1} (${order._id}):`);
+      console.log(`    Items: ${order.items.length}`);
+      order.items.forEach((item, i) => {
+        console.log(`      Item ${i + 1}: ${item.name}`);
+        console.log(`        Has image: ${!!item.image}`);
+        if (item.image) {
+          console.log(`        Image length: ${item.image.length}`);
+          console.log(`        Image preview: ${item.image.substring(0, 50)}...`);
+        }
+      });
+    });
+    
     return res.status(200).json(orders);
   } catch (err) {
     return res.status(500).json({ message: "Failed to fetch orders", error: err.message });

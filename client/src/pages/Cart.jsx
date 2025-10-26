@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../components/NotificationProvider';
+import Header from '../components/Header';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ export default function Cart() {
   const [isGuestCart, setIsGuestCart] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductDetails, setShowProductDetails] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
 
   const fetchCart = async () => {
     try {
@@ -165,6 +168,105 @@ export default function Cart() {
     setShowProductDetails(true);
   };
 
+  // Selection handlers
+  const handleSelectItem = (productId) => {
+    setSelectedItems(prev => {
+      if (prev.includes(productId)) {
+        return prev.filter(id => id !== productId);
+      } else {
+        return [...prev, productId];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedItems([]);
+      setSelectAll(false);
+    } else {
+      setSelectedItems(items.map(item => item.productId));
+      setSelectAll(true);
+    }
+  };
+
+  // Bulk actions
+  const handleRemoveSelected = async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select items to remove');
+      return;
+    }
+
+    if (!window.confirm(`Remove ${selectedItems.length} item(s) from cart?`)) {
+      return;
+    }
+
+    try {
+      if (isAuthenticated) {
+        // Remove each selected item from server
+        await Promise.all(selectedItems.map(productId => 
+          api.delete(`/cart/${productId}`)
+        ));
+      } else {
+        // Remove from guest cart
+        const guestCart = localStorage.getItem('guestCart');
+        if (guestCart) {
+          const cartData = JSON.parse(guestCart);
+          cartData.items = cartData.items.filter(item => !selectedItems.includes(item.productId));
+          cartData.total = cartData.items.reduce((sum, item) => sum + item.subtotal, 0);
+          localStorage.setItem('guestCart', JSON.stringify(cartData));
+        }
+      }
+      
+      setSelectedItems([]);
+      setSelectAll(false);
+      fetchCart();
+      showSuccess(`${selectedItems.length} item(s) removed from cart`);
+    } catch (e) {
+      showError('Failed to remove selected items');
+    }
+  };
+
+  const handleMoveToWishlist = async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select items to move');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      showError('Please login to use wishlist');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      // Add selected items to wishlist
+      await Promise.all(selectedItems.map(productId => 
+        api.post(`/wishlist/${productId}`)
+      ));
+
+      // Remove from cart
+      await Promise.all(selectedItems.map(productId => 
+        api.delete(`/cart/${productId}`)
+      ));
+
+      setSelectedItems([]);
+      setSelectAll(false);
+      fetchCart();
+      showSuccess(`${selectedItems.length} item(s) moved to wishlist`);
+    } catch (e) {
+      showError('Failed to move items to wishlist');
+    }
+  };
+
+  // Update selectAll state when items change
+  useEffect(() => {
+    if (items.length > 0 && selectedItems.length === items.length) {
+      setSelectAll(true);
+    } else {
+      setSelectAll(false);
+    }
+  }, [selectedItems, items]);
+
   const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -189,75 +291,7 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-cream">
-      {/* Navigation Header */}
-      <nav className="bg-cream border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            {/* Left - Brand Name */}
-            <div className="text-xl font-paragraph text-dark-brown tracking-wide">
-              JC Timbers
-            </div>
-            
-            {/* Center - Navigation Links */}
-            <div className="hidden md:flex items-center space-x-8">
-              <button 
-                onClick={() => navigate('/customer-home')}
-                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
-              >
-                Home
-              </button>
-              <button 
-                onClick={() => navigate('/timber-products')}
-                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
-              >
-                Timber Products
-              </button>
-              <button 
-                onClick={() => navigate('/furniture')}
-                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
-              >
-                Furniture
-              </button>
-              <button 
-                onClick={() => navigate('/construction-materials')}
-                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
-              >
-                Construction Materials
-              </button>
-            </div>
-            
-            {/* Right - Actions */}
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/wishlist')}
-                className="relative cursor-pointer p-2 rounded-full hover:bg-light-cream focus:outline-none focus:ring-2 focus:ring-accent-red"
-                aria-label="Wishlist"
-                title="Wishlist"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  className="w-6 h-6 text-dark-brown hover:text-accent-red transition-colors duration-200"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </button>
-              
-              <button
-                onClick={() => navigate('/customer-home')}
-                className="bg-dark-brown hover:bg-accent-red text-white px-4 py-2 rounded-lg font-paragraph transition-colors duration-200"
-              >
-                Continue Shopping
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Header />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -331,9 +365,59 @@ export default function Cart() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Cart Items */}
                 <div className="lg:col-span-2 space-y-4">
+                  {/* Bulk Actions Header */}
+                  {items.length > 0 && (
+                    <div className="bg-white rounded-xl shadow p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectAll}
+                            onChange={handleSelectAll}
+                            className="w-5 h-5 text-dark-brown rounded border-gray-300 focus:ring-dark-brown"
+                          />
+                          <span className="text-sm font-medium text-gray-700">
+                            Select All ({items.length} items)
+                          </span>
+                        </label>
+                        {selectedItems.length > 0 && (
+                          <span className="text-sm text-gray-600">
+                            {selectedItems.length} selected
+                          </span>
+                        )}
+                      </div>
+                      {selectedItems.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleMoveToWishlist}
+                            className="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            Move to Wishlist
+                          </button>
+                          <button
+                            onClick={handleRemoveSelected}
+                            className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            Remove Selected
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {items.map(item => (
                     <div key={item.productId} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
-                      <div className="flex items-start gap-6">
+                      <div className="flex items-start gap-4">
+                        {/* Selection Checkbox */}
+                        <div className="flex-shrink-0 pt-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.includes(item.productId)}
+                            onChange={() => handleSelectItem(item.productId)}
+                            className="w-5 h-5 text-dark-brown rounded border-gray-300 focus:ring-dark-brown cursor-pointer"
+                          />
+                        </div>
+
                         {/* Product Thumbnail */}
                         <div className="flex-shrink-0">
                           <img 
@@ -431,6 +515,12 @@ export default function Cart() {
                     </div>
                     
                     <button 
+                      onClick={() => {
+                        console.log('Checkout button clicked, navigating to /checkout');
+                        console.log('Current role:', localStorage.getItem('role'));
+                        console.log('Is authenticated:', localStorage.getItem('token') ? 'Yes' : 'No');
+                        navigate('/checkout');
+                      }}
                       className="w-full bg-dark-brown hover:bg-accent-red text-white py-3 rounded-lg font-paragraph transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 mb-4"
                     >
                       Proceed to Checkout

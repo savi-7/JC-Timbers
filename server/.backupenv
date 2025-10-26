@@ -1,0 +1,16 @@
+# YOUR RAZORPAY CREDENTIALS - CONFIGURED
+# Copy this entire content to create server/.env file
+
+# MongoDB Connection
+MONGODB_URI=mongodb+srv://saviojoseph2580:savi77@cluster0.mb4krjc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+JWT_SECRET=your_secret_key_here
+PORT=5001
+NODE_ENV=development
+
+# Razorpay Configuration - YOUR CREDENTIALS
+RAZORPAY_KEY_ID=rzp_test_RL7iTlLIMH8nZY
+RAZORPAY_KEY_SECRET=rwk1544M3HCWZOAb7E6A2X07
+
+# Frontend URL (for CORS)
+CLIENT_URL=http://localhost:5173
+

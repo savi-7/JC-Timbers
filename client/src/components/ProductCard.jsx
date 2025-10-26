@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api/axios';
 import { useNotification } from '../components/NotificationProvider';
 
-const ProductCard = ({ product, onAddToCart, onWishlistUpdate }) => {
+const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { showSuccess, showError } = useNotification();
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  
   const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', { 
       style: 'currency', 
@@ -21,9 +23,6 @@ const ProductCard = ({ product, onAddToCart, onWishlistUpdate }) => {
   const getMainImage = () => {
     if (product.images && product.images.length > 0) {
       const firstImage = product.images[0];
-      
-      // Debug logging
-      console.log('Product:', product.name, 'Image data:', firstImage.data);
       
       // Check if it's the old Cloudinary format
       if (firstImage.url) {
@@ -60,6 +59,13 @@ const ProductCard = ({ product, onAddToCart, onWishlistUpdate }) => {
   const handleAddToCartClick = (e) => {
     e.stopPropagation(); // Prevent card click
     onAddToCart(product);
+  };
+
+  const handleBuyNowClick = (e) => {
+    e.stopPropagation(); // Prevent card click
+    if (onBuyNow) {
+      onBuyNow(product);
+    }
   };
 
   const handleWishlistClick = async (e) => {
@@ -110,12 +116,19 @@ const ProductCard = ({ product, onAddToCart, onWishlistUpdate }) => {
       {/* Product Image Container */}
       <div className="relative overflow-hidden bg-gray-50">
         <div className="aspect-square w-full">
+          {!imageLoaded && (
+            <div className="absolute inset-0 bg-gray-200 animate-pulse"></div>
+          )}
           <img
             src={getMainImage()}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out"
+            loading="lazy"
+            decoding="async"
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+            onLoad={() => setImageLoaded(true)}
             onError={(e) => {
               e.target.src = 'https://via.placeholder.com/300x300/f8fafc/e2e8f0?text=No+Image';
+              setImageLoaded(true);
             }}
           />
         </div>
@@ -170,30 +183,49 @@ const ProductCard = ({ product, onAddToCart, onWishlistUpdate }) => {
 
         {/* Action Buttons */}
         <div className="mt-auto space-y-2">
-          {/* Add to Cart Button */}
-          <button
-            onClick={handleAddToCartClick}
-            className="w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-200 text-white hover:shadow-md transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-sm"
-            style={{ backgroundColor: '#913F4A' }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#7a3339'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#913F4A'}
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              className="w-4 h-4"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* Primary Action Buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Add to Cart Button */}
+            <button
+              onClick={handleAddToCartClick}
+              className="py-2.5 px-3 rounded-lg font-medium transition-all duration-200 text-white hover:shadow-md transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 text-sm"
+              style={{ backgroundColor: '#913F4A' }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#7a3339'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#913F4A'}
             >
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-            </svg>
-            Add to Cart
-          </button>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                className="w-4 h-4"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+              Add to Cart
+            </button>
+
+            {/* Buy Now Button */}
+            <button
+              onClick={handleBuyNowClick}
+              className="py-2.5 px-3 rounded-lg font-medium transition-all duration-200 bg-orange-500 text-white hover:bg-orange-600 hover:shadow-md transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 text-sm"
+            >
+              <svg 
+                className="w-4 h-4" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Buy Now
+            </button>
+          </div>
           
           {/* Secondary Actions */}
           <div className="flex gap-2">
@@ -234,6 +266,8 @@ const ProductCard = ({ product, onAddToCart, onWishlistUpdate }) => {
       </div>
     </div>
   );
-};
+});
+
+ProductCard.displayName = 'ProductCard';
 
 export default ProductCard;

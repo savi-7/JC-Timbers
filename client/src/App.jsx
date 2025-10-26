@@ -16,15 +16,23 @@ import CustomerHomePage from "./pages/CustomerHomePage";
 import CustomerProfile from "./pages/CustomerProfile";
 import LoginSecurity from "./pages/LoginSecurity";
 import AddressManagement from "./pages/AddressManagement";
+import AboutUs from "./pages/AboutUs";
+import ContactUs from "./pages/ContactUs";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Cart from "./pages/Cart";
 import Wishlist from "./pages/Wishlist";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderSuccess from "./pages/OrderSuccess";
+import OrderHistory from "./pages/OrderHistory";
+import AdminOrders from "./pages/AdminOrders";
 import { NotificationProvider } from "./components/NotificationProvider";
+import { CartProvider } from "./contexts/CartContext";
 
 export default function App() {
   return (
     <NotificationProvider>
-      <Routes>
+      <CartProvider>
+        <Routes>
         {/* Root path: shows HomePage */}
         <Route
           path="/"
@@ -40,6 +48,8 @@ export default function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/about" element={<AboutUs />} />
+        <Route path="/contact-us" element={<ContactUs />} />
 
         {/* Protected Admin Routes */}
         <Route 
@@ -90,6 +100,14 @@ export default function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/admin/orders" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminOrders />
+            </ProtectedRoute>
+          } 
+        />
         {/* Convenience redirect for singular path */}
         <Route path="/admin/product" element={<Navigate to="/admin/products" replace />} />
 
@@ -103,6 +121,24 @@ export default function App() {
         
         {/* Public Cart Route */}
         <Route path="/cart" element={<Cart />} />
+
+        {/* Checkout and Order Routes */}
+        <Route 
+          path="/checkout" 
+          element={
+            <ProtectedRoute role="customer">
+              <CheckoutPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/order-success" 
+          element={
+            <ProtectedRoute role="customer">
+              <OrderSuccess />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* Protected Customer Routes */}
         <Route 
@@ -133,10 +169,19 @@ export default function App() {
           path="/addresses" 
           element={<AddressManagement />}
         />
+        <Route 
+          path="/orders" 
+          element={
+            <ProtectedRoute role="customer">
+              <OrderHistory />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </CartProvider>
     </NotificationProvider>
   );
 }

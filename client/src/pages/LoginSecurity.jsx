@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api/axios';
 import { useNotification } from '../components/NotificationProvider';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 export default function LoginSecurity() {
   const navigate = useNavigate();
@@ -243,33 +245,7 @@ export default function LoginSecurity() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/customer-profile')}
-                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-              </button>
-              <h1 className="text-2xl font-heading text-dark-brown">Login & Security</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/customer-profile')}
-                className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
-              >
-                Back to Profile
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Header />
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
@@ -416,6 +392,7 @@ export default function LoginSecurity() {
           </form>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }
