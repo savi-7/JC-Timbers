@@ -58,7 +58,7 @@ export default function AdminSupport() {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/faqs/admin', {
+      const response = await fetch(API_BASE + '/faqs/admin', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -109,7 +109,7 @@ export default function AdminSupport() {
       if (contactFilters.priority) queryParams.append('priority', contactFilters.priority);
       if (contactFilters.category) queryParams.append('category', contactFilters.category);
 
-      const response = await fetch(`http://localhost:5001/api/contacts/admin?${queryParams}`, {
+      const response = await fetch(`${API_BASE}/contacts/admin?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -131,7 +131,7 @@ export default function AdminSupport() {
   const fetchContactStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/contacts/admin/stats', {
+      const response = await fetch(API_BASE + '/contacts/admin/stats', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -154,7 +154,7 @@ export default function AdminSupport() {
   const handleContactStatusChange = async (contactId, newStatus) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/contacts/admin/${contactId}`, {
+      const response = await fetch(`${API_BASE}/contacts/admin/${contactId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -179,7 +179,7 @@ export default function AdminSupport() {
   const handleContactPriorityChange = async (contactId, newPriority) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/contacts/admin/${contactId}`, {
+      const response = await fetch(`${API_BASE}/contacts/admin/${contactId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -209,7 +209,7 @@ export default function AdminSupport() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/contacts/admin/${contactId}/reply`, {
+      const response = await fetch(`${API_BASE}/contacts/admin/${contactId}/reply`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -240,7 +240,7 @@ export default function AdminSupport() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/contacts/admin/${contactId}`, {
+      const response = await fetch(`${API_BASE}/contacts/admin/${contactId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -282,7 +282,7 @@ export default function AdminSupport() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/faqs/admin', {
+      const response = await fetch(API_BASE + '/faqs/admin', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -319,7 +319,7 @@ export default function AdminSupport() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/faqs/admin/${editingFaq.id}`, {
+      const response = await fetch(`${API_BASE}/faqs/admin/${editingFaq.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -349,7 +349,7 @@ export default function AdminSupport() {
   const deleteFaq = async (faqId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/faqs/admin/${faqId}`, {
+      const response = await fetch(`${API_BASE}/faqs/admin/${faqId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -392,7 +392,7 @@ export default function AdminSupport() {
         formData.append('image', selectedImage);
       }
 
-      const response = await fetch('http://localhost:5001/api/blogs/admin', {
+      const response = await fetch(API_BASE + '/blogs/admin', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -450,7 +450,7 @@ export default function AdminSupport() {
         formData.append('image', selectedImage);
       }
 
-      const response = await fetch(`http://localhost:5001/api/blogs/admin/${editingBlog.id}`, {
+      const response = await fetch(`${API_BASE}/blogs/admin/${editingBlog.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -481,7 +481,7 @@ export default function AdminSupport() {
   const deleteBlog = async (blogId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/blogs/admin/${blogId}`, {
+      const response = await fetch(`${API_BASE}/blogs/admin/${blogId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

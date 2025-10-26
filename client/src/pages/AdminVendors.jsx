@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useNotification } from '../components/NotificationProvider';
+import { API_BASE } from '../config';
 
 export default function AdminVendors() {
   const { user, logout } = useAuth();
@@ -108,9 +109,9 @@ export default function AdminVendors() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [vendorsRes, intakesRes, statsRes] = await Promise.all([
-        axios.get('http://localhost:5001/api/vendors', { headers }),
-        axios.get('http://localhost:5001/api/vendors/intake/all', { headers }),
-        axios.get('http://localhost:5001/api/vendors/stats', { headers })
+        axios.get(API_BASE + '/vendors', { headers }),
+        axios.get(API_BASE + '/vendors/intake/all', { headers }),
+        axios.get(API_BASE + '/vendors/stats', { headers })
       ]);
 
       setVendors(vendorsRes.data.vendors);
@@ -541,7 +542,7 @@ export default function AdminVendors() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5001/api/vendors', vendorForm, {
+      await axios.post(API_BASE + '/vendors', vendorForm, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -693,7 +694,7 @@ export default function AdminVendors() {
         }
       };
       
-      const response = await axios.post('http://localhost:5001/api/vendors/intake', formData, {
+        await axios.post(API_BASE + '/vendors/intake', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -1503,7 +1504,7 @@ export default function AdminVendors() {
                     onClick={async () => {
                       try {
                         const token = localStorage.getItem('token');
-                        await axios.put(`http://localhost:5001/api/vendors/${selectedVendor._id}`, {
+                        await axios.put(`${API_BASE}/vendors/${selectedVendor._id}`, {
                           status: selectedVendor.status
                         }, {
                           headers: { Authorization: `Bearer ${token}` }
@@ -1578,7 +1579,7 @@ export default function AdminVendors() {
                     onClick={async () => {
                       try {
                         const token = localStorage.getItem('token');
-                        await axios.put(`http://localhost:5001/api/vendors/intake/${selectedWoodIntake._id}/status`, {
+                        await axios.put(`${API_BASE}/vendors/intake/${selectedWoodIntake._id}/status`, {
                           status: selectedWoodIntake.status
                         }, {
                           headers: { Authorization: `Bearer ${token}` }

@@ -4,6 +4,7 @@ import api from '../api/axios';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../components/NotificationProvider';
 import Header from '../components/Header';
+import { API_BASE } from '../config';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -279,7 +280,7 @@ export default function Cart() {
   const getProductImage = (item) => {
     if (item && item.image) {
       if (item.image.startsWith('/uploads/')) {
-        return `http://localhost:5001${item.image}`;
+        return `${API_BASE.replace('/api', '')}${item.image}`;
       }
       if (item.image.startsWith('http') || item.image.startsWith('data:')) {
         return item.image;

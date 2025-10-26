@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE } from '../config';
 
 export default function AdminUsers() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export default function AdminUsers() {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5001/api/admin/users', {
+      const res = await fetch(API_BASE + '/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.status === 403) throw new Error('Admin access required');
@@ -35,13 +36,13 @@ export default function AdminUsers() {
       
       // Fetch user orders, cart, and wishlist in parallel
       const [ordersRes, cartRes, wishlistRes] = await Promise.all([
-        fetch(`http://localhost:5001/api/admin/users/${userId}/orders`, {
+        fetch(`${API_BASE}/admin/users/${userId}/orders`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`http://localhost:5001/api/admin/users/${userId}/cart`, {
+        fetch(`${API_BASE}/admin/users/${userId}/cart`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`http://localhost:5001/api/admin/users/${userId}/wishlist`, {
+        fetch(`${API_BASE}/admin/users/${userId}/wishlist`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
