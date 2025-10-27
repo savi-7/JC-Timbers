@@ -81,13 +81,34 @@ export const checkout = async (req, res) => {
       status: "Pending"
     });
 
-    // Decrement stock
+    // Decrement stock with verification
+    const stockUpdateResults = [];
     for (const item of cart.items) {
-      await Product.updateOne(
+      const result = await Product.updateOne(
         { _id: item.product._id, quantity: { $gte: item.quantity } },
         { $inc: { quantity: -item.quantity } }
       );
+      
+      stockUpdateResults.push({
+        productId: item.product._id,
+        productName: item.product.name,
+        updated: result.modifiedCount > 0,
+        requestedQty: item.quantity
+      });
+      
+      // Log stock update
+      if (result.modifiedCount > 0) {
+        console.log(`✅ Stock reduced for ${item.product.name}: -${item.quantity}`);
+      } else {
+        console.log(`⚠️  Failed to reduce stock for ${item.product.name} (may be out of stock)`);
+      }
     }
+    
+    // Log all stock updates
+    console.log('\n📦 Stock Update Summary:');
+    stockUpdateResults.forEach(result => {
+      console.log(`  ${result.updated ? '✅' : '❌'} ${result.productName}: ${result.updated ? 'Updated' : 'Failed'}`);
+    });
 
     // Clear cart
     cart.items = [];

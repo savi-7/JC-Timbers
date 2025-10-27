@@ -469,7 +469,20 @@ export default function Cart() {
                             <div>
                               <h3 className="text-lg font-heading text-dark-brown mb-1">{item.name}</h3>
                               <p className="text-sm text-gray-600 font-paragraph">Price per unit: {formatINR(item.price)}</p>
-                              <p className="text-xs text-gray-500 font-paragraph">Available: {item.available} units</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-gray-500 font-paragraph">Available: {item.available} units</p>
+                                {item.available === 0 && (
+                                  <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded">Out of Stock</span>
+                                )}
+                                {item.available > 0 && item.available < 10 && (
+                                  <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded">Low Stock!</span>
+                                )}
+                              </div>
+                              {item.quantity > item.available && (
+                                <div className="mt-1 text-xs text-red-600 font-medium bg-red-50 px-2 py-1 rounded inline-block">
+                                  ⚠️ Only {item.available} units available. Please reduce quantity.
+                                </div>
+                              )}
                             </div>
                             <button
                               onClick={() => handleViewDetails(item)}
