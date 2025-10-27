@@ -24,10 +24,12 @@ export default function Cart() {
     try {
       setLoading(true);
       
+      let cartItems = [];
       if (isAuthenticated) {
         // Fetch from server for authenticated users
         const res = await api.get('/cart');
-        setItems(res.data.items || []);
+        cartItems = res.data.items || [];
+        setItems(cartItems);
         setTotal(res.data.total || 0);
         setIsGuestCart(false);
       } else {
@@ -35,13 +37,21 @@ export default function Cart() {
         const guestCart = localStorage.getItem('guestCart');
         if (guestCart) {
           const cartData = JSON.parse(guestCart);
-          setItems(cartData.items || []);
+          cartItems = cartData.items || [];
+          setItems(cartItems);
           setTotal(cartData.total || 0);
         } else {
           setItems([]);
           setTotal(0);
         }
         setIsGuestCart(true);
+      }
+      
+      // Auto-select all items on first load
+      if (cartItems.length > 0 && selectedItems.length === 0) {
+        const allProductIds = cartItems.map(item => item.productId);
+        setSelectedItems(allProductIds);
+        setSelectAll(true);
       }
       
       setError(null);
@@ -53,8 +63,16 @@ export default function Cart() {
         const guestCart = localStorage.getItem('guestCart');
         if (guestCart) {
           const cartData = JSON.parse(guestCart);
-          setItems(cartData.items || []);
+          const cartItems = cartData.items || [];
+          setItems(cartItems);
           setTotal(cartData.total || 0);
+          
+          // Auto-select all items
+          if (cartItems.length > 0 && selectedItems.length === 0) {
+            const allProductIds = cartItems.map(item => item.productId);
+            setSelectedItems(allProductIds);
+            setSelectAll(true);
+          }
         } else {
           setItems([]);
           setTotal(0);
@@ -267,6 +285,20 @@ export default function Cart() {
       setSelectAll(false);
     }
   }, [selectedItems, items]);
+
+  // Calculate selected items total
+  const getSelectedTotal = () => {
+    if (selectedItems.length === 0) {
+      return 0;
+    }
+    return items
+      .filter(item => selectedItems.includes(item.productId))
+      .reduce((sum, item) => sum + item.subtotal, 0);
+  };
+
+  const getSelectedItemsCount = () => {
+    return selectedItems.length;
+  };
 
   const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -495,10 +527,29 @@ export default function Cart() {
                   <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
                     <h3 className="text-xl font-heading text-dark-brown mb-6">Order Summary</h3>
                     
+                    {/* Selection Info */}
+                    {selectedItems.length === 0 ? (
+                      <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800 font-paragraph">
+                          ⚠️ Please select items to checkout
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-800 font-paragraph">
+                          ✓ {selectedItems.length} item(s) selected for checkout
+                        </p>
+                      </div>
+                    )}
+                    
                     <div className="space-y-4 mb-6">
                       <div className="flex justify-between text-gray-600">
-                        <span className="font-paragraph">Subtotal ({items.length} items)</span>
-                        <span className="font-medium">{formatINR(total)}</span>
+                        <span className="font-paragraph">
+                          Subtotal ({selectedItems.length > 0 ? `${selectedItems.length} selected` : items.length} items)
+                        </span>
+                        <span className="font-medium">
+                          {formatINR(selectedItems.length > 0 ? getSelectedTotal() : total)}
+                        </span>
                       </div>
                       <div className="flex justify-between text-gray-600">
                         <span className="font-paragraph">Shipping</span>
@@ -511,20 +562,30 @@ export default function Cart() {
                       <hr className="border-gray-200" />
                       <div className="flex justify-between text-lg font-heading text-dark-brown">
                         <span>Total</span>
-                        <span>{formatINR(total)}</span>
+                        <span>{formatINR(selectedItems.length > 0 ? getSelectedTotal() : total)}</span>
                       </div>
                     </div>
                     
                     <button 
                       onClick={() => {
+                        if (selectedItems.length === 0) {
+                          showError('Please select at least one item to checkout');
+                          return;
+                        }
+                        // Store selected items for checkout
+                        localStorage.setItem('checkoutSelectedItems', JSON.stringify(selectedItems));
                         console.log('Checkout button clicked, navigating to /checkout');
-                        console.log('Current role:', localStorage.getItem('role'));
-                        console.log('Is authenticated:', localStorage.getItem('token') ? 'Yes' : 'No');
+                        console.log('Selected items:', selectedItems);
                         navigate('/checkout');
                       }}
-                      className="w-full bg-dark-brown hover:bg-accent-red text-white py-3 rounded-lg font-paragraph transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 mb-4"
+                      disabled={selectedItems.length === 0}
+                      className={`w-full py-3 rounded-lg font-paragraph transition-colors duration-200 shadow-lg mb-4 ${
+                        selectedItems.length === 0 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                          : 'bg-dark-brown hover:bg-accent-red text-white hover:shadow-xl transform hover:scale-105'
+                      }`}
                     >
-                      Proceed to Checkout
+                      Proceed to Checkout {selectedItems.length > 0 && `(${selectedItems.length})`}
                     </button>
                     
                     <button 

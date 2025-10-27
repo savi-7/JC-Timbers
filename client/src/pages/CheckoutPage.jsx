@@ -59,14 +59,26 @@ export default function CheckoutPage() {
     try {
       console.log('CheckoutPage - fetchCart started');
       setLoading(true);
+      
+      // Get selected items from localStorage
+      const selectedItemsStr = localStorage.getItem('checkoutSelectedItems');
+      const selectedItems = selectedItemsStr ? JSON.parse(selectedItemsStr) : [];
+      console.log('CheckoutPage - Selected items from cart:', selectedItems);
+      
       const response = await api.get('/cart');
       console.log('CheckoutPage - Cart response:', response.data);
-      const items = response.data.items || [];
-      console.log('CheckoutPage - Cart items count:', items.length);
+      let items = response.data.items || [];
+      console.log('CheckoutPage - Total cart items:', items.length);
+      
+      // Filter to only selected items
+      if (selectedItems.length > 0) {
+        items = items.filter(item => selectedItems.includes(item.productId));
+        console.log('CheckoutPage - Filtered to selected items:', items.length);
+      }
       
       if (items.length === 0) {
-        console.log('CheckoutPage - Cart is empty, redirecting to /cart');
-        showError('Your cart is empty');
+        console.log('CheckoutPage - No items selected for checkout, redirecting to /cart');
+        showError('Please select items from your cart to checkout');
         navigate('/cart');
         return;
       }
@@ -74,6 +86,9 @@ export default function CheckoutPage() {
       console.log('CheckoutPage - Setting cart items:', items);
       setCartItems(items);
       console.log('CheckoutPage - Cart items set successfully');
+      
+      // Clear selected items from localStorage after loading
+      localStorage.removeItem('checkoutSelectedItems');
     } catch (error) {
       console.error('CheckoutPage - Error fetching cart:', error);
       showError('Failed to load cart items');
