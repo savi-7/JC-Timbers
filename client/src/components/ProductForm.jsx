@@ -128,6 +128,8 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
           errors.name = 'Product name must be at least 3 characters long';
         } else if (value.trim().length > 100) {
           errors.name = 'Product name must not exceed 100 characters';
+        } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+          errors.name = 'Product name can only contain alphabets (letters) and spaces';
         } else {
           delete errors.name;
         }
@@ -138,6 +140,8 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
           errors.price = 'Price is required';
         } else if (isNaN(value) || parseFloat(value) <= 0) {
           errors.price = 'Price must be a positive number';
+        } else if (!/^\d+(\.\d{1,2})?$/.test(value)) {
+          errors.price = 'Price must be a valid number (decimal with max 2 places allowed)';
         } else if (parseFloat(value) > 1000000) {
           errors.price = 'Price cannot exceed ₹10,00,000';
         } else {
@@ -158,18 +162,42 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
         break;
         
       case 'size':
-        if (value && value.trim().length > 50) {
-          errors.size = 'Size description must not exceed 50 characters';
+        if (defaultCategory === 'timber' || defaultCategory === 'construction') {
+          // Size is required for timber and construction products
+          if (!value || value.trim() === '') {
+            errors.size = 'Size/dimensions are required for this product type';
+          } else if (value.trim().length > 50) {
+            errors.size = 'Size description must not exceed 50 characters';
+          } else {
+            delete errors.size;
+          }
         } else {
-          delete errors.size;
+          // Size is optional for furniture but has length limit
+          if (value && value.trim().length > 50) {
+            errors.size = 'Size description must not exceed 50 characters';
+          } else {
+            delete errors.size;
+          }
         }
         break;
         
       case 'description':
-        if (value && value.trim().length > 1000) {
+        if (!value || value.trim() === '') {
+          errors.description = 'Product description is required';
+        } else if (value.trim().length < 10) {
+          errors.description = 'Description must be at least 10 characters long';
+        } else if (value.trim().length > 1000) {
           errors.description = 'Description must not exceed 1000 characters';
         } else {
           delete errors.description;
+        }
+        break;
+        
+      case 'subcategory':
+        if (!value || value.trim() === '') {
+          errors.subcategory = `${defaultCategory === 'timber' ? 'Timber' : 'Furniture'} category is required`;
+        } else {
+          delete errors.subcategory;
         }
         break;
     }
@@ -185,6 +213,12 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
     }));
     
     // Real-time validation
+    validateField(name, value);
+  };
+
+  const handleInputBlur = (e) => {
+    const { name, value } = e.target;
+    // Validate on blur to ensure validation is triggered
     validateField(name, value);
   };
 
@@ -218,20 +252,58 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
       }
     } else if (['length', 'width', 'thickness'].includes(key)) {
       if (value && value !== '') {
-        if (isNaN(value) || parseFloat(value) <= 0) {
+        if (!/^\d+(\.\d{1,2})?$/.test(value)) {
+          errors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} must be a numeric value (decimal with max 2 places allowed)`;
+        } else if (isNaN(value) || parseFloat(value) <= 0) {
           errors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} must be a positive number`;
-        } else if (parseFloat(value) > 100) {
-          errors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} cannot exceed 100`;
+        } else if (parseFloat(value) > 1000) {
+          errors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} cannot exceed 1000`;
         } else {
           delete errors[key];
         }
       } else {
         delete errors[key];
       }
-    } else if (key === 'finish' && value && value.trim().length > 50) {
-      errors.finish = 'Finish description must not exceed 50 characters';
-    } else if (key === 'style' && value && value.trim().length > 50) {
-      errors.style = 'Style description must not exceed 50 characters';
+    } else if (key === 'material') {
+      if (!value || value.trim() === '') {
+        errors.material = 'Material is required';
+      } else if (value.trim().length > 50) {
+        errors.material = 'Material must not exceed 50 characters';
+      } else {
+        delete errors.material;
+      }
+    } else if (key === 'polish') {
+      if (!value || value.trim() === '') {
+        errors.polish = 'Polish type is required';
+      } else if (value.trim().length > 50) {
+        errors.polish = 'Polish type must not exceed 50 characters';
+      } else {
+        delete errors.polish;
+      }
+    } else if (key === 'finish') {
+      if (defaultCategory === 'construction') {
+        if (!value || value.trim() === '') {
+          errors.finish = 'Finish type is required';
+        } else if (value.trim().length > 50) {
+          errors.finish = 'Finish description must not exceed 50 characters';
+        } else {
+          delete errors.finish;
+        }
+      } else {
+        if (value && value.trim().length > 50) {
+          errors.finish = 'Finish description must not exceed 50 characters';
+        } else {
+          delete errors.finish;
+        }
+      }
+    } else if (key === 'style') {
+      if (!value || value.trim() === '') {
+        errors.style = 'Style is required';
+      } else if (value.trim().length > 50) {
+        errors.style = 'Style description must not exceed 50 characters';
+      } else {
+        delete errors.style;
+      }
     } else if (key === 'productType') {
       if (!value || value.trim() === '') {
         errors.productType = 'Product type is required';
@@ -240,8 +312,22 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
       } else {
         delete errors.productType;
       }
-    } else if (key === 'usage' && value && value.trim().length > 100) {
-      errors.usage = 'Usage description must not exceed 100 characters';
+    } else if (key === 'size' && defaultCategory === 'construction') {
+      if (!value || value.trim() === '') {
+        errors.constructionSize = 'Size/dimensions are required for construction materials';
+      } else if (value.trim().length > 50) {
+        errors.constructionSize = 'Size must not exceed 50 characters';
+      } else {
+        delete errors.constructionSize;
+      }
+    } else if (key === 'usage') {
+      if (!value || value.trim() === '') {
+        errors.usage = 'Usage information is required';
+      } else if (value.trim().length > 100) {
+        errors.usage = 'Usage description must not exceed 100 characters';
+      } else {
+        delete errors.usage;
+      }
     } else {
       delete errors[key];
     }
@@ -256,11 +342,35 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
     // Check if too many files selected
     if (files.length > maxFiles) {
       showError(`You can only select up to ${maxFiles} more images (maximum 5 total)`);
+      e.target.value = ''; // Reset file input
       return;
     }
     
-    // Accept all selected files without validation
+    // Validate file types - only PNG and JPG allowed
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    const invalidFiles = files.filter(file => !allowedTypes.includes(file.type.toLowerCase()));
+    
+    if (invalidFiles.length > 0) {
+      const invalidFileNames = invalidFiles.map(f => f.name).join(', ');
+      showError(`Invalid file format! Only PNG and JPG images are allowed. Invalid files: ${invalidFileNames}`);
+      e.target.value = ''; // Reset file input
+      return;
+    }
+    
+    // Validate file sizes (max 5MB per file)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const oversizedFiles = files.filter(file => file.size > maxSize);
+    
+    if (oversizedFiles.length > 0) {
+      const oversizedFileNames = oversizedFiles.map(f => f.name).join(', ');
+      showError(`File size too large! Maximum 5MB per image. Oversized files: ${oversizedFileNames}`);
+      e.target.value = ''; // Reset file input
+      return;
+    }
+    
+    // All validations passed
     setSelectedFiles(files);
+    showSuccess(`${files.length} image(s) selected successfully`);
   };
 
   const removeExistingImage = (publicId) => {
@@ -285,6 +395,8 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
       errors.push('Product name must be at least 3 characters long');
     } else if (formData.name.trim().length > 100) {
       errors.push('Product name must not exceed 100 characters');
+    } else if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
+      errors.push('Product name can only contain alphabets (letters) and spaces - no numbers or special characters');
     }
     
     // Category/Subcategory Validation
@@ -303,6 +415,8 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
       errors.push('Price is required');
     } else if (isNaN(formData.price) || parseFloat(formData.price) <= 0) {
       errors.push('Price must be a positive number');
+    } else if (!/^\d+(\.\d{1,2})?$/.test(formData.price.toString())) {
+      errors.push('Price must be a valid number (decimal with max 2 places allowed)');
     } else if (parseFloat(formData.price) > 1000000) {
       errors.push('Price cannot exceed ₹10,00,000');
     }
@@ -322,13 +436,41 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
     }
     
     // Size Validation
-    if (formData.size && formData.size.trim().length > 50) {
-      errors.push('Size description must not exceed 50 characters');
+    if (defaultCategory === 'timber' || defaultCategory === 'construction') {
+      // Size is required for timber and construction products
+      if (!formData.size || formData.size.trim() === '') {
+        errors.push('Size/dimensions are required for timber and construction products');
+      } else if (formData.size.trim().length > 50) {
+        errors.push('Size description must not exceed 50 characters');
+      }
+    } else {
+      // Size is optional for furniture but has length limit
+      if (formData.size && formData.size.trim().length > 50) {
+        errors.push('Size description must not exceed 50 characters');
+      }
     }
     
     // Description Validation
-    if (formData.description && formData.description.trim().length > 1000) {
+    if (!formData.description || formData.description.trim() === '') {
+      errors.push('Product description is required');
+    } else if (formData.description.trim().length < 10) {
+      errors.push('Description must be at least 10 characters long');
+    } else if (formData.description.trim().length > 1000) {
       errors.push('Description must not exceed 1000 characters');
+    }
+    
+    // Image Validation
+    if (!isEdit) {
+      // For new products, at least one image is required
+      if (selectedFiles.length === 0) {
+        errors.push('At least one product image is required');
+      }
+    } else {
+      // For editing products, ensure at least one image exists (existing or new)
+      const totalImages = existingImages.length + selectedFiles.length - imagesToRemove.length;
+      if (totalImages === 0) {
+        errors.push('At least one product image is required');
+      }
     }
     
     // Category-specific validations
@@ -355,10 +497,12 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
       dimensions.forEach(dim => {
         const value = timberAttrs[dim];
         if (value && value !== '') {
-          if (isNaN(value) || parseFloat(value) <= 0) {
+          if (!/^\d+(\.\d{1,2})?$/.test(value.toString())) {
+            errors.push(`${dim.charAt(0).toUpperCase() + dim.slice(1)} must be a numeric value (decimal with max 2 places allowed)`);
+          } else if (isNaN(value) || parseFloat(value) <= 0) {
             errors.push(`${dim.charAt(0).toUpperCase() + dim.slice(1)} must be a positive number`);
-          } else if (parseFloat(value) > 100) {
-            errors.push(`${dim.charAt(0).toUpperCase() + dim.slice(1)} cannot exceed 100`);
+          } else if (parseFloat(value) > 1000) {
+            errors.push(`${dim.charAt(0).toUpperCase() + dim.slice(1)} cannot exceed 1000`);
           }
         }
       });
@@ -367,18 +511,18 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
       // Furniture-specific validations
       const furnitureAttrs = formData.attributes || {};
       
-      // Wood Type Validation
-      if (!furnitureAttrs.woodType || furnitureAttrs.woodType.trim() === '') {
-        errors.push('Wood type is required for furniture products');
-      } else if (furnitureAttrs.woodType.trim().length > 30) {
-        errors.push('Wood type must not exceed 30 characters');
+      // Material Validation (if present in attributes)
+      if (!furnitureAttrs.material || furnitureAttrs.material.trim() === '') {
+        errors.push('Material is required for furniture products');
+      } else if (furnitureAttrs.material.trim().length > 50) {
+        errors.push('Material must not exceed 50 characters');
       }
       
-      // Grade Validation
-      if (!furnitureAttrs.grade || furnitureAttrs.grade.trim() === '') {
-        errors.push('Grade is required for furniture products');
-      } else if (!['A', 'A+', 'B', 'C'].includes(furnitureAttrs.grade.trim())) {
-        errors.push('Grade must be A, A+, B, or C');
+      // Polish Validation (if present in attributes)
+      if (!furnitureAttrs.polish || furnitureAttrs.polish.trim() === '') {
+        errors.push('Polish type is required for furniture products');
+      } else if (furnitureAttrs.polish.trim().length > 50) {
+        errors.push('Polish type must not exceed 50 characters');
       }
       
       // Finish Validation
@@ -387,7 +531,9 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
       }
       
       // Style Validation
-      if (furnitureAttrs.style && furnitureAttrs.style.trim().length > 50) {
+      if (!furnitureAttrs.style || furnitureAttrs.style.trim() === '') {
+        errors.push('Style is required for furniture products');
+      } else if (furnitureAttrs.style.trim().length > 50) {
         errors.push('Style description must not exceed 50 characters');
       }
       
@@ -402,13 +548,24 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
         errors.push('Product type must not exceed 50 characters');
       }
       
+      // Size Validation
+      if (!constructionAttrs.size || constructionAttrs.size.trim() === '') {
+        errors.push('Size/dimensions are required for construction materials');
+      } else if (constructionAttrs.size.trim().length > 50) {
+        errors.push('Size must not exceed 50 characters');
+      }
+      
       // Finish Validation
-      if (constructionAttrs.finish && constructionAttrs.finish.trim().length > 50) {
+      if (!constructionAttrs.finish || constructionAttrs.finish.trim() === '') {
+        errors.push('Finish type is required for construction materials');
+      } else if (constructionAttrs.finish.trim().length > 50) {
         errors.push('Finish description must not exceed 50 characters');
       }
       
       // Usage Validation
-      if (constructionAttrs.usage && constructionAttrs.usage.trim().length > 100) {
+      if (!constructionAttrs.usage || constructionAttrs.usage.trim() === '') {
+        errors.push('Usage information is required for construction materials');
+      } else if (constructionAttrs.usage.trim().length > 100) {
         errors.push('Usage description must not exceed 100 characters');
       }
     }
@@ -511,34 +668,50 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
         return (
           <div key={key}>
             <label className="block text-sm font-medium text-gray-700">
-              {label} ({unit})
+              {label} ({unit}) <span className="text-xs text-gray-500">(Numeric only)</span>
             </label>
             <input
               type="number"
-              step="0.1"
-              min="0"
+              step="0.01"
+              min="0.01"
               value={formData.attributes[key] || ''}
               onChange={(e) => handleAttributeChange(key, e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-              placeholder={`Enter ${label.toLowerCase()} in ${unit}`}
+              onBlur={(e) => handleAttributeChange(key, e.target.value)}
+              className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                validationErrors[key] ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              }`}
+              placeholder={`Enter ${label.toLowerCase()} (e.g., 12.5)`}
             />
+            {validationErrors[key] && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors[key]}</p>
+            )}
           </div>
         );
       }
       
       // Default handling for other fields
+      const label = key.replace(/([A-Z])/g, ' $1').trim();
+      const isRequired = ['woodType', 'grade', 'material', 'polish', 'style', 'productType', 'finish', 'usage', 'size'].includes(key);
+      const errorKey = (key === 'size' && formData.category === 'construction') ? 'constructionSize' : key;
+      
       return (
         <div key={key}>
           <label className="block text-sm font-medium text-gray-700 capitalize">
-            {key.replace(/([A-Z])/g, ' $1').trim()}
+            {label} {isRequired && <span className="text-red-500">*</span>}
           </label>
           <input
             type="text"
             value={formData.attributes[key] || ''}
             onChange={(e) => handleAttributeChange(key, e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-            placeholder={`Enter ${key.replace(/([A-Z])/g, ' $1').trim().toLowerCase()}`}
+            onBlur={(e) => handleAttributeChange(key, e.target.value)}
+            className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+              validationErrors[errorKey] ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+            }`}
+            placeholder={`Enter ${label.toLowerCase()}`}
           />
+          {validationErrors[errorKey] && (
+            <p className="mt-1 text-sm text-red-600">{validationErrors[errorKey]}</p>
+          )}
         </div>
       );
     });
@@ -556,17 +729,18 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
             {/* Basic Information */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name *</label>
+                <label className="block text-sm font-medium text-gray-700">Name * <span className="text-xs text-gray-500">(Letters only)</span></label>
                 <input
                   type="text"
                   required
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
+                  onBlur={handleInputBlur}
                   className={`mt-1 block w-full border rounded-md px-3 py-2 ${
                     validationErrors.name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter product name"
+                  placeholder="Enter product name (letters and spaces only)"
                 />
                 {validationErrors.name && (
                   <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
@@ -582,7 +756,10 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                     name="subcategory"
                     value={formData.subcategory}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    onBlur={handleInputBlur}
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                      validationErrors.subcategory ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
                   >
                     {timberSubcategories.filter(sub => sub.value !== '').map((subcategory) => (
                       <option key={subcategory.value} value={subcategory.value}>
@@ -590,6 +767,9 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                       </option>
                     ))}
                   </select>
+                  {validationErrors.subcategory && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.subcategory}</p>
+                  )}
                 </div>
               </div>
             ) : defaultCategory === 'furniture' ? (
@@ -601,7 +781,10 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                     name="subcategory"
                     value={formData.subcategory}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    onBlur={handleInputBlur}
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                      validationErrors.subcategory ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
                   >
                     {furnitureSubcategories.filter(sub => sub.value !== '').map((subcategory) => (
                       <option key={subcategory.value} value={subcategory.value}>
@@ -609,6 +792,9 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                       </option>
                     ))}
                   </select>
+                  {validationErrors.subcategory && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.subcategory}</p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -646,15 +832,23 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Size</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Size {(defaultCategory === 'timber' || defaultCategory === 'construction') && <span className="text-red-500">*</span>}
+                </label>
                 <input
                   type="text"
                   name="size"
                   value={formData.size}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  onBlur={handleInputBlur}
+                  className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                    validationErrors.size ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  }`}
                   placeholder="Enter product size"
                 />
+                {validationErrors.size && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.size}</p>
+                )}
               </div>
             </div>
 
@@ -667,6 +861,7 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleInputChange}
+                  onBlur={handleInputBlur}
                   className={`mt-1 block w-full border rounded-md px-3 py-2 ${
                     validationErrors.quantity ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                   }`}
@@ -689,19 +884,20 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Price *</label>
+                <label className="block text-sm font-medium text-gray-700">Price * <span className="text-xs text-gray-500">(Decimals allowed)</span></label>
                 <input
                   type="number"
                   required
-                  min="0"
+                  min="0.01"
                   step="0.01"
                   name="price"
                   value={formData.price}
                   onChange={handleInputChange}
+                  onBlur={handleInputBlur}
                   className={`mt-1 block w-full border rounded-md px-3 py-2 ${
                     validationErrors.price ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter price"
+                  placeholder="Enter price (e.g., 5000.50)"
                 />
                 {validationErrors.price && (
                   <p className="mt-1 text-sm text-red-600">{validationErrors.price}</p>
@@ -710,15 +906,21 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <label className="block text-sm font-medium text-gray-700">Description <span className="text-red-500">*</span></label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
+                onBlur={handleInputBlur}
                 rows={3}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                placeholder="Enter product description"
+                className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                  validationErrors.description ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                }`}
+                placeholder="Enter product description (minimum 10 characters)"
               />
+              {validationErrors.description && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.description}</p>
+              )}
             </div>
 
             {/* Category-specific attributes */}
@@ -779,13 +981,19 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/png, image/jpeg, image/jpg, .png, .jpg, .jpeg"
                   onChange={handleFileSelect}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
-                <div className="mt-1">
+                <div className="mt-1 space-y-1">
                   <p className="text-xs text-gray-500">
-                    Maximum 5 images total. Selected: {selectedFiles.length}
+                    <span className="font-medium">Allowed formats:</span> PNG, JPG, JPEG only
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    <span className="font-medium">File size:</span> Maximum 5MB per image
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    <span className="font-medium">Total images:</span> Maximum 5 images | Selected: {selectedFiles.length}
                   </p>
                 </div>
               </div>
