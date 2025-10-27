@@ -5,6 +5,7 @@ import { useCart } from '../contexts/CartContext';
 import api from '../api/axios';
 import { useNotification } from '../components/NotificationProvider';
 import Header from '../components/Header';
+import SimilarProducts from '../components/SimilarProducts';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -479,6 +480,13 @@ export default function ProductDetail() {
             </div>
           </div>
         </div>
+
+        {/* Similar Products Section */}
+        {product && (
+          <div className="max-w-7xl mx-auto px-6">
+            <SimilarProducts productId={product._id} maxItems={4} />
+          </div>
+        )}
       </main>
     </div>
   );

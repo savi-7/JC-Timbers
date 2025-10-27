@@ -17,6 +17,7 @@ import faqRoutes from "./routes/faqRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import recommendationRoutes from "./routes/recommendationRoutes.js";
 import { getProductImage } from "./controllers/imageController.js";
 import Product from "./models/Product.js";
 
@@ -63,6 +64,7 @@ app.use("/api/faqs", faqRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/contacts", contactRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/recommendations", recommendationRoutes);
 
 // Image serving route
 app.get("/api/images/:productId/:imageIndex", getProductImage);
