@@ -25,6 +25,8 @@ import CheckoutPage from "./pages/CheckoutPage";
 import OrderSuccess from "./pages/OrderSuccess";
 import OrderHistory from "./pages/OrderHistory";
 import AdminOrders from "./pages/AdminOrders";
+import MyReviews from "./pages/MyReviews";
+import AdminReviews from "./pages/AdminReviews";
 import { NotificationProvider } from "./components/NotificationProvider";
 import { CartProvider } from "./contexts/CartContext";
 
@@ -108,6 +110,14 @@ export default function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/admin/reviews" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminReviews />
+            </ProtectedRoute>
+          } 
+        />
         {/* Convenience redirect for singular path */}
         <Route path="/admin/product" element={<Navigate to="/admin/products" replace />} />
 
@@ -171,6 +181,22 @@ export default function App() {
         />
         <Route 
           path="/orders" 
+          element={
+            <ProtectedRoute role="customer">
+              <OrderHistory />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/my-reviews" 
+          element={
+            <ProtectedRoute role="customer">
+              <MyReviews />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/order-history" 
           element={
             <ProtectedRoute role="customer">
               <OrderHistory />

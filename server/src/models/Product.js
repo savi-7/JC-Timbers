@@ -66,6 +66,17 @@ const productSchema = new mongoose.Schema({
     type: String,
     enum: ["best", "new", "discount", "none", "featured"],
     default: "none"
+  },
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  reviewCount: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, {
   timestamps: true

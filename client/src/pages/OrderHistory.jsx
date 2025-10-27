@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import api from '../api/axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import ReviewModal from '../components/ReviewModal';
+import { generateInvoice } from '../utils/invoiceGenerator';
 
 export default function OrderHistory() {
   const navigate = useNavigate();
@@ -13,6 +15,8 @@ export default function OrderHistory() {
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewingProduct, setReviewingProduct] = useState(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -87,6 +91,39 @@ export default function OrderHistory() {
     if (image.startsWith('/uploads/')) return `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${image}`;
     // Default: assume it's a filename in uploads
     return `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/uploads/${image}`;
+  };
+
+  const handleWriteReview = (item) => {
+    setReviewingProduct({
+      _id: item.productId || item._id,
+      name: item.name,
+      price: item.price,
+      images: item.image ? [{ data: item.image }] : []
+    });
+    setShowReviewModal(true);
+  };
+
+  const handleReviewSuccess = () => {
+    // Optionally refresh orders or show a message
+    fetchOrders();
+  };
+
+  const handleDownloadInvoice = (order) => {
+    if (!order) {
+      alert('Order data not available. Please try again.');
+      return;
+    }
+    
+    try {
+      console.log('OrderHistory - Generating invoice for order:', order._id);
+      console.log('OrderHistory - Order data:', order);
+      generateInvoice(order);
+      console.log('OrderHistory - Invoice generated successfully');
+    } catch (error) {
+      console.error('OrderHistory - Error generating invoice:', error);
+      console.error('OrderHistory - Order data was:', order);
+      alert(`Failed to generate invoice: ${error.message}\n\nPlease check the console for details.`);
+    }
   };
 
   if (authLoading || loading) {
@@ -183,6 +220,16 @@ export default function OrderHistory() {
                       <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(order.status)}`}>
                         {order.status}
                       </span>
+                      <button
+                        onClick={() => handleDownloadInvoice(order)}
+                        className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors duration-200 flex items-center gap-1"
+                        title="Download Invoice"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Invoice
+                      </button>
                       <button
                         onClick={() => {
                           setSelectedOrder(order);
@@ -366,6 +413,19 @@ export default function OrderHistory() {
                         <h4 className="text-sm font-medium text-dark-brown truncate">{item.name}</h4>
                         <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
                         <p className="text-sm text-gray-600">{formatINR(item.price)} × {item.quantity}</p>
+                        
+                        {/* Write Review Button */}
+                        {(selectedOrder.status === 'Delivered' || selectedOrder.status === 'Shipped') && (
+                          <button
+                            onClick={() => handleWriteReview(item)}
+                            className="mt-2 text-xs font-medium text-dark-brown hover:text-accent-red flex items-center gap-1 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                            Write Review
+                          </button>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-base font-bold text-dark-brown">{formatINR(item.price * item.quantity)}</p>
@@ -408,15 +468,38 @@ export default function OrderHistory() {
               <p className="text-xs text-gray-600">
                 Need help? <a href="/support" className="text-dark-brown hover:text-accent-red font-medium">Contact Support</a>
               </p>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="px-6 py-2 bg-dark-brown text-white rounded-lg hover:bg-accent-red transition-colors duration-200"
-              >
-                Close
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleDownloadInvoice(selectedOrder)}
+                  className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download Invoice
+                </button>
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="px-6 py-2 bg-dark-brown text-white rounded-lg hover:bg-accent-red transition-colors duration-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && reviewingProduct && (
+        <ReviewModal
+          product={reviewingProduct}
+          onClose={() => {
+            setShowReviewModal(false);
+            setReviewingProduct(null);
+          }}
+          onSuccess={handleReviewSuccess}
+        />
       )}
     </div>
   );

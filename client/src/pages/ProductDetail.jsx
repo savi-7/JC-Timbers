@@ -6,6 +6,8 @@ import api from '../api/axios';
 import { useNotification } from '../components/NotificationProvider';
 import Header from '../components/Header';
 import SimilarProducts from '../components/SimilarProducts';
+import ProductReviews from '../components/ProductReviews';
+import ReviewModal from '../components/ReviewModal';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -19,6 +21,7 @@ export default function ProductDetail() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [showSpecifications, setShowSpecifications] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   // Fetch product details
   useEffect(() => {
@@ -317,6 +320,47 @@ export default function ProductDetail() {
               <p className="text-gray-700 leading-relaxed">{product.description}</p>
             </div>
 
+            {/* Write a Review Button */}
+            <div className="my-6 py-6 border-y border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-dark-brown">Customer Ratings & Reviews</h3>
+                {product.rating > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <svg
+                          key={i}
+                          className={`w-5 h-5 ${i < Math.round(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 fill-gray-300'}`}
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">
+                      {product.rating.toFixed(1)} ({product.reviewCount || 0} {product.reviewCount === 1 ? 'review' : 'reviews'})
+                    </span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    showError('Please login to write a review');
+                    navigate('/login');
+                    return;
+                  }
+                  setShowReviewModal(true);
+                }}
+                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-dark-brown to-accent-red text-white rounded-lg hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+                Write a Review
+              </button>
+            </div>
+
             {/* Specifications */}
             <div>
               <button
@@ -485,9 +529,25 @@ export default function ProductDetail() {
         {product && (
           <div className="max-w-7xl mx-auto px-6">
             <SimilarProducts productId={product._id} maxItems={4} />
+
+            {/* Customer Reviews Section */}
+            <ProductReviews productId={product._id} />
           </div>
         )}
       </main>
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <ReviewModal
+          product={product}
+          onClose={() => setShowReviewModal(false)}
+          onSuccess={() => {
+            setShowReviewModal(false);
+            // Refresh product data to show updated rating
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }
