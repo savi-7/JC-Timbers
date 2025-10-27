@@ -22,10 +22,13 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState({
     name: '',
     phone: '',
-    addressLine: '',
-    city: '',
+    pincode: '',
     state: '',
-    zip: ''
+    addressLine: '',
+    flatHouseCompany: '',
+    city: '',
+    landmark: '',
+    addressType: 'Home'
   });
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [cartItems, setCartItems] = useState([]);
@@ -87,7 +90,8 @@ export default function CheckoutPage() {
   const total = subtotal + shipping;
 
   // Check if address is complete
-  const isAddressComplete = address.name && address.phone && address.addressLine && address.city && address.state && address.zip;
+  const isAddressComplete = address.name && address.phone && address.pincode && address.state && 
+                           address.addressLine && address.flatHouseCompany && address.city;
 
   // Load Razorpay script
   const loadRazorpayScript = () => {
@@ -117,8 +121,15 @@ export default function CheckoutPage() {
       const orderResponse = await api.post('/payment/razorpay', {
         amount: total,
         address: {
-          ...address,
-          addressLine: address.addressLine || address.address
+          name: address.name,
+          phone: address.phone,
+          addressLine: address.addressLine,
+          flatHouseCompany: address.flatHouseCompany,
+          city: address.city,
+          state: address.state,
+          zip: address.pincode || address.zip,
+          landmark: address.landmark,
+          addressType: address.addressType
         }
       });
 
@@ -141,8 +152,15 @@ export default function CheckoutPage() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               address: {
-                ...address,
-                addressLine: address.addressLine || address.address
+                name: address.name,
+                phone: address.phone,
+                addressLine: address.addressLine,
+                flatHouseCompany: address.flatHouseCompany,
+                city: address.city,
+                state: address.state,
+                zip: address.pincode || address.zip,
+                landmark: address.landmark,
+                addressType: address.addressType
               }
             });
 
@@ -168,7 +186,7 @@ export default function CheckoutPage() {
           email: 'customer@example.com' // Optional but recommended
         },
         notes: {
-          address: `${address.addressLine}, ${address.city}, ${address.state} - ${address.zip}`
+          address: `${address.flatHouseCompany}, ${address.addressLine}, ${address.city}, ${address.state} - ${address.pincode || address.zip}`
         },
         theme: {
           color: '#5A3E36'
@@ -196,8 +214,15 @@ export default function CheckoutPage() {
 
       const response = await api.post('/payment/cod', {
         address: {
-          ...address,
-          addressLine: address.addressLine || address.address
+          name: address.name,
+          phone: address.phone,
+          addressLine: address.addressLine,
+          flatHouseCompany: address.flatHouseCompany,
+          city: address.city,
+          state: address.state,
+          zip: address.pincode || address.zip,
+          landmark: address.landmark,
+          addressType: address.addressType
         }
       });
 

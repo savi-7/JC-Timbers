@@ -21,9 +21,10 @@ export default function AddressManagement() {
     pincode: '',
     state: '',
     address: '',
+    flatHouseCompany: '',
     city: '',
     landmark: '',
-    addressType: 'home',
+    addressType: 'Home',
     isDefault: false
   });
 
@@ -97,6 +98,13 @@ export default function AddressManagement() {
       newErrors.city = 'City/Town is required';
     } else if (!validateCity(formData.city)) {
       newErrors.city = 'City must be between 2 and 50 characters';
+    }
+
+    // Flat/House/Company validation
+    if (!formData.flatHouseCompany.trim()) {
+      newErrors.flatHouseCompany = 'Flat/House/Company address is required';
+    } else if (formData.flatHouseCompany.trim().length < 2) {
+      newErrors.flatHouseCompany = 'Must be at least 2 characters';
     }
 
     // Landmark validation (optional but if provided, must be valid)
@@ -190,8 +198,9 @@ export default function AddressManagement() {
       pincode: address.pincode,
       state: address.state,
       address: address.address,
+      flatHouseCompany: address.flatHouseCompany || '',
       city: address.city,
-      landmark: address.landmark,
+      landmark: address.landmark || '',
       addressType: address.addressType,
       isDefault: address.isDefault
     });
@@ -390,20 +399,38 @@ export default function AddressManagement() {
                 </div>
                 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                  <textarea
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Address (Area, Street, Sector, Village)</label>
+                  <input
+                    type="text"
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
-                    rows={3}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
                       errors.address ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Flat/House/Company address"
+                    placeholder="Area, Street, Sector, Village"
                     required
                   />
                   {errors.address && (
                     <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+                  )}
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Flat / House No. / Building / Company</label>
+                  <input
+                    type="text"
+                    name="flatHouseCompany"
+                    value={formData.flatHouseCompany}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
+                      errors.flatHouseCompany ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Flat No., House No., Building Name, Company Name"
+                    required
+                  />
+                  {errors.flatHouseCompany && (
+                    <p className="mt-1 text-sm text-red-600">{errors.flatHouseCompany}</p>
                   )}
                 </div>
                 
@@ -449,9 +476,9 @@ export default function AddressManagement() {
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200"
                   >
-                    <option value="home">Home</option>
-                    <option value="office">Office</option>
-                    <option value="other">Other</option>
+                    <option value="Home">Home</option>
+                    <option value="Office">Office</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 
@@ -547,10 +574,11 @@ export default function AddressManagement() {
                   <h4 className="font-semibold text-dark-brown">{address.fullName}</h4>
                   <p className="text-gray-600">{address.mobileNumber}</p>
                   <p className="text-gray-600">
+                    {address.flatHouseCompany && `${address.flatHouseCompany}, `}
                     {address.address}, {address.city}, {address.state} - {address.pincode}
                   </p>
                   {address.landmark && (
-                    <p className="text-sm text-gray-500">Near: {address.landmark}</p>
+                    <p className="text-sm text-gray-500">Landmark: {address.landmark}</p>
                   )}
                 </div>
                 

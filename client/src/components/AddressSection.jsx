@@ -9,10 +9,13 @@ export default function AddressSection({ address, setAddress, onComplete }) {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    addressLine: '',
-    city: '',
+    pincode: '',
     state: '',
-    zip: ''
+    addressLine: '',
+    flatHouseCompany: '',
+    city: '',
+    landmark: '',
+    addressType: 'Home'
   });
 
   useEffect(() => {
@@ -37,17 +40,20 @@ export default function AddressSection({ address, setAddress, onComplete }) {
         const userAddress = {
           name: addressData.name || response.data.user.name || '',
           phone: addressData.phone || response.data.user.phone || '',
-          addressLine: addressData.addressLine || addressData.address || '',
-          city: addressData.city || '',
+          pincode: addressData.pincode || addressData.zip || '',
           state: addressData.state || '',
-          zip: addressData.zip || ''
+          addressLine: addressData.addressLine || addressData.address || '',
+          flatHouseCompany: addressData.flatHouseCompany || '',
+          city: addressData.city || '',
+          landmark: addressData.landmark || '',
+          addressType: addressData.addressType || 'Home'
         };
         
         setFormData(userAddress);
         setAddress(userAddress);
         
         // If user has valid address, mark as complete
-        if (userAddress.addressLine && userAddress.city && userAddress.state && userAddress.zip) {
+        if (userAddress.addressLine && userAddress.flatHouseCompany && userAddress.city && userAddress.state && userAddress.pincode) {
           setIsEditing(false);
         } else {
           setIsEditing(true);
@@ -71,21 +77,28 @@ export default function AddressSection({ address, setAddress, onComplete }) {
   };
 
   const handleSave = async () => {
-    // Validate all fields
-    if (!formData.name || !formData.phone || !formData.addressLine || !formData.city || !formData.state || !formData.zip) {
-      showError('Please fill in all address fields');
+    // Validate all required fields
+    if (!formData.name || !formData.phone || !formData.pincode || !formData.state || 
+        !formData.addressLine || !formData.flatHouseCompany || !formData.city) {
+      showError('Please fill in all required fields');
+      return;
+    }
+
+    // Full name validation
+    if (formData.name.trim().length < 3) {
+      showError('Full name must be at least 3 characters');
       return;
     }
 
     // Phone validation
     if (!/^\d{10}$/.test(formData.phone)) {
-      showError('Please enter a valid 10-digit phone number');
+      showError('Mobile number must be exactly 10 digits');
       return;
     }
 
-    // ZIP validation
-    if (!/^\d{6}$/.test(formData.zip)) {
-      showError('Please enter a valid 6-digit PIN code');
+    // Pincode validation
+    if (!/^\d{6}$/.test(formData.pincode)) {
+      showError('Pincode must be exactly 6 digits');
       return;
     }
 
@@ -138,20 +151,30 @@ export default function AddressSection({ address, setAddress, onComplete }) {
       {!isEditing && address.addressLine ? (
         <div className="bg-gray-50 rounded-lg p-4">
           <div className="space-y-2">
-            <p className="font-semibold text-gray-900">{address.name}</p>
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-gray-900">{address.name}</p>
+              <span className="px-2 py-1 text-xs font-medium text-white bg-dark-brown rounded">
+                {address.addressType || 'Home'}
+              </span>
+            </div>
+            <p className="text-gray-700">{address.flatHouseCompany}</p>
             <p className="text-gray-700">{address.addressLine}</p>
+            {address.landmark && (
+              <p className="text-gray-600 text-sm">Landmark: {address.landmark}</p>
+            )}
             <p className="text-gray-700">
-              {address.city}, {address.state} - {address.zip}
+              {address.city}, {address.state} - {address.pincode || address.zip}
             </p>
-            <p className="text-gray-700">Phone: {address.phone}</p>
+            <p className="text-gray-700 font-medium">Mobile: {address.phone}</p>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Row 1: Full Name and Mobile Number */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name *
+                Full Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -159,13 +182,14 @@ export default function AddressSection({ address, setAddress, onComplete }) {
                 value={formData.name}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
-                placeholder="John Doe"
+                placeholder="Enter your full name"
+                required
               />
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number *
+                Mobile Number <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
@@ -174,43 +198,34 @@ export default function AddressSection({ address, setAddress, onComplete }) {
                 onChange={handleChange}
                 maxLength="10"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
-                placeholder="9876543210"
+                placeholder="10-digit mobile number"
+                required
               />
+              <p className="text-xs text-gray-500 mt-1">Enter 10-digit mobile number</p>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Address *
-            </label>
-            <textarea
-              name="addressLine"
-              value={formData.addressLine}
-              onChange={handleChange}
-              rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
-              placeholder="Flat, House no., Building, Company, Apartment"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Row 2: Pincode and State */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                City *
+                Pincode <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                name="city"
-                value={formData.city}
+                name="pincode"
+                value={formData.pincode}
                 onChange={handleChange}
+                maxLength="6"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
-                placeholder="Mumbai"
+                placeholder="6-digit pincode"
+                required
               />
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                State *
+                State <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -218,34 +233,127 @@ export default function AddressSection({ address, setAddress, onComplete }) {
                 value={formData.state}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
-                placeholder="Maharashtra"
+                placeholder="Enter state"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Row 3: Address (Area, Street, etc.) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address (Area, Street, Sector, Village) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="addressLine"
+              value={formData.addressLine}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
+              placeholder="Area, Street, Sector, Village"
+              required
+            />
+          </div>
+
+          {/* Row 4: Flat/House/Company Address */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Flat / House No. / Building / Company <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="flatHouseCompany"
+              value={formData.flatHouseCompany}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
+              placeholder="Flat No., House No., Building Name, Company Name"
+              required
+            />
+          </div>
+
+          {/* Row 5: City/Town and Landmark */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                City / Town <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
+                placeholder="Enter city or town"
+                required
               />
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                PIN Code *
+                Landmark <span className="text-gray-400">(Optional)</span>
               </label>
               <input
                 type="text"
-                name="zip"
-                value={formData.zip}
+                name="landmark"
+                value={formData.landmark}
                 onChange={handleChange}
-                maxLength="6"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
-                placeholder="400001"
+                placeholder="Nearby landmark"
               />
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-2">
-            {!loading && address.address && (
+          {/* Row 6: Address Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address Type <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="addressType"
+                  value="Home"
+                  checked={formData.addressType === 'Home'}
+                  onChange={handleChange}
+                  className="mr-2 w-4 h-4 text-dark-brown focus:ring-dark-brown"
+                />
+                <span className="text-gray-700">Home</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="addressType"
+                  value="Office"
+                  checked={formData.addressType === 'Office'}
+                  onChange={handleChange}
+                  className="mr-2 w-4 h-4 text-dark-brown focus:ring-dark-brown"
+                />
+                <span className="text-gray-700">Office</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="addressType"
+                  value="Other"
+                  checked={formData.addressType === 'Other'}
+                  onChange={handleChange}
+                  className="mr-2 w-4 h-4 text-dark-brown focus:ring-dark-brown"
+                />
+                <span className="text-gray-700">Other</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4">
+            {!loading && address.addressLine && (
               <button
                 onClick={() => {
                   setFormData(address);
                   setIsEditing(false);
                 }}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -254,7 +362,7 @@ export default function AddressSection({ address, setAddress, onComplete }) {
               onClick={handleSave}
               className="px-6 py-2 bg-dark-brown text-white rounded-lg hover:bg-accent-red font-medium transition-colors"
             >
-              Save Address
+              Save & Continue
             </button>
           </div>
         </div>

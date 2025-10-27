@@ -14,12 +14,24 @@ const addressSchema = new mongoose.Schema({
   mobileNumber: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return /^\d{10}$/.test(v);
+      },
+      message: 'Mobile number must be 10 digits'
+    }
   },
   pincode: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return /^\d{6}$/.test(v);
+      },
+      message: 'Pincode must be 6 digits'
+    }
   },
   state: {
     type: String,
@@ -31,6 +43,11 @@ const addressSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  flatHouseCompany: {
+    type: String,
+    required: true,
+    trim: true
+  },
   city: {
     type: String,
     required: true,
@@ -38,7 +55,8 @@ const addressSchema = new mongoose.Schema({
   },
   landmark: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
   isDefault: {
     type: Boolean,
@@ -46,8 +64,8 @@ const addressSchema = new mongoose.Schema({
   },
   addressType: {
     type: String,
-    enum: ['home', 'office', 'other'],
-    default: 'home'
+    enum: ['Home', 'Office', 'Other'],
+    default: 'Home'
   }
 }, {
   timestamps: true

@@ -15,7 +15,22 @@ const getUserAddresses = async (req, res) => {
 // Add new address
 const addAddress = async (req, res) => {
   try {
-    const { fullName, mobileNumber, pincode, state, address, city, landmark, isDefault, addressType } = req.body;
+    const { fullName, mobileNumber, pincode, state, address, flatHouseCompany, city, landmark, isDefault, addressType } = req.body;
+
+    // Validation
+    if (!fullName || !mobileNumber || !pincode || !state || !address || !flatHouseCompany || !city) {
+      return res.status(400).json({ success: false, message: 'All required fields must be filled' });
+    }
+
+    // Validate mobile number
+    if (!/^\d{10}$/.test(mobileNumber)) {
+      return res.status(400).json({ success: false, message: 'Mobile number must be 10 digits' });
+    }
+
+    // Validate pincode
+    if (!/^\d{6}$/.test(pincode)) {
+      return res.status(400).json({ success: false, message: 'Pincode must be 6 digits' });
+    }
 
     // If this is set as default, remove default from other addresses
     if (isDefault) {
@@ -29,17 +44,18 @@ const addAddress = async (req, res) => {
       pincode,
       state,
       address,
+      flatHouseCompany,
       city,
-      landmark,
+      landmark: landmark || '',
       isDefault: isDefault || false,
-      addressType: addressType || 'home'
+      addressType: addressType || 'Home'
     });
 
     await newAddress.save();
     res.status(201).json({ success: true, message: 'Address added successfully', address: newAddress });
   } catch (error) {
     console.error('Error adding address:', error);
-    res.status(500).json({ success: false, message: 'Failed to add address' });
+    res.status(500).json({ success: false, message: error.message || 'Failed to add address' });
   }
 };
 
@@ -47,11 +63,20 @@ const addAddress = async (req, res) => {
 const updateAddress = async (req, res) => {
   try {
     const { id } = req.params;
-    const { fullName, mobileNumber, pincode, state, address, city, landmark, isDefault, addressType } = req.body;
+    const { fullName, mobileNumber, pincode, state, address, flatHouseCompany, city, landmark, isDefault, addressType } = req.body;
 
     const existingAddress = await Address.findOne({ _id: id, userId: req.user.id });
     if (!existingAddress) {
       return res.status(404).json({ success: false, message: 'Address not found' });
+    }
+
+    // Validation
+    if (mobileNumber && !/^\d{10}$/.test(mobileNumber)) {
+      return res.status(400).json({ success: false, message: 'Mobile number must be 10 digits' });
+    }
+
+    if (pincode && !/^\d{6}$/.test(pincode)) {
+      return res.status(400).json({ success: false, message: 'Pincode must be 6 digits' });
     }
 
     // If this is set as default, remove default from other addresses
@@ -67,18 +92,19 @@ const updateAddress = async (req, res) => {
         pincode,
         state,
         address,
+        flatHouseCompany,
         city,
         landmark,
         isDefault,
         addressType
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     res.json({ success: true, message: 'Address updated successfully', address: updatedAddress });
   } catch (error) {
     console.error('Error updating address:', error);
-    res.status(500).json({ success: false, message: 'Failed to update address' });
+    res.status(500).json({ success: false, message: error.message || 'Failed to update address' });
   }
 };
 
