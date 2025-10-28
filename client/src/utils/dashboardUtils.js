@@ -33,8 +33,9 @@ export const calculateCustomerStats = (detailedData, stats) => {
   };
 };
 
-export const createSafeStats = (dashboardData, customerStats) => {
+export const createSafeStats = (dashboardData, customerStats, revenueData) => {
   const stats = dashboardData || {};
+  const revenue = revenueData || {};
   
   return {
     totalUsers: customerStats.totalCustomers, // Use calculated customer stats
@@ -43,7 +44,11 @@ export const createSafeStats = (dashboardData, customerStats) => {
     pendingOrders: typeof stats?.pendingOrders === 'number' ? stats.pendingOrders : 0,
     lowStockItems: typeof stats?.lowStockItems === 'number' ? stats.lowStockItems : 0,
     activeUsers: typeof stats?.activeUsers === 'number' ? stats.activeUsers : 0,
-    newUsers: customerStats.newCustomers // Use calculated customer stats
+    newUsers: customerStats.newCustomers, // Use calculated customer stats
+    totalRevenue: typeof revenue?.totalRevenue === 'number' ? revenue.totalRevenue : 0,
+    onlineRevenue: typeof revenue?.onlineRevenue === 'number' ? revenue.onlineRevenue : 0,
+    codRevenue: typeof revenue?.codRevenue === 'number' ? revenue.codRevenue : 0,
+    pendingCODRevenue: typeof revenue?.pendingCODRevenue === 'number' ? revenue.pendingCODRevenue : 0
   };
 };
 

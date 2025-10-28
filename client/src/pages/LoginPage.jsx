@@ -249,13 +249,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex flex-col lg:flex-row relative overflow-hidden">
-      {/* Subtle pattern background */}
+    <div className="min-h-screen bg-cream flex flex-col lg:flex-row relative overflow-hidden">
+      {/* Timber pattern background */}
       <div className="absolute inset-0 opacity-5">
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' ... %3C/svg%3E")`,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232E0F13' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         ></div>
       </div>
@@ -276,9 +276,9 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-6 sm:mb-8 lg:mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-gray-600 to-gray-700 rounded-2xl sm:rounded-3xl mb-4 sm:mb-6 shadow-2xl border-4 border-gray-500/20">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-dark-brown to-accent-red rounded-2xl sm:rounded-3xl mb-4 sm:mb-6 shadow-2xl border-4 border-accent-red/20">
               <svg
-                className="w-8 h-8 sm:w-10 sm:h-10 text-white"
+                className="w-8 h-8 sm:w-10 sm:h-10 text-cream"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -291,11 +291,11 @@ export default function LoginPage() {
                 />
               </svg>
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-800 to-gray-700 bg-clip-text text-transparent mb-2 sm:mb-3">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-dark-brown mb-2 sm:mb-3">
               Welcome Back
             </h1>
-            <p className="text-gray-700 text-sm sm:text-base lg:text-lg font-medium">
-              Sign in to your timber account
+            <p className="text-dark-brown/70 text-sm sm:text-base lg:text-lg font-paragraph font-medium">
+              Sign in to your JC Timbers account
             </p>
           </div>
 
@@ -304,7 +304,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                   {/* Email */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-800">
+                    <label className="block text-sm font-semibold text-dark-brown font-paragraph">
                       Email Address
                     </label>
                     <div className="relative">
@@ -314,8 +314,8 @@ export default function LoginPage() {
                             errors.email && touched.email 
                               ? "text-red-500" 
                               : fieldStates.email === "focused" 
-                                ? "text-blue-500" 
-                                : "text-gray-700"
+                                ? "text-accent-red" 
+                                : "text-dark-brown/60"
                           }`}
                           fill="none"
                           stroke="currentColor"
@@ -337,12 +337,12 @@ export default function LoginPage() {
                         onChange={handleInputChange}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        className={`w-full pl-12 pr-4 py-3 sm:py-4 border rounded-xl sm:rounded-2xl transition-all duration-200 text-sm sm:text-base ${
+                        className={`w-full pl-12 pr-4 py-3 sm:py-4 border rounded-xl sm:rounded-2xl transition-all duration-200 text-sm sm:text-base font-paragraph ${
                           errors.email && touched.email
                             ? "border-red-500 focus:ring-4 focus:ring-red-500/30 focus:border-red-500 bg-red-50/50"
                             : fieldStates.email === "focused"
-                              ? "border-blue-500 focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 bg-blue-50/50"
-                              : "border-gray-200 focus:ring-4 focus:ring-gray-500/30 focus:border-gray-500 bg-white/80 hover:border-gray-300"
+                              ? "border-accent-red focus:ring-4 focus:ring-accent-red/30 focus:border-accent-red bg-light-cream"
+                              : "border-dark-brown/20 focus:ring-4 focus:ring-accent-red/30 focus:border-accent-red bg-white/80 hover:border-dark-brown/30"
                         }`}
                       />
                       {errors.email && touched.email && (
@@ -358,7 +358,7 @@ export default function LoginPage() {
 
                   {/* Password */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-800">
+                    <label className="block text-sm font-semibold text-dark-brown font-paragraph">
                       Password
                     </label>
                     <div className="relative">
@@ -368,8 +368,8 @@ export default function LoginPage() {
                             errors.password && touched.password 
                               ? "text-red-500" 
                               : fieldStates.password === "focused" 
-                                ? "text-blue-500" 
-                                : "text-gray-700"
+                                ? "text-accent-red" 
+                                : "text-dark-brown/60"
                           }`}
                           fill="none"
                           stroke="currentColor"
@@ -391,12 +391,12 @@ export default function LoginPage() {
                         onChange={handleInputChange}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        className={`w-full pl-12 pr-4 py-3 sm:py-4 border rounded-xl sm:rounded-2xl transition-all duration-200 text-sm sm:text-base ${
+                        className={`w-full pl-12 pr-4 py-3 sm:py-4 border rounded-xl sm:rounded-2xl transition-all duration-200 text-sm sm:text-base font-paragraph ${
                           errors.password && touched.password
                             ? "border-red-500 focus:ring-4 focus:ring-red-500/30 focus:border-red-500 bg-red-50/50"
                             : fieldStates.password === "focused"
-                              ? "border-blue-500 focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 bg-blue-50/50"
-                              : "border-gray-200 focus:ring-4 focus:ring-gray-500/30 focus:border-gray-500 bg-white/80 hover:border-gray-300"
+                              ? "border-accent-red focus:ring-4 focus:ring-accent-red/30 focus:border-accent-red bg-light-cream"
+                              : "border-dark-brown/20 focus:ring-4 focus:ring-accent-red/30 focus:border-accent-red bg-white/80 hover:border-dark-brown/30"
                         }`}
                       />
                       {errors.password && touched.password && (
@@ -413,7 +413,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={handleForgotPassword}
-                        className="text-sm text-gray-700 hover:text-gray-800 font-medium transition-colors duration-200"
+                        className="text-sm text-dark-brown/70 hover:text-accent-red font-paragraph font-medium transition-colors duration-200"
                       >
                         Forgot password?
                       </button>
@@ -424,7 +424,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold py-3 sm:py-4 px-6 rounded-xl sm:rounded-2xl hover:from-gray-700 hover:to-gray-800 transform hover:scale-[1.02] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-accent-red to-dark-brown text-cream font-heading font-semibold py-3 sm:py-4 px-6 rounded-xl sm:rounded-2xl hover:from-dark-brown hover:to-accent-red transform hover:scale-[1.02] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -457,18 +457,18 @@ export default function LoginPage() {
 
               {/* Divider */}
               <div className="flex items-center my-4 sm:my-6">
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
-                <span className="px-3 sm:px-4 text-gray-600 font-medium text-xs sm:text-sm">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-dark-brown/20 to-transparent"></div>
+                <span className="px-3 sm:px-4 text-dark-brown/70 font-paragraph font-medium text-xs sm:text-sm">
                   or continue with
                 </span>
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-dark-brown/20 to-transparent"></div>
               </div>
 
               {/* Google Button */}
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-white/90 border border-gray-200 text-gray-800 py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl hover:border-gray-300 transform hover:scale-[1.02] transition-all shadow-md hover:shadow-lg"
+                className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-white/90 border border-dark-brown/20 text-dark-brown py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl hover:border-accent-red hover:bg-light-cream transform hover:scale-[1.02] transition-all shadow-md hover:shadow-lg"
               >
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -476,19 +476,19 @@ export default function LoginPage() {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                <span className="font-medium text-sm sm:text-base">
+                <span className="font-paragraph font-medium text-sm sm:text-base">
                   Sign in with Google
                 </span>
               </button>
 
               {/* Register */}
               <div className="text-center pt-3 sm:pt-4">
-                <span className="text-gray-700 text-sm sm:text-base">
+                <span className="text-dark-brown/70 font-paragraph text-sm sm:text-base">
                   Don't have an account?{" "}
                 </span>
                 <button
                   onClick={() => navigate("/register")}
-                  className="text-gray-800 hover:text-gray-900 font-semibold hover:underline text-sm sm:text-base"
+                  className="text-accent-red hover:text-dark-brown font-heading font-semibold hover:underline text-sm sm:text-base"
                 >
                   Sign up
                 </button>

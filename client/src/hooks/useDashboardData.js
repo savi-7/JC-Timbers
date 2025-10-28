@@ -50,7 +50,8 @@ export function useDetailedData() {
   const [detailedData, setDetailedData] = useState({
     users: [],
     products: [],
-    orders: []
+    orders: [],
+    revenue: null
   });
   const [detailedLoading, setDetailedLoading] = useState(true);
 
@@ -99,6 +100,28 @@ export function useDetailedData() {
     fetchProductData();
   }, []);
 
+  // Fetch revenue data on component mount
+  useEffect(() => {
+    const fetchRevenueData = async () => {
+      try {
+        const response = await api.get('/admin/revenue-stats');
+        const data = response.data;
+        
+        console.log('Revenue API Response:', data); // Debug logging
+        
+        setDetailedData(prev => ({
+          ...prev,
+          revenue: data
+        }));
+      } catch (error) {
+        console.error('Error fetching revenue data:', error);
+        console.error('Revenue fetch error details:', error.response?.data || error.message);
+      }
+    };
+
+    fetchRevenueData();
+  }, []);
+
   // Fetch detailed data for modals
   const fetchDetailedData = async (type) => {
     try {
@@ -111,6 +134,8 @@ export function useDetailedData() {
         url = '/admin/users';
       } else if (type === 'orders') {
         url = '/orders';
+      } else if (type === 'revenue') {
+        url = '/admin/revenue-stats';
       }
       
       console.log(`Fetching ${type} data from:`, url); // Debug logging
@@ -124,7 +149,8 @@ export function useDetailedData() {
         ...prev,
         [type]: type === 'users' ? (data.users || []) : 
                 type === 'products' ? (data.products || []) :
-                type === 'orders' ? (data.orders || data || []) : data
+                type === 'orders' ? (data.orders || data || []) :
+                type === 'revenue' ? data : data
       }));
     } catch (error) {
       console.error(`Error fetching ${type} data:`, error);
@@ -138,12 +164,14 @@ export function useModalState() {
   const [showUsersModal, setShowUsersModal] = useState(false);
   const [showProductsModal, setShowProductsModal] = useState(false);
   const [showOrdersModal, setShowOrdersModal] = useState(false);
+  const [showRevenueModal, setShowRevenueModal] = useState(false);
 
   const handleCardClick = (type, fetchDetailedData) => {
     fetchDetailedData(type);
     if (type === 'users') setShowUsersModal(true);
     if (type === 'products') setShowProductsModal(true);
     if (type === 'orders') setShowOrdersModal(true);
+    if (type === 'revenue') setShowRevenueModal(true);
   };
 
   return {
@@ -153,6 +181,8 @@ export function useModalState() {
     setShowProductsModal,
     showOrdersModal,
     setShowOrdersModal,
+    showRevenueModal,
+    setShowRevenueModal,
     handleCardClick
   };
 }

@@ -125,6 +125,22 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
             </button>
           </div>
 
+          {/* Tools Section */}
+          <div className="space-y-1 mt-6">
+            <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Tools
+            </div>
+            <button 
+              onClick={() => navigate('/admin/timber-calculator')}
+              className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
+            >
+              <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span className="truncate">Timber Calculator</span>
+            </button>
+          </div>
+
           {/* System Actions */}
           <div className="space-y-1 mt-6">
             <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">

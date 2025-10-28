@@ -1,6 +1,8 @@
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
+import User from "../models/User.js";
+import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from "../services/emailService.js";
 
 export const checkout = async (req, res) => {
   try {
@@ -78,6 +80,7 @@ export const checkout = async (req, res) => {
       totalAmount,
       address,
       paymentMethod: ["COD", "Online"].includes(paymentMethod) ? paymentMethod : "COD",
+      paymentStatus: paymentMethod === "Online" ? "Paid" : "Pending",
       status: "Pending"
     });
 
@@ -113,6 +116,26 @@ export const checkout = async (req, res) => {
     // Clear cart
     cart.items = [];
     await cart.save();
+
+    // Send order confirmation email with PDF invoice
+    try {
+      // Get user email
+      const user = await User.findById(userId).select('email');
+      if (user && user.email) {
+        console.log(`📧 Sending order confirmation email to: ${user.email}`);
+        const emailResult = await sendOrderConfirmationEmail(order, user.email);
+        if (emailResult.success) {
+          console.log('✅ Order confirmation email sent successfully!');
+        } else {
+          console.warn('⚠️  Order confirmation email failed:', emailResult.error);
+        }
+      } else {
+        console.warn('⚠️  User email not found, skipping email notification');
+      }
+    } catch (emailError) {
+      // Don't fail the order if email fails
+      console.error('❌ Error sending order confirmation email:', emailError.message);
+    }
 
     return res.status(201).json(order);
   } catch (err) {
@@ -180,8 +203,25 @@ export const adminUpdateOrderStatus = async (req, res) => {
       id,
       { status },
       { new: true }
-    );
+    ).populate({ path: "user", select: "email" });
+    
     if (!order) return res.status(404).json({ message: "Order not found" });
+    
+    // Send status update email
+    try {
+      if (order.user && order.user.email) {
+        console.log(`📧 Sending order status update email to: ${order.user.email}`);
+        const emailResult = await sendOrderStatusUpdateEmail(order, order.user.email, status);
+        if (emailResult.success) {
+          console.log('✅ Status update email sent successfully!');
+        } else {
+          console.warn('⚠️  Status update email failed:', emailResult.error);
+        }
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending status update email:', emailError.message);
+    }
+    
     return res.status(200).json(order);
   } catch (err) {
     return res.status(500).json({ message: "Failed to update order status", error: err.message });
@@ -203,5 +243,96 @@ function normalizeStatus(value) {
       return v.charAt(0).toUpperCase() + v.slice(1);
   }
 }
+
+// ADMIN: Mark COD order as paid
+export const adminMarkCODPaid = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    
+    // Check if it's a COD order
+    if (order.paymentMethod !== 'COD') {
+      return res.status(400).json({ message: "This is not a Cash on Delivery order" });
+    }
+    
+    // Update payment status to Paid
+    order.paymentStatus = 'Paid';
+    await order.save();
+    
+    console.log(`✅ COD Order ${id} marked as PAID`);
+    
+    return res.status(200).json({ 
+      message: "Payment received and marked as paid", 
+      order 
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to update payment status", error: err.message });
+  }
+};
+
+// ADMIN: Get revenue statistics
+export const getRevenueStats = async (req, res) => {
+  try {
+    // Get all paid orders (Online payments that are Paid, and COD orders marked as Paid)
+    const paidOrders = await Order.find({ 
+      paymentStatus: 'Paid',
+      status: { $ne: 'Cancelled' } // Exclude cancelled orders
+    });
+    
+    // Calculate total revenue
+    const totalRevenue = paidOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    
+    // Calculate revenue by payment method
+    const onlineRevenue = paidOrders
+      .filter(order => order.paymentMethod === 'Online')
+      .reduce((sum, order) => sum + order.totalAmount, 0);
+    
+    const codRevenue = paidOrders
+      .filter(order => order.paymentMethod === 'COD')
+      .reduce((sum, order) => sum + order.totalAmount, 0);
+    
+    // Get pending COD payments (COD orders not yet paid)
+    const pendingCODOrders = await Order.find({
+      paymentMethod: 'COD',
+      paymentStatus: { $ne: 'Paid' },
+      status: { $nin: ['Cancelled'] }
+    });
+    
+    const pendingCODRevenue = pendingCODOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    
+    // Count orders
+    const totalPaidOrders = paidOrders.length;
+    const onlineOrders = paidOrders.filter(order => order.paymentMethod === 'Online').length;
+    const codOrders = paidOrders.filter(order => order.paymentMethod === 'COD').length;
+    const pendingCODOrdersCount = pendingCODOrders.length;
+    
+    console.log('Revenue Stats:', {
+      totalRevenue,
+      onlineRevenue,
+      codRevenue,
+      pendingCODRevenue,
+      totalPaidOrders,
+      onlineOrders,
+      codOrders,
+      pendingCODOrdersCount
+    });
+    
+    return res.status(200).json({
+      totalRevenue,
+      onlineRevenue,
+      codRevenue,
+      pendingCODRevenue,
+      totalPaidOrders,
+      onlineOrders,
+      codOrders,
+      pendingCODOrdersCount
+    });
+  } catch (err) {
+    console.error('Error fetching revenue stats:', err);
+    return res.status(500).json({ message: "Failed to fetch revenue statistics", error: err.message });
+  }
+};
 
 

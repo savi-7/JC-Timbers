@@ -60,6 +60,33 @@ export default function AdminOrders() {
     }
   };
 
+  const markCODPaid = async (orderId) => {
+    try {
+      setUpdating(true);
+      const response = await api.put(`/admin/orders/${orderId}/mark-paid`);
+      
+      // Update local state with the returned order
+      const updatedOrder = response.data.order;
+      setOrders(orders.map(order => 
+        order._id === orderId ? { ...order, paymentStatus: 'Paid' } : order
+      ));
+      
+      if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder({ ...selectedOrder, paymentStatus: 'Paid' });
+      }
+      
+      // Refresh orders to get updated revenue stats
+      fetchOrders();
+      
+      alert('COD payment marked as received successfully!');
+    } catch (err) {
+      console.error('Error marking COD as paid:', err);
+      alert(err.response?.data?.message || 'Failed to mark COD as paid');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', { 
       style: 'currency', 
@@ -371,6 +398,17 @@ export default function AdminOrders() {
                         {selectedOrder.paymentStatus}
                       </span>
                     </div>
+                    {selectedOrder.paymentMethod === 'COD' && selectedOrder.paymentStatus !== 'Paid' && (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => markCODPaid(selectedOrder._id)}
+                          disabled={updating}
+                          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                        >
+                          {updating ? 'Processing...' : '💰 Mark COD Payment Received'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

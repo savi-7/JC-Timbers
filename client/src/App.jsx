@@ -27,6 +27,7 @@ import OrderHistory from "./pages/OrderHistory";
 import AdminOrders from "./pages/AdminOrders";
 import MyReviews from "./pages/MyReviews";
 import AdminReviews from "./pages/AdminReviews";
+import TimberCalculator from "./pages/TimberCalculator";
 import { NotificationProvider } from "./components/NotificationProvider";
 import { CartProvider } from "./contexts/CartContext";
 
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/about" element={<AboutUs />} />
+        <Route path="/about-us" element={<AboutUs />} />
         <Route path="/contact-us" element={<ContactUs />} />
 
         {/* Protected Admin Routes */}
@@ -115,6 +117,14 @@ export default function App() {
           element={
             <ProtectedRoute role="admin">
               <AdminReviews />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/timber-calculator" 
+          element={
+            <ProtectedRoute role="admin">
+              <TimberCalculator />
             </ProtectedRoute>
           } 
         />

@@ -36,144 +36,202 @@ export const generateInvoice = (orderData) => {
     console.log('autoTable function is available');
     
     // Set up document properties
-    let yPosition = 20;
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
-    const margin = 15;
+    const margin = 20;
+    const contentWidth = pageWidth - (2 * margin);
+    let yPosition = margin;
   
   // ====================
-  // HEADER SECTION
+  // HEADER SECTION - Company Info & Logo Area
   // ====================
+  
+  // Top colored header bar
+  doc.setFillColor(91, 69, 55); // Dark brown
+  doc.rect(0, 0, pageWidth, 8, 'F');
+  
+  yPosition = 18;
   
   // Business Name (Large, Bold)
-  doc.setFontSize(24);
+  doc.setFontSize(26);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(91, 69, 55); // Dark brown color
+  doc.setTextColor(91, 69, 55);
   doc.text(BUSINESS_INFO.name, margin, yPosition);
   
-  // Business Details (Small, Right aligned)
+  // Business Details (Right aligned, neat columns)
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  const businessDetails = [
-    BUSINESS_INFO.address,
-    BUSINESS_INFO.city,
-    `Phone: ${BUSINESS_INFO.phone}`,
-    `Email: ${BUSINESS_INFO.email}`,
-    BUSINESS_INFO.gst
-  ];
-  businessDetails.forEach((line, index) => {
-    doc.text(line, pageWidth - margin, yPosition + (index * 4), { align: 'right' });
-  });
+  doc.setTextColor(80, 80, 80);
   
-  yPosition += 30;
+  const rightStartX = pageWidth - margin;
+  doc.text(BUSINESS_INFO.address, rightStartX, yPosition - 2, { align: 'right' });
+  doc.text(BUSINESS_INFO.city, rightStartX, yPosition + 2, { align: 'right' });
+  doc.text(`☎ ${BUSINESS_INFO.phone}`, rightStartX, yPosition + 6, { align: 'right' });
+  doc.text(`✉ ${BUSINESS_INFO.email}`, rightStartX, yPosition + 10, { align: 'right' });
   
-  // Horizontal line
-  doc.setDrawColor(200, 200, 200);
+  yPosition += 16;
+  
+  // Horizontal line separator
+  doc.setDrawColor(91, 69, 55);
+  doc.setLineWidth(0.5);
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
-  yPosition += 10;
+  
+  yPosition += 12;
   
   // ====================
-  // INVOICE TITLE
+  // INVOICE TITLE & ORDER DETAILS
   // ====================
-  doc.setFontSize(18);
+  
+  // "INVOICE" title with background
+  doc.setFillColor(245, 242, 240);
+  doc.rect(margin, yPosition, 45, 12, 'F');
+  
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('INVOICE', margin, yPosition);
+  doc.setTextColor(91, 69, 55);
+  doc.text('INVOICE', margin + 3, yPosition + 8);
   
-  // Invoice Number and Date (Right aligned)
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  const invoiceNumber = `#${orderData._id.toUpperCase().slice(-12)}`; // Last 12 chars to match Order Success page
+  // Invoice Number and Date (Boxed, Right aligned)
+  const invoiceNumber = `#${orderData._id.toUpperCase().slice(-12)}`;
   const invoiceDate = new Date(orderData.createdAt).toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric'
   });
-  doc.text(`Invoice No: ${invoiceNumber}`, pageWidth - margin, yPosition, { align: 'right' });
-  doc.text(`Date: ${invoiceDate}`, pageWidth - margin, yPosition + 5, { align: 'right' });
   
-  yPosition += 15;
+  const infoBoxWidth = 65;
+  const infoBoxX = pageWidth - margin - infoBoxWidth;
+  
+  doc.setFillColor(245, 242, 240);
+  doc.rect(infoBoxX, yPosition, infoBoxWidth, 12, 'F');
+  
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(60, 60, 60);
+  doc.text('Invoice No:', infoBoxX + 3, yPosition + 5);
+  doc.text('Date:', infoBoxX + 3, yPosition + 10);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  doc.text(invoiceNumber, infoBoxX + 25, yPosition + 5);
+  doc.text(invoiceDate, infoBoxX + 25, yPosition + 10);
+  
+  yPosition += 20;
   
   // ====================
-  // CUSTOMER INFORMATION
+  // CUSTOMER & PAYMENT INFORMATION (Two Boxes)
   // ====================
-  doc.setFillColor(245, 245, 245);
-  doc.rect(margin, yPosition, (pageWidth - 2 * margin) / 2 - 5, 35, 'F');
   
-  yPosition += 7;
+  const boxHeight = 42;
+  const boxGap = 6;
+  const boxWidth = (contentWidth - boxGap) / 2;
+  
+  // Left Box - Customer Information
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.setFillColor(252, 252, 252);
+  doc.roundedRect(margin, yPosition, boxWidth, boxHeight, 2, 2, 'FD');
+  
+  let leftYPos = yPosition + 6;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(91, 69, 55);
-  doc.text('Bill To:', margin + 5, yPosition);
+  doc.text('BILL TO', margin + 4, leftYPos);
   
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
+  leftYPos += 7;
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  yPosition += 5;
+  doc.text(orderData.address?.name || orderData.address?.fullName || 'Customer', margin + 4, leftYPos);
   
-  const customerInfo = [
-    orderData.address?.name || orderData.address?.fullName || 'Customer',
+  leftYPos += 5;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  
+  const customerLines = [
     orderData.address?.phone || orderData.address?.mobileNumber || '',
     orderData.address?.addressLine || orderData.address?.address || '',
-    `${orderData.address?.city || ''}, ${orderData.address?.state || ''}`.trim(),
-    orderData.address?.zip || orderData.address?.pincode || ''
-  ].filter(line => line && line.trim());
+    orderData.address?.flatHouseCompany || '',
+    `${orderData.address?.city || ''}, ${orderData.address?.state || ''}`.replace(', ,', ',').trim(),
+    (orderData.address?.zip || orderData.address?.pincode) ? `PIN: ${orderData.address?.zip || orderData.address?.pincode}` : ''
+  ].filter(line => line && line.trim() && line !== ',');
   
-  customerInfo.forEach((line, index) => {
-    doc.text(line, margin + 5, yPosition + (index * 5));
+  customerLines.forEach((line) => {
+    if (leftYPos < yPosition + boxHeight - 3) {
+      doc.text(line, margin + 4, leftYPos, { maxWidth: boxWidth - 8 });
+      leftYPos += 4.5;
+    }
   });
   
-  // Payment Information (Right Box)
-  yPosition -= 12;
-  doc.setFillColor(245, 245, 245);
-  doc.rect(pageWidth / 2 + 5, yPosition, (pageWidth - 2 * margin) / 2 - 5, 35, 'F');
+  // Right Box - Payment Information
+  const rightBoxX = margin + boxWidth + boxGap;
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.setFillColor(252, 252, 252);
+  doc.roundedRect(rightBoxX, yPosition, boxWidth, boxHeight, 2, 2, 'FD');
   
-  yPosition += 7;
+  let rightYPos = yPosition + 6;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(91, 69, 55);
-  doc.text('Payment Details:', pageWidth / 2 + 10, yPosition);
+  doc.text('PAYMENT DETAILS', rightBoxX + 4, rightYPos);
   
-  doc.setFontSize(10);
+  rightYPos += 7;
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  yPosition += 5;
+  doc.setTextColor(60, 60, 60);
   
-  const paymentInfo = [
-    `Method: ${orderData.paymentMethod || 'N/A'}`,
-    `Status: ${orderData.paymentStatus || 'N/A'}`,
-    orderData.razorpayPaymentId ? `Transaction ID: ${orderData.razorpayPaymentId}` : '', // Full transaction ID to match Order Success page
-    `Order Status: ${orderData.status || 'Processing'}`
-  ].filter(line => line);
+  const paymentLines = [
+    { label: 'Method:', value: orderData.paymentMethod || 'N/A' },
+    { label: 'Status:', value: orderData.paymentStatus || 'N/A' },
+    { label: 'Transaction ID:', value: orderData.razorpayPaymentId ? orderData.razorpayPaymentId.substring(0, 20) + '...' : 'N/A' },
+    { label: 'Order Status:', value: orderData.status || 'Processing' }
+  ];
   
-  paymentInfo.forEach((line, index) => {
-    doc.text(line, pageWidth / 2 + 10, yPosition + (index * 5));
+  paymentLines.forEach((item) => {
+    doc.setFont('helvetica', 'bold');
+    doc.text(item.label, rightBoxX + 4, rightYPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(item.value, rightBoxX + 32, rightYPos);
+    rightYPos += 5;
   });
   
-  yPosition += 40;
+  yPosition += boxHeight + 15;
   
   // ====================
   // PRODUCTS TABLE
   // ====================
   
-  const tableColumn = ['#', 'Product Name', 'Qty', 'Unit Price', 'Total'];
+  // Section Title
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(91, 69, 55);
+  doc.text('Order Items', margin, yPosition);
+  
+  yPosition += 8;
+  
+  const tableColumn = ['S.No', 'Product Description', 'Quantity', 'Unit Price', 'Amount'];
   const tableRows = [];
   
   console.log('Processing items:', orderData.items);
   
   if (!orderData.items || orderData.items.length === 0) {
     console.warn('No items found in order');
-    tableRows.push(['1', 'No items', '0', '₹0', '₹0']);
+    tableRows.push(['1', 'No items', '0', '₹0.00', '₹0.00']);
   } else {
     orderData.items.forEach((item, index) => {
       console.log(`Item ${index}:`, item);
+      const itemPrice = parseFloat(item.price) || 0;
+      const itemQty = parseInt(item.quantity) || 1;
+      const itemTotal = itemPrice * itemQty;
+      
       const rowData = [
-        index + 1,
+        (index + 1).toString(),
         item.name || 'Product',
-        item.quantity || 1,
-        `₹${(item.price || 0).toLocaleString('en-IN')}`,
-        `₹${((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}`
+        itemQty.toString(),
+        `₹${itemPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `₹${itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ];
       tableRows.push(rowData);
     });
@@ -183,39 +241,40 @@ export const generateInvoice = (orderData) => {
     startY: yPosition,
     head: [tableColumn],
     body: tableRows,
-    theme: 'grid',
+    theme: 'striped',
     headStyles: {
-      fillColor: [91, 69, 55], // Dark brown
+      fillColor: [91, 69, 55],
       textColor: [255, 255, 255],
       fontSize: 10,
       fontStyle: 'bold',
-      halign: 'center'
+      halign: 'center',
+      cellPadding: 4
     },
     bodyStyles: {
-      fontSize: 9,
-      textColor: [0, 0, 0]
+      fontSize: 9.5,
+      textColor: [40, 40, 40],
+      cellPadding: 3
+    },
+    alternateRowStyles: {
+      fillColor: [250, 250, 250]
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 15 },
+      0: { halign: 'center', cellWidth: 18 },
       1: { halign: 'left', cellWidth: 'auto' },
-      2: { halign: 'center', cellWidth: 25 },
-      3: { halign: 'right', cellWidth: 35 },
-      4: { halign: 'right', cellWidth: 35 }
+      2: { halign: 'center', cellWidth: 22 },
+      3: { halign: 'right', cellWidth: 32 },
+      4: { halign: 'right', cellWidth: 35, fontStyle: 'bold' }
     },
-    margin: { left: margin, right: margin }
+    margin: { left: margin, right: margin },
+    tableLineColor: [200, 200, 200],
+    tableLineWidth: 0.2
   });
   
-  yPosition = doc.lastAutoTable.finalY + 10;
+  yPosition = doc.lastAutoTable.finalY + 8;
   
   // ====================
-  // TOTALS SECTION
+  // TOTALS SECTION (Right-aligned box)
   // ====================
-  
-  const totalsX = pageWidth - margin - 70;
-  const totalsLabelX = totalsX - 40;
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
   
   const subtotal = orderData.items?.reduce((sum, item) => {
     const itemPrice = parseFloat(item.price) || 0;
@@ -224,113 +283,199 @@ export const generateInvoice = (orderData) => {
   }, 0) || 0;
   
   const deliveryCharge = parseFloat(orderData.shippingCost) || 0;
-  const tax = 0; // You can calculate tax if needed
-  const discount = 0; // You can add discount if needed
+  const tax = 0; // Calculate tax if needed
+  const discount = 0; // Add discount if needed
   const grandTotal = parseFloat(orderData.totalAmount) || (subtotal + deliveryCharge);
   
   console.log('Totals:', { subtotal, deliveryCharge, tax, discount, grandTotal });
   
-  const totals = [
-    { label: 'Subtotal:', value: `₹${subtotal.toLocaleString('en-IN')}` },
-    { label: 'Delivery Charge:', value: deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge.toLocaleString('en-IN')}` },
-  ];
+  // Create totals box (right-aligned)
+  const totalsBoxWidth = 75;
+  const totalsBoxX = pageWidth - margin - totalsBoxWidth;
+  const totalsBoxStartY = yPosition;
   
-  if (tax > 0) {
-    totals.push({ label: 'Tax (GST):', value: `₹${tax.toLocaleString('en-IN')}` });
-  }
+  // Draw background box for totals
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.setFillColor(248, 248, 248);
   
-  if (discount > 0) {
-    totals.push({ label: 'Discount:', value: `-₹${discount.toLocaleString('en-IN')}` });
-  }
+  let totalsYPos = totalsBoxStartY + 6;
   
-  totals.forEach((item, index) => {
-    doc.text(item.label, totalsLabelX, yPosition + (index * 6));
-    doc.text(item.value, totalsX, yPosition + (index * 6));
-  });
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
   
-  yPosition += totals.length * 6 + 5;
-  
-  // Grand Total (Bold, larger)
-  doc.setDrawColor(91, 69, 55);
-  doc.line(totalsLabelX - 5, yPosition - 2, pageWidth - margin, yPosition - 2);
-  
-  doc.setFontSize(12);
+  // Subtotal
+  doc.text('Subtotal:', totalsBoxX + 3, totalsYPos);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(91, 69, 55);
-  doc.text('Grand Total:', totalsLabelX, yPosition + 5);
-  doc.text(`₹${grandTotal.toLocaleString('en-IN')}`, totalsX, yPosition + 5);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
+    pageWidth - margin - 3, totalsYPos, { align: 'right' });
   
-  yPosition += 15;
+  totalsYPos += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  
+  // Delivery Charge
+  doc.text('Delivery:', totalsBoxX + 3, totalsYPos);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  if (deliveryCharge === 0) {
+    doc.setTextColor(34, 139, 34); // Green for FREE
+    doc.text('FREE', pageWidth - margin - 3, totalsYPos, { align: 'right' });
+  } else {
+    doc.text(`₹${deliveryCharge.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
+      pageWidth - margin - 3, totalsYPos, { align: 'right' });
+  }
+  
+  // Tax (if applicable)
+  if (tax > 0) {
+    totalsYPos += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text('Tax (GST):', totalsBoxX + 3, totalsYPos);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text(`₹${tax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
+      pageWidth - margin - 3, totalsYPos, { align: 'right' });
+  }
+  
+  // Discount (if applicable)
+  if (discount > 0) {
+    totalsYPos += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text('Discount:', totalsBoxX + 3, totalsYPos);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 20, 60); // Red for discount
+    doc.text(`-₹${discount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
+      pageWidth - margin - 3, totalsYPos, { align: 'right' });
+  }
+  
+  totalsYPos += 8;
+  
+  // Separator line before grand total
+  doc.setDrawColor(91, 69, 55);
+  doc.setLineWidth(0.5);
+  doc.line(totalsBoxX + 3, totalsYPos - 2, pageWidth - margin - 3, totalsYPos - 2);
+  
+  // Grand Total (Highlighted)
+  doc.setFillColor(91, 69, 55);
+  doc.rect(totalsBoxX, totalsYPos, totalsBoxWidth, 10, 'F');
+  
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('GRAND TOTAL:', totalsBoxX + 3, totalsYPos + 6.5);
+  doc.setFontSize(12);
+  doc.text(`₹${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
+    pageWidth - margin - 3, totalsYPos + 6.5, { align: 'right' });
+  
+  // Draw the complete box around totals
+  const boxTotalHeight = totalsYPos - totalsBoxStartY + 10;
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(totalsBoxX, totalsBoxStartY, totalsBoxWidth, boxTotalHeight, 2, 2, 'D');
+  
+  yPosition = totalsYPos + 15;
   
   // ====================
   // FOOTER SECTION
   // ====================
   
-  // Check if we need a new page
-  if (yPosition > pageHeight - 60) {
+  // Check if we need a new page for footer content
+  if (yPosition > pageHeight - 80) {
     doc.addPage();
-    yPosition = 20;
+    yPosition = margin + 10;
   }
   
-  yPosition += 10;
-  
-  // Thank you message
-  doc.setFillColor(245, 240, 235);
-  doc.rect(margin, yPosition, pageWidth - 2 * margin, 35, 'F');
-  
   yPosition += 8;
+  
+  // Thank you message box
+  doc.setFillColor(252, 248, 245);
+  doc.setDrawColor(91, 69, 55);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, yPosition, contentWidth, 28, 2, 2, 'FD');
+  
+  yPosition += 10;
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(91, 69, 55);
   doc.text('Thank You for Your Purchase!', pageWidth / 2, yPosition, { align: 'center' });
   
-  yPosition += 8;
+  yPosition += 7;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  
-  const footerText = [
-    'We appreciate your business and hope you are satisfied with your purchase.',
-    'For any queries or concerns, please contact us at ' + BUSINESS_INFO.phone + ' or ' + BUSINESS_INFO.email
-  ];
-  
-  footerText.forEach((line, index) => {
-    doc.text(line, pageWidth / 2, yPosition + (index * 5), { align: 'center' });
-  });
-  
-  yPosition += 20;
-  
-  // Return/Service Policy
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('Return & Service Policy:', margin, yPosition);
-  
-  doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
-  yPosition += 4;
+  doc.text('We appreciate your business and hope you are satisfied with your purchase.', 
+    pageWidth / 2, yPosition, { align: 'center' });
   
-  const policyText = [
+  yPosition += 5;
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`For queries, contact us: ${BUSINESS_INFO.phone} | ${BUSINESS_INFO.email}`, 
+    pageWidth / 2, yPosition, { align: 'center' });
+  
+  yPosition += 15;
+  
+  // Terms & Conditions / Policy Box
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.2);
+  doc.setFillColor(250, 250, 250);
+  doc.roundedRect(margin, yPosition, contentWidth, 24, 1, 1, 'FD');
+  
+  yPosition += 5;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(91, 69, 55);
+  doc.text('Terms & Conditions', margin + 4, yPosition);
+  
+  yPosition += 5;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(70, 70, 70);
+  
+  const policyLines = [
     '• Products can be returned within 7 days of delivery in original condition.',
     '• Custom-cut timber and made-to-order furniture are non-returnable.',
     '• Defective items will be replaced or refunded as per company policy.',
     '• Installation and maintenance services available on request.'
   ];
   
-  policyText.forEach((line, index) => {
-    doc.text(line, margin + 2, yPosition + (index * 4));
+  policyLines.forEach((line, index) => {
+    if (index < 2) {
+      doc.text(line, margin + 5, yPosition + (index * 4), { maxWidth: (contentWidth / 2) - 10 });
+    } else {
+      doc.text(line, pageWidth / 2 + 3, yPosition + ((index - 2) * 4), { maxWidth: (contentWidth / 2) - 10 });
+    }
   });
   
-  // Bottom border
-  yPosition = pageHeight - 15;
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, yPosition, pageWidth - margin, yPosition);
+  // Page footer (fixed at bottom)
+  const footerY = pageHeight - 12;
   
-  yPosition += 5;
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  doc.text('This is a computer-generated invoice and does not require a signature.', pageWidth / 2, yPosition, { align: 'center' });
-  doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, pageWidth / 2, yPosition + 4, { align: 'center' });
+  // Footer separator line
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.3);
+  doc.line(margin, footerY - 2, pageWidth - margin, footerY - 2);
+  
+  // Footer text
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(140, 140, 140);
+  doc.text('This is a computer-generated invoice and does not require a signature.', 
+    pageWidth / 2, footerY + 2, { align: 'center' });
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text(`Generated on: ${new Date().toLocaleString('en-IN', { 
+    day: '2-digit', month: 'short', year: 'numeric', 
+    hour: '2-digit', minute: '2-digit', hour12: true 
+  })}`, pageWidth / 2, footerY + 6, { align: 'center' });
+  
+  // Website at bottom right
+  doc.setTextColor(91, 69, 55);
+  doc.setFont('helvetica', 'bold');
+  doc.text(BUSINESS_INFO.website, pageWidth - margin, footerY + 6, { align: 'right' });
   
     // Save the PDF - use the same invoice number format as displayed (last 12 chars)
     const fileName = `JC-Timbers-Invoice-${invoiceNumber.replace('#', '')}.pdf`;

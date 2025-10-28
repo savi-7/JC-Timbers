@@ -12,6 +12,7 @@ import SystemStatus from '../components/admin/SystemStatus';
 import UsersModal from '../components/admin/modals/UsersModal';
 import ProductsModal from '../components/admin/modals/ProductsModal';
 import OrdersModal from '../components/admin/modals/OrdersModal';
+import RevenueModal from '../components/admin/modals/RevenueModal';
 
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -33,6 +34,8 @@ export default function AdminDashboard() {
     setShowProductsModal,
     showOrdersModal,
     setShowOrdersModal,
+    showRevenueModal,
+    setShowRevenueModal,
     handleCardClick
   } = useModalState();
 
@@ -48,14 +51,19 @@ export default function AdminDashboard() {
 
   // Calculate stats
   const customerStats = calculateCustomerStats(detailedData, dashboardData);
-  const safeStats = createSafeStats(dashboardData, customerStats);
+  const safeStats = createSafeStats(dashboardData, customerStats, detailedData.revenue);
   
   // Debug logging
   console.log('Dashboard Debug:', {
     dashboardData,
     detailedData,
+    revenueData: detailedData.revenue,
     customerStats,
-    safeStats
+    safeStats,
+    totalRevenue: safeStats.totalRevenue,
+    onlineRevenue: safeStats.onlineRevenue,
+    codRevenue: safeStats.codRevenue,
+    pendingCODRevenue: safeStats.pendingCODRevenue
   });
 
   // Handle card clicks with data fetching
@@ -104,6 +112,12 @@ export default function AdminDashboard() {
         setShowOrdersModal={setShowOrdersModal}
         detailedData={detailedData}
         safeStats={safeStats}
+      />
+      
+      <RevenueModal 
+        showRevenueModal={showRevenueModal}
+        setShowRevenueModal={setShowRevenueModal}
+        detailedData={detailedData}
       />
       
       {/* Toast Notifications */}

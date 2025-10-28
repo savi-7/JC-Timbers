@@ -60,21 +60,13 @@ export default function Footer() {
                 <ul className="space-y-3">
                   <li>
                     <button 
-                      onClick={() => {
-                        navigate(isAuthenticated ? '/customer-home' : '/homepage');
-                        setTimeout(() => {
-                          const aboutSection = document.getElementById('about-us');
-                          if (aboutSection) {
-                            aboutSection.scrollIntoView({ behavior: 'smooth' });
-                          }
-                        }, 100);
-                      }}
+                      onClick={() => navigate('/about-us')}
                       className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph"
                     >
                       About Us
                     </button>
                   </li>
-                  <li><button onClick={() => navigate('/contact')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Contact Us</button></li>
+                  <li><button onClick={() => navigate('/contact-us')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Contact Us</button></li>
                   <li><button onClick={() => navigate('/blog')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Our Blog</button></li>
                 </ul>
               </div>
