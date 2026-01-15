@@ -1,5 +1,25 @@
 import Vendor from "../models/Vendor.js";
 import WoodIntake from "../models/WoodIntake.js";
+import { spawn } from "child_process";
+import path from "path";
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, "../../../");
+const pyScript = path.join(repoRoot, "ml", "wood_quality", "predict.py");
+const modelsDir = path.join(repoRoot, "ml", "wood_quality", "results");
+const datasetCsv = path.join(repoRoot, "ml", "wood_quality", "dataset.csv");
+
+function resolvePythonExecutable() {
+  if (process.env.PYTHON_EXECUTABLE) return process.env.PYTHON_EXECUTABLE;
+  const winPath = path.join(repoRoot, '.venv', 'Scripts', 'python.exe');
+  const nixPath = path.join(repoRoot, '.venv', 'bin', 'python');
+  if (process.platform === 'win32' && fs.existsSync(winPath)) return winPath;
+  if (fs.existsSync(nixPath)) return nixPath;
+  return 'python';
+}
 
 // Create a new vendor
 export const createVendor = async (req, res) => {
@@ -167,6 +187,33 @@ export const deleteVendor = async (req, res) => {
   }
 };
 
+// Helper to invoke Python predictor
+async function runPrediction(payload) {
+  return new Promise((resolve, reject) => {
+    const pyExec = resolvePythonExecutable();
+    const py = spawn(pyExec, [pyScript, '--models_dir', modelsDir, '--data', datasetCsv], { cwd: repoRoot });
+    let stdout = '';
+    let stderr = '';
+    py.stdout.on('data', d => { stdout += d.toString(); });
+    py.stderr.on('data', d => { stderr += d.toString(); });
+    py.on('error', err => reject(new Error(`Python spawn error: ${err.message}`)));
+    py.on('close', code => {
+      if (code !== 0) {
+        return reject(new Error(`Python exited with code ${code}: ${stderr}`));
+      }
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        if (!parsed.ok) return reject(new Error('Predictor returned not ok'));
+        resolve(parsed.results);
+      } catch (e) {
+        reject(new Error(`Invalid JSON from predictor: ${stdout}`));
+      }
+    });
+    py.stdin.write(JSON.stringify(payload));
+    py.stdin.end();
+  });
+}
+
 // Create wood intake
 export const createWoodIntake = async (req, res) => {
   try {
@@ -211,12 +258,14 @@ export const createWoodIntake = async (req, res) => {
         width: parseFloat(woodDetails.dimensions.width),
         thickness: parseFloat(woodDetails.dimensions.thickness),
         quantity: parseInt(woodDetails.dimensions.quantity)
-      }
+      },
+      moisture: woodDetails?.moisture != null ? parseFloat(woodDetails.moisture) : undefined
     };
 
     const processedCostDetails = {
       ...costDetails,
-      unitPrice: parseFloat(costDetails.unitPrice)
+      unitPrice: parseFloat(costDetails.unitPrice),
+      costPerUnitCft: costDetails?.costPerUnitCft != null ? parseFloat(costDetails.costPerUnitCft) : undefined
     };
 
     const processedLogistics = {
@@ -230,12 +279,39 @@ export const createWoodIntake = async (req, res) => {
       return res.status(404).json({ message: "Vendor not found" });
     }
 
+    // Prepare payload for ML predictor (convert to cm)
+    const feetToCm = 30.48;
+    const inchToCm = 2.54;
+    const payload = {
+      vendor: vendor.name || 'Unknown',
+      woodType: (processedWoodDetails.type || '').toString(),
+      length: processedWoodDetails.dimensions.length * feetToCm,
+      width: processedWoodDetails.dimensions.width * inchToCm,
+      thickness: processedWoodDetails.dimensions.thickness * inchToCm,
+      moisture: processedWoodDetails.moisture ?? 12,
+      costPerUnit: processedCostDetails.costPerUnitCft ?? processedCostDetails.unitPrice
+    };
+
+    let mlResults = null;
+    let predictedQuality = undefined;
+    try {
+      mlResults = await runPrediction(payload);
+      // Majority vote across models; fallback to NeuralNet
+      const votes = Object.values(mlResults).map(r => r.prediction);
+      const counts = votes.reduce((acc, v) => { acc[v] = (acc[v]||0)+1; return acc; }, {});
+      predictedQuality = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || mlResults?.NeuralNet?.prediction;
+    } catch (e) {
+      console.warn('Prediction failed, continuing without predictedQuality:', e.message);
+    }
+
     const woodIntake = new WoodIntake({
       vendorId,
       woodDetails: processedWoodDetails,
       costDetails: processedCostDetails,
       logistics: processedLogistics,
-      notes
+      notes,
+      predictedQuality,
+      mlPredictions: mlResults
     });
 
     console.log('WoodIntake object before save:', {
@@ -264,6 +340,8 @@ export const createWoodIntake = async (req, res) => {
         woodDetails: woodIntake.woodDetails,
         costDetails: woodIntake.costDetails,
         logistics: woodIntake.logistics,
+        predictedQuality: woodIntake.predictedQuality,
+        mlPredictions: woodIntake.mlPredictions,
         status: woodIntake.status,
         createdAt: woodIntake.createdAt
       }

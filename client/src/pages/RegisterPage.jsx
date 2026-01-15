@@ -39,6 +39,10 @@ export default function RegisterPage() {
       ...prev,
       [name]: type === "checkbox" ? checked : filteredValue,
     }));
+    // Mark checkboxes as touched immediately so validation messages can show
+    if (type === "checkbox") {
+      setTouched((prev) => ({ ...prev, [name]: true }));
+    }
     
     // Clear error when user starts typing
     if (errors[name]) {
@@ -113,7 +117,7 @@ export default function RegisterPage() {
         }
         break;
         
-      case "phone":
+      case "phone": {
         const phoneDigits = value.replace(/\D/g, "");
         if (!value.trim()) {
           newErrors.phone = "Phone number is required";
@@ -125,6 +129,7 @@ export default function RegisterPage() {
           delete newErrors.phone;
         }
         break;
+      }
         
       case "password":
         if (!value) {
@@ -217,6 +222,16 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Force all fields as touched so users immediately see any validation issues
+    setTouched({
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      password: true,
+      confirmPassword: true,
+      agreeToTerms: true,
+    });
     if (!validate()) return;
     try {
       await axios.post("http://localhost:5001/api/auth/register", {

@@ -20,6 +20,12 @@ export default function Furniture() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [showImageSearchModal, setShowImageSearchModal] = useState(false);
+  const [imageSearchResults, setImageSearchResults] = useState(null);
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isImageSearchMode, setIsImageSearchMode] = useState(false);
+  const [imageSearchAvailable, setImageSearchAvailable] = useState(true);
 
   const handleLogout = () => {
     logout();
@@ -85,6 +91,216 @@ export default function Furniture() {
     })();
   };
 
+  const handleImageSearchClick = () => {
+    setShowImageSearchModal(true);
+  };
+
+  const handleImageSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        showError('Please select a valid image file');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        showError('Image size must be less than 5MB');
+        return;
+      }
+
+      setSelectedImage(file);
+      handleImageSearch(file);
+    }
+  };
+
+  const handleImageSearch = async (imageFile) => {
+    try {
+      setImageSearchLoading(true);
+      setShowImageSearchModal(false);
+      setIsImageSearchMode(true);
+      setImageSearchResults(null);
+
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      formData.append('top_k', '15'); // Get more results for better filtering
+
+      const response = await api.post('/ml/image-search/by-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success && response.data.data.results) {
+        const results = response.data.data.results;
+        setImageSearchResults(results);
+        
+        // Filter results by minimum similarity score (only high-confidence matches)
+        const MIN_SIMILARITY_SCORE = 0.65; // Only show results with 65%+ similarity
+        const highConfidenceResults = results.filter(r => r.score >= MIN_SIMILARITY_SCORE);
+        
+        console.log('Image search results:', results.map(r => ({
+          filename: r.filename,
+          score: r.score.toFixed(3)
+        })));
+        
+        // Try to match results with actual products
+        const matchedProducts = [];
+        const usedProductIds = new Set(); // Avoid duplicates
+        
+        // Sort results by similarity score (highest first)
+        const sortedResults = [...highConfidenceResults].sort((a, b) => b.score - a.score);
+        
+        for (const result of sortedResults) {
+          // Extract product name/keywords from filename
+          const filename = result.filename || '';
+          const filenameLower = filename.toLowerCase();
+          
+          // Extract keywords from filename (remove extension, split by common separators)
+          const keywords = filenameLower
+            .replace(/\.[^/.]+$/, '') // Remove extension
+            .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
+            .split(/\s+/) // Split by spaces
+            .filter(k => k.length > 2); // Filter out very short words
+          
+          // Try to find matching product using multiple strategies
+          let matched = null;
+          
+          // Strategy 1: Direct filename match
+          for (const product of products) {
+            if (usedProductIds.has(product._id)) continue;
+            
+            const productNameLower = product.name.toLowerCase();
+            
+            // Check if any keyword from filename appears in product name
+            const keywordMatch = keywords.some(keyword => 
+              productNameLower.includes(keyword) || keyword.includes(productNameLower.split(' ')[0])
+            );
+            
+            // Check for common furniture type matches
+            const furnitureTypes = {
+              'bed': ['bed', 'mattress', 'bunk'],
+              'chair': ['chair', 'seat', 'stool'],
+              'table': ['table', 'desk'],
+              'sofa': ['sofa', 'couch', 'settee'],
+              'wardrobe': ['wardrobe', 'closet', 'cabinet'],
+              'bookshelf': ['bookshelf', 'shelf', 'bookcase'],
+              'dining': ['dining', 'dinner'],
+              'study': ['study', 'office', 'work']
+            };
+            
+            let typeMatch = false;
+            for (const [type, variations] of Object.entries(furnitureTypes)) {
+              if (keywords.some(k => variations.includes(k)) && 
+                  variations.some(v => productNameLower.includes(v))) {
+                typeMatch = true;
+                break;
+              }
+            }
+            
+            if (keywordMatch || typeMatch) {
+              matched = product;
+              break;
+            }
+          }
+          
+          if (matched) {
+            usedProductIds.add(matched._id);
+            matchedProducts.push({
+              ...matched,
+              similarityScore: result.score,
+              searchResult: result
+            });
+          }
+        }
+        
+        // Sort matched products by similarity score (highest first)
+        matchedProducts.sort((a, b) => b.similarityScore - a.similarityScore);
+
+        if (matchedProducts.length > 0) {
+          setFilteredProducts(matchedProducts);
+          showSuccess(`Found ${matchedProducts.length} similar products! (Similarity: ${(matchedProducts[0].similarityScore * 100).toFixed(0)}%+)`);
+        } else {
+          // If no matches, show message and keep current products
+          showError(`No similar products found with high confidence. Try a different image or check if similar products exist in catalog.`);
+          setIsImageSearchMode(false);
+          setImageSearchResults(null);
+        }
+      } else {
+        showError('No similar products found');
+        setIsImageSearchMode(false);
+      }
+    } catch (err) {
+      console.error('Image search error:', err);
+      
+      // Handle 503 Service Unavailable specifically
+      if (err?.response?.status === 503) {
+        const errorDetail = err?.response?.data?.message || err?.response?.data?.error || '';
+        showError(
+          'Image search service is currently unavailable. ' +
+          'Please ensure the FastAPI image search service is running. ' +
+          'Check the console for setup instructions.'
+        );
+        setImageSearchAvailable(false);
+        console.error(
+          '\n⚠️ Image Search Service Not Available\n' +
+          'To enable image search, start the FastAPI service:\n\n' +
+          '1. Open a terminal and navigate to: ml/image_matching/api\n' +
+          '2. Install dependencies: pip install -r requirements.txt\n' +
+          '3. Start the service: uvicorn main:app --host 0.0.0.0 --port 8000 --reload\n' +
+          '4. Ensure your .env file has PINECONE_API_KEY configured\n\n' +
+          'See ml/image_matching/api/README.md for detailed setup instructions.'
+        );
+      } else {
+        const errorMsg = err?.response?.data?.message || 
+                        err?.response?.data?.error || 
+                        'Failed to search by image. Please try again.';
+        showError(errorMsg);
+      }
+      
+      setIsImageSearchMode(false);
+      setImageSearchResults(null);
+    } finally {
+      setImageSearchLoading(false);
+    }
+  };
+
+  const handleClearImageSearch = () => {
+    setIsImageSearchMode(false);
+    setImageSearchResults(null);
+    setSelectedImage(null);
+    setFilteredProducts(products);
+    setSearchTerm('');
+  };
+
+  // Check if image search service is available (silently, don't block UI)
+  useEffect(() => {
+    const checkImageSearchService = async () => {
+      try {
+        const response = await api.get('/ml/image-search/health', {
+          timeout: 3000 // 3 second timeout
+        });
+        if (response.data.success && response.data.status?.status === 'healthy') {
+          setImageSearchAvailable(true);
+        } else {
+          setImageSearchAvailable(false);
+        }
+      } catch (err) {
+        // Silently fail - don't show error, just assume service is not available
+        // User can still try to use it, and will get a proper error message if it fails
+        setImageSearchAvailable(false);
+      }
+    };
+
+    // Check after a short delay to avoid blocking initial render
+    const timeoutId = setTimeout(() => {
+      checkImageSearchService();
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
   // Fetch furniture products from API
   useEffect(() => {
     const fetchProducts = async () => {
@@ -110,6 +326,11 @@ export default function Furniture() {
 
   // Filter and sort products
   useEffect(() => {
+    // Don't apply text search filter if in image search mode
+    if (isImageSearchMode) {
+      return; // filteredProducts is set by handleImageSearch
+    }
+
     let filtered = [...products];
 
     // Apply search filter
@@ -156,7 +377,7 @@ export default function Furniture() {
     });
 
     setFilteredProducts(filtered);
-  }, [products, searchTerm, sortBy, sortOrder]);
+  }, [products, searchTerm, sortBy, sortOrder, isImageSearchMode]);
 
   // Loading spinner component
   const LoadingSpinner = () => (
@@ -204,20 +425,6 @@ export default function Furniture() {
               Discover our curated collection of handcrafted furniture pieces. 
               Each piece is made from the finest materials with attention to detail and craftsmanship.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => navigate('/timber-products')}
-                className="bg-dark-brown text-white px-6 py-3 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
-              >
-                View Timber Products
-              </button>
-              <button
-                onClick={() => navigate('/construction-materials')}
-                className="border-2 border-dark-brown text-dark-brown px-6 py-3 rounded-lg font-paragraph hover:bg-dark-brown hover:text-white transition-colors duration-200 text-sm"
-              >
-                Construction Materials
-              </button>
-            </div>
           </div>
         </div>
 
@@ -227,9 +434,9 @@ export default function Furniture() {
             <div className="flex flex-col lg:flex-row gap-3">
               {/* Search Bar */}
               <div className="flex-1">
-                <div className="relative">
+                <div className="relative flex items-center">
                   <svg
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -243,11 +450,66 @@ export default function Furniture() {
                   </svg>
                   <input
                     type="text"
-                    placeholder="Search furniture products..."
+                    placeholder={isImageSearchMode ? "Image search active - Click camera icon to search again" : "Search furniture products..."}
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 text-sm"
+                    onChange={(e) => {
+                      if (!isImageSearchMode) {
+                        setSearchTerm(e.target.value);
+                      }
+                    }}
+                    disabled={isImageSearchMode}
+                    className={`w-full pl-9 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 text-sm ${
+                      isImageSearchMode ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                   />
+                  <button
+                    type="button"
+                    onClick={handleImageSearchClick}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-100 transition-colors duration-200 group"
+                    title="Search by image"
+                  >
+                    <svg
+                      className="w-5 h-5 text-gray-500 group-hover:text-accent-red transition-colors"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </button>
+                  {isImageSearchMode && (
+                    <button
+                      type="button"
+                      onClick={handleClearImageSearch}
+                      className="absolute right-12 top-1/2 transform -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                      title="Clear image search"
+                    >
+                      <svg
+                        className="w-4 h-4 text-gray-500 hover:text-red-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -290,11 +552,24 @@ export default function Furniture() {
             {/* Results Summary */}
             <div className="mt-3 pt-3 border-t border-gray-200">
               <p className="text-xs text-gray-600">
-                Showing {filteredProducts.length} of {products.length} products
-                {searchTerm && (
-                  <span className="ml-2">
-                    for "<span className="font-medium text-dark-brown">{searchTerm}</span>"
-                  </span>
+                {isImageSearchMode ? (
+                  <>
+                    Showing {filteredProducts.length} similar products from image search
+                    {imageSearchResults && (
+                      <span className="ml-2 text-accent-red">
+                        ({imageSearchResults.length} matches found)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    Showing {filteredProducts.length} of {products.length} products
+                    {searchTerm && (
+                      <span className="ml-2">
+                        for "<span className="font-medium text-dark-brown">{searchTerm}</span>"
+                      </span>
+                    )}
+                  </>
                 )}
               </p>
             </div>
@@ -331,6 +606,102 @@ export default function Furniture() {
         )}
 
         {error && <ErrorMessage message={error} />}
+
+        {/* Image Search Loading */}
+        {imageSearchLoading && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-red mb-4"></div>
+              <p className="text-gray-600 font-medium">Searching for similar products...</p>
+              <p className="text-sm text-gray-500 mt-2">This may take a few seconds</p>
+            </div>
+          </div>
+        )}
+
+        {/* Image Search Modal */}
+        {showImageSearchModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Search by Image</h3>
+                <button
+                  onClick={() => setShowImageSearchModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload an image to find similar furniture
+                </label>
+                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-accent-red transition-colors">
+                  <div className="space-y-1 text-center">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      stroke="currentColor"
+                      fill="none"
+                      viewBox="0 0 48 48"
+                    >
+                      <path
+                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <div className="flex text-sm text-gray-600">
+                      <label className="relative cursor-pointer bg-white rounded-md font-medium text-accent-red hover:text-accent-red/80 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-accent-red">
+                        <span>Upload an image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="sr-only"
+                        />
+                      </label>
+                      <p className="pl-1">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-gray-500">PNG, JPG, WEBP up to 5MB</p>
+                  </div>
+                </div>
+                {selectedImage && (
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-600 mb-2">Selected image:</p>
+                    <div className="relative inline-block">
+                      <img
+                        src={URL.createObjectURL(selectedImage)}
+                        alt="Selected"
+                        className="h-32 w-auto rounded-lg border border-gray-300"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowImageSearchModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                {selectedImage && (
+                  <button
+                    onClick={() => handleImageSearch(selectedImage)}
+                    className="flex-1 px-4 py-2 bg-accent-red text-white rounded-lg hover:bg-accent-red/90 transition-colors"
+                  >
+                    Search
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Products Section */}
         {!loading && !error && (

@@ -23,6 +23,12 @@ export default function AdminVendors() {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [selectedWoodIntake, setSelectedWoodIntake] = useState(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+
+  // Preview prediction state
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const [previewResults, setPreviewResults] = useState(null);
+  const [previewMajority, setPreviewMajority] = useState('');
   
   // Validation state
   const [vendorValidationErrors, setVendorValidationErrors] = useState({});
@@ -62,11 +68,13 @@ export default function AdminVendors() {
         thickness: '',
         quantity: ''
       },
+      moisture: '',
       quality: 'standard',
       condition: 'good'
     },
     costDetails: {
       unitPrice: '',
+      costPerUnitCft: '',
       currency: 'INR',
       paymentStatus: 'pending',
       paymentMethod: 'bank_transfer'
@@ -372,6 +380,22 @@ export default function AdminVendors() {
           delete errors.unitPrice;
         }
         break;
+
+      case 'moisture':
+        if (value !== '' && (isNaN(value) || parseFloat(value) < 0 || parseFloat(value) > 100)) {
+          errors.moisture = 'Moisture must be between 0 and 100%';
+        } else {
+          delete errors.moisture;
+        }
+        break;
+
+      case 'costPerUnitCft':
+        if (value !== '' && (isNaN(value) || parseFloat(value) < 0)) {
+          errors.costPerUnitCft = 'Cost per unit (₹/cft) must be a positive number';
+        } else {
+          delete errors.costPerUnitCft;
+        }
+        break;
         
       case 'deliveryDate':
         if (!value || value.trim() === '') {
@@ -630,6 +654,14 @@ export default function AdminVendors() {
     } else if (parseFloat(intakeForm.costDetails.unitPrice) < 1) {
       errors.push('Unit price must be at least ₹1');
     }
+
+    // Optional fields
+    if (intakeForm.woodDetails.moisture !== '' && (isNaN(intakeForm.woodDetails.moisture) || parseFloat(intakeForm.woodDetails.moisture) < 0 || parseFloat(intakeForm.woodDetails.moisture) > 100)) {
+      errors.push('Moisture must be between 0 and 100%');
+    }
+    if (intakeForm.costDetails.costPerUnitCft !== '' && (isNaN(intakeForm.costDetails.costPerUnitCft) || parseFloat(intakeForm.costDetails.costPerUnitCft) < 0)) {
+      errors.push('Cost per unit (₹/cft) must be a positive number');
+    }
     
     // Delivery date validation
     if (!intakeForm.logistics.deliveryDate || intakeForm.logistics.deliveryDate.trim() === '') {
@@ -686,24 +718,30 @@ export default function AdminVendors() {
             width: parseFloat(intakeForm.woodDetails.dimensions.width),
             thickness: parseFloat(intakeForm.woodDetails.dimensions.thickness),
             quantity: parseInt(intakeForm.woodDetails.dimensions.quantity)
-          }
+          },
+          moisture: intakeForm.woodDetails.moisture !== '' ? parseFloat(intakeForm.woodDetails.moisture) : undefined
         },
         costDetails: {
           ...intakeForm.costDetails,
-          unitPrice: parseFloat(intakeForm.costDetails.unitPrice)
+          unitPrice: parseFloat(intakeForm.costDetails.unitPrice),
+          costPerUnitCft: intakeForm.costDetails.costPerUnitCft !== '' ? parseFloat(intakeForm.costDetails.costPerUnitCft) : undefined
         }
       };
       
-        await axios.post(API_BASE + '/vendors/intake', formData, {
+      const resp = await axios.post(API_BASE + '/vendors/intake', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      showSuccess('Wood intake logged successfully!');
+      const pq = resp?.data?.woodIntake?.predictedQuality;
+      showSuccess('Wood intake logged successfully!' + (pq ? ` Predicted quality: ${pq}.` : ''));
       setShowIntakeForm(false);
+      setPreviewResults(null);
+      setPreviewError('');
+      setPreviewMajority('');
       setIntakeForm({
         vendorId: '',
-        woodDetails: { type: 'teak', subtype: '', dimensions: { length: '', width: '', thickness: '', quantity: '' }, quality: 'standard', condition: 'good' },
-        costDetails: { unitPrice: '', currency: 'INR', paymentStatus: 'pending', paymentMethod: 'bank_transfer' },
+        woodDetails: { type: 'teak', subtype: '', dimensions: { length: '', width: '', thickness: '', quantity: '' }, moisture: '', quality: 'standard', condition: 'good' },
+        costDetails: { unitPrice: '', costPerUnitCft: '', currency: 'INR', paymentStatus: 'pending', paymentMethod: 'bank_transfer' },
         logistics: { deliveryDate: '', deliveryMethod: 'delivery', location: { warehouse: '', section: '', rack: '' } },
         notes: ''
       });
@@ -728,6 +766,54 @@ export default function AdminVendors() {
       style: 'currency',
       currency: 'INR'
     }).format(amount);
+  };
+
+  const handlePreviewPrediction = async () => {
+    try {
+      setPreviewLoading(true);
+      setPreviewError('');
+      setPreviewResults(null);
+      setPreviewMajority('');
+
+      // Find vendor name
+      const vendorName = vendors.find(v => v._id === intakeForm.vendorId)?.name || 'Unknown';
+
+      // Convert units for ML: feet/inches -> cm
+      const feetToCm = 30.48;
+      const inchToCm = 2.54;
+      const lengthCm = parseFloat(intakeForm.woodDetails.dimensions.length || '0') * feetToCm;
+      const widthCm = parseFloat(intakeForm.woodDetails.dimensions.width || '0') * inchToCm;
+      const thicknessCm = parseFloat(intakeForm.woodDetails.dimensions.thickness || '0') * inchToCm;
+
+      const payload = {
+        vendor: vendorName,
+        woodType: (intakeForm.woodDetails.type || '').toString(),
+        length: isNaN(lengthCm) ? 0 : lengthCm,
+        width: isNaN(widthCm) ? 0 : widthCm,
+        thickness: isNaN(thicknessCm) ? 0 : thicknessCm,
+        moisture: intakeForm.woodDetails.moisture !== '' ? Number(intakeForm.woodDetails.moisture) : 12,
+        costPerUnit: intakeForm.costDetails.costPerUnitCft !== '' ? Number(intakeForm.costDetails.costPerUnitCft) : Number(intakeForm.costDetails.unitPrice || 0)
+      };
+
+      const resp = await axios.post(API_BASE + '/ml/wood-quality/predict', payload);
+      const data = resp.data;
+      if (!data.ok) {
+        throw new Error(data?.message || 'Prediction failed');
+      }
+
+      const results = data.results;
+      setPreviewResults(results);
+
+      // Majority vote summary
+      const votes = Object.values(results).map(r => r.prediction);
+      const counts = votes.reduce((acc, v) => { acc[v] = (acc[v] || 0) + 1; return acc; }, {});
+      const majority = Object.entries(counts).sort((a,b) => b[1]-a[1])[0]?.[0] || '';
+      setPreviewMajority(majority);
+    } catch (e) {
+      setPreviewError(e.response?.data?.message || e.message);
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   if (loading) {
@@ -991,6 +1077,7 @@ export default function AdminVendors() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensions</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Predicted Quality</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -1006,6 +1093,7 @@ export default function AdminVendors() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{intake.woodDetails.dimensions.quantity} pieces</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(intake.costDetails.totalCost)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{intake.predictedQuality || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         intake.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -1388,7 +1476,25 @@ export default function AdminVendors() {
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Moisture (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={intakeForm.woodDetails.moisture}
+                      onChange={(e) => handleIntakeFieldChange('woodDetails.moisture', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.moisture ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
+                      placeholder="Moisture percentage"
+                    />
+                    {intakeValidationErrors.moisture && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.moisture}</p>
+                    )}
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Unit Price (₹) *</label>
                     <input
@@ -1408,6 +1514,25 @@ export default function AdminVendors() {
                       <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.unitPrice}</p>
                     )}
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Cost per unit (₹/cft)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={intakeForm.costDetails.costPerUnitCft}
+                      onChange={(e) => handleIntakeFieldChange('costDetails.costPerUnitCft', e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                        intakeValidationErrors.costPerUnitCft ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
+                      placeholder="₹ per cubic foot (optional)"
+                    />
+                    {intakeValidationErrors.costPerUnitCft && (
+                      <p className="mt-1 text-sm text-red-600">{intakeValidationErrors.costPerUnitCft}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Delivery Date *</label>
                     <input
@@ -1443,21 +1568,57 @@ export default function AdminVendors() {
                     )}
                   </div>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={handlePreviewPrediction}
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md disabled:opacity-50"
+                    disabled={previewLoading}
+                  >
+                    {previewLoading ? 'Predicting…' : 'Preview Prediction'}
+                  </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md"
+                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md"
                   >
                     Log Intake
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowIntakeForm(false)}
-                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-md"
+                    onClick={() => { setShowIntakeForm(false); setPreviewResults(null); setPreviewError(''); setPreviewMajority(''); }}
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-md"
                   >
                     Cancel
                   </button>
                 </div>
+
+                {previewError && (
+                  <div className="text-red-600 text-sm">{previewError}</div>
+                )}
+
+                {previewResults && (
+                  <div className="mt-2 border rounded-md p-3 bg-gray-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium">Model Predictions</div>
+                      <div className="text-sm">Majority vote: <span className="font-semibold">{previewMajority || '-'}</span></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {Object.entries(previewResults).map(([model, r]) => (
+                        <div key={model} className="bg-white border rounded p-2">
+                          <div className="text-sm font-medium">{model}</div>
+                          <div className="text-sm">Prediction: <span className="font-semibold">{r.prediction}</span></div>
+                          {r.probabilities && (
+                            <div className="mt-1 text-xs text-gray-600">
+                              {Object.entries(r.probabilities).map(([label, p]) => (
+                                <div key={label} className="flex justify-between"><span>{label}</span><span>{(p*100).toFixed(1)}%</span></div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </form>
             </div>
           </div>

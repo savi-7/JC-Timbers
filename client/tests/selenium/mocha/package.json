@@ -1,0 +1,23 @@
+{
+  "name": "jc-timbers-selenium-mocha",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "mocha \"tests/**/*.spec.js\" --timeout 60000 --reporter mochawesome --reporter-options reportDir=reports,reportFilename=index,overwrite=true,html=true,json=true",
+    "test:chrome": "BROWSER=chrome npm run test",
+    "test:firefox": "BROWSER=firefox npm run test",
+    "test:edge": "BROWSER=edge npm run test",
+    "open:report": "node open-report.js"
+  },
+  "dependencies": {
+    "chromedriver": "latest",
+    "edgedriver": "latest",
+    "geckodriver": "latest",
+    "mocha": "^10.6.0",
+    "mochawesome": "^7.1.3",
+    "selenium-webdriver": "^4.24.0"
+  }
+}
+
+
+

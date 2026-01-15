@@ -20,6 +20,7 @@ const woodIntakeSchema = new mongoose.Schema({
       thickness: { type: Number, required: true }, // in inches
       quantity: { type: Number, required: true } // number of pieces
     },
+    moisture: { type: Number }, // percentage
     quality: {
       type: String,
       enum: ['premium', 'grade_a', 'grade_b', 'standard'],
@@ -33,6 +34,7 @@ const woodIntakeSchema = new mongoose.Schema({
   },
   costDetails: {
     unitPrice: { type: Number, required: true }, // price per piece
+    costPerUnitCft: { type: Number }, // price per cubic foot (optional)
     totalCost: { type: Number, required: true }, // total cost for all pieces
     currency: { type: String, default: 'INR' },
     paymentStatus: {
@@ -46,6 +48,11 @@ const woodIntakeSchema = new mongoose.Schema({
       default: 'bank_transfer'
     }
   },
+  predictedQuality: {
+    type: String, // High | Medium | Low
+    enum: ['High', 'Medium', 'Low']
+  },
+  mlPredictions: { type: mongoose.Schema.Types.Mixed }, // store per-model outputs
   logistics: {
     deliveryDate: { type: Date, required: true },
     deliveryMethod: {

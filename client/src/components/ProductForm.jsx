@@ -29,9 +29,11 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
   // Validation state
   const [validationErrors, setValidationErrors] = useState({});
 
-  // Timber subcategories
-  const timberSubcategories = [
-    { value: '', label: 'Select Timber Type' },
+  // Custom categories state
+  const [customCategories, setCustomCategories] = useState({ furniture: [], timber: [], construction: [] });
+
+  // Default Timber subcategories
+  const defaultTimberSubcategories = [
     { value: 'planks', label: 'Planks' },
     { value: 'beams', label: 'Beams' },
     { value: 'billet', label: 'Billet' },
@@ -41,13 +43,62 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
     { value: 'stumps_blocks', label: 'Stumps & Blocks' }
   ];
 
-  // Furniture subcategories
-  const furnitureSubcategories = [
-    { value: '', label: 'Select Furniture Type' },
+  // Default Furniture subcategories
+  const defaultFurnitureSubcategories = [
     { value: 'study table', label: 'Study Table' },
     { value: 'dining table', label: 'Dining Table' },
     { value: 'chairs', label: 'Chairs' },
-    { value: 'bed', label: 'Bed' }
+    { value: 'bed', label: 'Bed' },
+    { value: 'bookshelf', label: 'Bookshelf' }
+  ];
+
+  // Default Construction subcategories (if any)
+  const defaultConstructionSubcategories = [];
+
+  // Load custom categories on mount and when form opens
+  useEffect(() => {
+    const loadCategories = () => {
+      try {
+        const saved = localStorage.getItem('admin_custom_categories');
+        if (saved) {
+          setCustomCategories(JSON.parse(saved));
+        }
+      } catch (error) {
+        console.error('Error loading custom categories:', error);
+      }
+    };
+
+    loadCategories();
+
+    // Listen for custom category updates
+    const handleCategoryUpdate = () => {
+      loadCategories();
+    };
+
+    window.addEventListener('customCategoriesUpdated', handleCategoryUpdate);
+    
+    return () => {
+      window.removeEventListener('customCategoriesUpdated', handleCategoryUpdate);
+    };
+  }, [isEdit, product]);
+
+  // Merge default and custom categories (computed values)
+  const timberSubcategories = [
+    { value: '', label: 'Select Timber Type' },
+    ...defaultTimberSubcategories,
+    ...(customCategories.timber || [])
+  ];
+
+  const furnitureSubcategories = [
+    { value: '', label: 'Select Furniture Type' },
+    ...defaultFurnitureSubcategories,
+    ...(customCategories.furniture || [])
+  ];
+
+  const constructionSubcategories = [
+    { value: '', label: 'Select Construction Type' },
+    ...defaultConstructionSubcategories,
+    ...(customCategories.construction || [])
   ];
 
   // Category-specific attribute configurations

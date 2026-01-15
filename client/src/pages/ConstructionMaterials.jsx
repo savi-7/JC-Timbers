@@ -204,20 +204,6 @@ export default function ConstructionMaterials() {
               Discover our curated collection of durable construction materials. 
               Each product is selected for its strength, reliability, and suitability for building projects.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => navigate('/timber-products')}
-                className="bg-dark-brown text-white px-6 py-3 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
-              >
-                View Timber Products
-              </button>
-              <button
-                onClick={() => navigate('/furniture')}
-                className="border-2 border-dark-brown text-dark-brown px-6 py-3 rounded-lg font-paragraph hover:bg-dark-brown hover:text-white transition-colors duration-200 text-sm"
-              >
-                View Furniture
-              </button>
-            </div>
           </div>
         </div>
 

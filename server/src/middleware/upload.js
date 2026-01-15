@@ -42,6 +42,9 @@ const upload = multer({
 // Middleware for handling multiple image uploads
 export const uploadImages = upload.array('images', 5);
 
+// Middleware for handling single image upload (for image search)
+export const uploadSingleImage = upload.single('image');
+
 // Error handling middleware for multer
 export const handleUploadError = (error, req, res, next) => {
   console.error('Upload error:', error);

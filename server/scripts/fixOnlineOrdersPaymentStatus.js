@@ -57,3 +57,11 @@ async function fixOnlineOrdersPaymentStatus() {
 // Run the script
 fixOnlineOrdersPaymentStatus();
 
+
+
+
+
+
+
+
+

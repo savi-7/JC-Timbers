@@ -12,7 +12,9 @@
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "serve:dist": "npx serve -s dist -l 5173",
+    "test:selenium": "cross-env NODE_ENV=test mocha tests/selenium/tests/**/*.test.js --timeout 90000 --reporter mochawesome --reporter-options reportDir=tests/selenium/report,reportFilename=index,quiet=true"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -52,11 +54,16 @@
     "@playwright/test": "^1.56.1",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.21",
+    "chromedriver": "^141.0.1",
+    "cross-env": "^7.0.3",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "mocha": "^11.0.1",
+    "mochawesome": "^7.1.3",
     "postcss": "^8.5.6",
+    "selenium-webdriver": "^4.25.0",
     "tailwindcss": "^3.4.17",
     "vite": "^7.1.0"
   }

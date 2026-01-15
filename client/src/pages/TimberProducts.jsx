@@ -199,20 +199,6 @@ export default function TimberProducts() {
               Discover our curated collection of high-quality timber products. 
               Each piece is carefully selected for its durability, beauty, and craftsmanship.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => navigate('/furniture')}
-                className="bg-dark-brown text-white px-6 py-3 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
-              >
-                View Furniture
-              </button>
-              <button
-                onClick={() => navigate('/construction-materials')}
-                className="border-2 border-dark-brown text-dark-brown px-6 py-3 rounded-lg font-paragraph hover:bg-dark-brown hover:text-white transition-colors duration-200 text-sm"
-              >
-                Construction Materials
-              </button>
-            </div>
           </div>
         </div>
 

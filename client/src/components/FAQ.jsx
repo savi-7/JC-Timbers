@@ -8,7 +8,7 @@ export default function FAQ() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFAQs();
+    fetchFAQs();  
   }, []);
 
   const fetchFAQs = async () => {

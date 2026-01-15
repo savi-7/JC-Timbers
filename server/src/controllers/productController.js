@@ -1,5 +1,6 @@
 import Product from '../models/Product.js';
 import { convertImageToBase64, cleanupTempFiles } from '../middleware/upload.js';
+import axios from 'axios';
 
 // Create new product with images
 export const createProduct = async (req, res) => {
@@ -120,6 +121,32 @@ export const createProduct = async (req, res) => {
     console.log('Saving product to database...');
     await product.save();
     console.log('Product saved successfully with ID:', product._id);
+
+    // Add product images to Pinecone for image search (async, non-blocking)
+    if (product.category === 'furniture' && product.images && product.images.length > 0) {
+      // Call FastAPI service to add embeddings (fire and forget)
+      const axios = require('axios');
+      const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
+      
+      axios.post(`${FASTAPI_URL}/add-product`, {
+        product_id: product._id.toString(),
+        product_name: product.name,
+        category: product.category,
+        subcategory: product.subcategory || '',
+        images: product.images.map(img => ({
+          data: img.data,
+          filename: img.filename,
+          contentType: img.contentType
+        }))
+      }, {
+        timeout: 10000 // 10 second timeout
+      }).then(response => {
+        console.log(`✅ Product ${product._id} added to image search:`, response.data.message);
+      }).catch(error => {
+        // Don't fail product creation if Pinecone update fails
+        console.warn(`⚠️ Could not add product ${product._id} to image search:`, error.message);
+      });
+    }
 
     // Clean up temporary files
     cleanupTempFiles(req.files);
@@ -354,6 +381,32 @@ export const updateProduct = async (req, res) => {
     }
 
     console.log('Product updated successfully:', product.name);
+    
+    // Update product images in Pinecone for image search (async, non-blocking)
+    if (product.category === 'furniture' && product.images && product.images.length > 0) {
+      // Call FastAPI service to update embeddings (fire and forget)
+      const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
+      
+      axios.post(`${FASTAPI_URL}/add-product`, {
+        product_id: product._id.toString(),
+        product_name: product.name,
+        category: product.category,
+        subcategory: product.subcategory || '',
+        images: product.images.map(img => ({
+          data: img.data,
+          filename: img.filename,
+          contentType: img.contentType
+        }))
+      }, {
+        timeout: 10000 // 10 second timeout
+      }).then(response => {
+        console.log(`✅ Product ${product._id} updated in image search:`, response.data.message);
+      }).catch(error => {
+        // Don't fail product update if Pinecone update fails
+        console.warn(`⚠️ Could not update product ${product._id} in image search:`, error.message);
+      });
+    }
+    
     res.json({
       message: 'Product updated successfully',
       product

@@ -28,8 +28,17 @@ import AdminOrders from "./pages/AdminOrders";
 import MyReviews from "./pages/MyReviews";
 import AdminReviews from "./pages/AdminReviews";
 import TimberCalculator from "./pages/TimberCalculator";
+import Marketplace from "./pages/Marketplace";
+import MarketplaceProfile from "./pages/MarketplaceProfile";
+import CreateListing from "./pages/CreateListing";
+import MyListings from "./pages/MyListings";
+import EditListing from "./pages/EditListing";
+import ListingDetail from "./pages/ListingDetail";
+import MarketplaceInbox from "./pages/MarketplaceInbox";
 import { NotificationProvider } from "./components/NotificationProvider";
 import { CartProvider } from "./contexts/CartContext";
+import AdminWoodQuality from "./pages/AdminWoodQuality";
+import AdminCustomerSegments from "./pages/AdminCustomerSegments";
 
 export default function App() {
   return (
@@ -128,6 +137,22 @@ export default function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/admin/wood-quality" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminWoodQuality />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/customer-segments" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminCustomerSegments />
+            </ProtectedRoute>
+          } 
+        />
         {/* Convenience redirect for singular path */}
         <Route path="/admin/product" element={<Navigate to="/admin/products" replace />} />
 
@@ -135,6 +160,41 @@ export default function App() {
         <Route path="/timber-products" element={<TimberProducts />} />
         <Route path="/furniture" element={<Furniture />} />
         <Route path="/construction-materials" element={<ConstructionMaterials />} />
+        <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/marketplace/listing/:id" element={<ListingDetail />} />
+        <Route path="/marketplace/profile" element={<MarketplaceProfile />} />
+        <Route 
+          path="/marketplace/inbox" 
+          element={
+            <ProtectedRoute role="customer">
+              <MarketplaceInbox />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/create-listing" 
+          element={
+            <ProtectedRoute role="customer">
+              <CreateListing />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/my-listings" 
+          element={
+            <ProtectedRoute role="customer">
+              <MyListings />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/edit-listing/:id" 
+          element={
+            <ProtectedRoute role="customer">
+              <EditListing />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Product Detail Route */}
         <Route path="/product/:id" element={<ProductDetail />} />

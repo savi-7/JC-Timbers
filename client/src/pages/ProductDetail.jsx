@@ -166,6 +166,10 @@ export default function ProductDetail() {
   };
 
   const getImageUrl = (image) => {
+    const fallback = 'https://via.placeholder.com/400x300/f3f4f6/9ca3af?text=No+Image';
+    if (!image) {
+      return fallback;
+    }
     if (image.url) {
       return image.url;
     }
@@ -178,7 +182,7 @@ export default function ProductDetail() {
       }
       return `data:${image.contentType || 'image/jpeg'};base64,${image.data}`;
     }
-    return 'https://via.placeholder.com/400x300/f3f4f6/9ca3af?text=No+Image';
+    return fallback;
   };
 
   if (loading) {

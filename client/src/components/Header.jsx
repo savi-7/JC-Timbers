@@ -54,7 +54,7 @@ export default function Header({backgroundClass = 'bg-cream'}) {
             >
               Timber Products
             </button>
-            
+
             <button 
               onClick={() => navigate('/furniture')}
               className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
@@ -67,6 +67,13 @@ export default function Header({backgroundClass = 'bg-cream'}) {
               className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
             >
               Construction Materials
+            </button>
+            
+            <button 
+              onClick={() => navigate('/marketplace')}
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+            >
+              Marketplace
             </button>
             
             <button 
