@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import MarketplaceHeader from '../components/MarketplaceHeader';
+import SellerProfileModal from '../components/SellerProfileModal';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../components/NotificationProvider';
 
 const CONDITION_LABELS = {
   'new': 'New',
@@ -15,16 +17,84 @@ export default function ListingDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user, isAuthenticated } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [listing, setListing] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showSellerProfileModal, setShowSellerProfileModal] = useState(false);
+  const [mapCoords, setMapCoords] = useState({ lat: 20.5937, lon: 78.9629 });
+  const [mapLoading, setMapLoading] = useState(true);
+  const [sellerData, setSellerData] = useState(null);
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const mapInitializedRef = useRef(false);
 
   useEffect(() => {
     loadListing();
     checkIfSaved();
-  }, [id, isAuthenticated]);
+    trackRecentlyViewed();
+  }, [id, isAuthenticated, user]);
+
+  // Update map coordinates when listing is loaded
+  useEffect(() => {
+    if (listing) {
+      if (listing.locationCoords && listing.locationCoords.lat && listing.locationCoords.lon) {
+        // Use saved coordinates from listing
+        setMapCoords({
+          lat: listing.locationCoords.lat,
+          lon: listing.locationCoords.lon,
+        });
+      } else if (listing.location) {
+        // Geocode location string if coordinates not available
+        geocodeLocation(listing.location);
+      }
+      
+      // Load seller data
+      loadSellerData(listing.userId);
+    }
+  }, [listing]);
+
+  const loadSellerData = (sellerEmail) => {
+    try {
+      const sellerDashboard = localStorage.getItem(`seller_dashboard_${sellerEmail}`);
+      if (sellerDashboard) {
+        const seller = JSON.parse(sellerDashboard);
+        setSellerData({
+          name: seller.name || sellerEmail.split('@')[0],
+          email: seller.email || sellerEmail,
+          phone: seller.phone || '',
+          location: seller.location || '',
+          ...seller,
+        });
+      } else {
+        // Fallback if seller dashboard doesn't exist
+        setSellerData({
+          name: sellerEmail.split('@')[0],
+          email: sellerEmail,
+          phone: '',
+          location: '',
+        });
+      }
+    } catch (error) {
+      console.error('Error loading seller data:', error);
+      setSellerData({
+        name: sellerEmail.split('@')[0],
+        email: sellerEmail,
+        phone: '',
+        location: '',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (listing && isAuthenticated && user) {
+      checkIfFollowing();
+    }
+  }, [listing, isAuthenticated, user]);
 
   const loadListing = () => {
     try {
@@ -46,7 +116,7 @@ export default function ListingDetail() {
       const foundListing = allListings.find((l) => l.id === id);
       
       if (!foundListing) {
-        alert('Listing not found');
+        showError('Listing not found');
         navigate('/marketplace');
         return;
       }
@@ -54,7 +124,7 @@ export default function ListingDetail() {
       setListing(foundListing);
     } catch (error) {
       console.error('Error loading listing:', error);
-      alert('Failed to load listing');
+      showError('Failed to load listing');
       navigate('/marketplace');
     } finally {
       setIsLoading(false);
@@ -74,6 +144,80 @@ export default function ListingDetail() {
     }
   };
 
+  const checkIfFollowing = () => {
+    if (!isAuthenticated || !user || !listing) return;
+    
+    try {
+      const following = JSON.parse(
+        localStorage.getItem(`marketplace_following_${user.email}`) || '[]'
+      );
+      setIsFollowing(following.includes(listing.userId));
+    } catch (error) {
+      console.error('Error checking following status:', error);
+    }
+  };
+
+  const handleFollow = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    if (!listing) return;
+
+    try {
+      const following = JSON.parse(
+        localStorage.getItem(`marketplace_following_${user.email}`) || '[]'
+      );
+      
+      if (isFollowing) {
+        const updated = following.filter((email) => email !== listing.userId);
+        localStorage.setItem(`marketplace_following_${user.email}`, JSON.stringify(updated));
+        setIsFollowing(false);
+        showSuccess('Unfollowed seller');
+      } else {
+        if (!following.includes(listing.userId)) {
+          following.push(listing.userId);
+        }
+        localStorage.setItem(`marketplace_following_${user.email}`, JSON.stringify(following));
+        setIsFollowing(true);
+        showSuccess('Following seller');
+      }
+    } catch (error) {
+      console.error('Error following/unfollowing:', error);
+      showError('Failed to update follow status');
+    }
+  };
+
+  const trackRecentlyViewed = () => {
+    if (!isAuthenticated || !user || !id) return;
+
+    try {
+      const recentData = JSON.parse(
+        localStorage.getItem(`recently_viewed_${user.email}`) || '[]'
+      );
+
+      // Remove if already exists
+      const filtered = recentData.filter((item) => item.listingId !== id);
+
+      // Add to beginning
+      filtered.unshift({
+        listingId: id,
+        viewedAt: new Date().toISOString(),
+      });
+
+      // Keep only last 50 items
+      const limited = filtered.slice(0, 50);
+
+      localStorage.setItem(
+        `recently_viewed_${user.email}`,
+        JSON.stringify(limited)
+      );
+    } catch (error) {
+      console.error('Error tracking recently viewed:', error);
+    }
+  };
+
   const handleSave = () => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -89,16 +233,16 @@ export default function ListingDetail() {
         const updated = savedItems.filter((itemId) => itemId !== id);
         localStorage.setItem(`saved_items_${user.email}`, JSON.stringify(updated));
         setIsSaved(false);
-        alert('Removed from saved items');
+        showSuccess('Removed from saved items');
       } else {
         savedItems.push(id);
         localStorage.setItem(`saved_items_${user.email}`, JSON.stringify(savedItems));
         setIsSaved(true);
-        alert('Saved to your items');
+        showSuccess('Saved to your items');
       }
     } catch (error) {
       console.error('Error saving item:', error);
-      alert('Failed to save item');
+      showError('Failed to save item');
     }
   };
 
@@ -120,9 +264,9 @@ export default function ListingDetail() {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
-      alert('Link copied to clipboard!');
+      showSuccess('Link copied to clipboard!');
     }).catch(() => {
-      alert('Failed to copy link');
+      showError('Failed to copy link');
     });
   };
 
@@ -141,6 +285,180 @@ export default function ListingDetail() {
     }
     setShowReportModal(true);
   };
+
+  const geocodeLocation = async (locationString) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationString)}&limit=1&countrycodes=in`,
+        {
+          headers: {
+            'User-Agent': 'JC-Timbers-Marketplace/1.0',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Geocoding failed');
+      }
+
+      const data = await response.json();
+      if (data.length > 0) {
+        setMapCoords({
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon),
+        });
+      }
+    } catch (error) {
+      console.error('Error geocoding location:', error);
+      // Keep default coordinates if geocoding fails
+    }
+  };
+
+  // Initialize interactive map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInitializedRef.current || !listing) return;
+
+    const loadLeaflet = () => {
+      return new Promise((resolve, reject) => {
+        if (window.L) {
+          resolve();
+          return;
+        }
+
+        const existingCSS = document.querySelector('link[href*="leaflet.css"]');
+        if (!existingCSS) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+          link.crossOrigin = '';
+          document.head.appendChild(link);
+        }
+
+        const existingScript = document.querySelector('script[src*="leaflet.js"]');
+        if (existingScript) {
+          existingScript.onload = resolve;
+          existingScript.onerror = reject;
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+        script.crossOrigin = '';
+        script.onload = () => {
+          setTimeout(resolve, 100);
+        };
+        script.onerror = reject;
+        document.body.appendChild(script);
+      });
+    };
+
+    const tryInitializeMap = () => {
+      const checkAndInit = (attempts = 0) => {
+        if (!mapContainerRef.current) {
+          if (attempts < 20) {
+            setTimeout(() => checkAndInit(attempts + 1), 200);
+          }
+          return;
+        }
+
+        const hasDimensions =
+          mapContainerRef.current.offsetHeight > 0 ||
+          mapContainerRef.current.offsetWidth > 0 ||
+          mapContainerRef.current.clientHeight > 0;
+
+        if (!hasDimensions && attempts < 20) {
+          setTimeout(() => checkAndInit(attempts + 1), 200);
+          return;
+        }
+
+        if (!window.L || !mapContainerRef.current || mapInitializedRef.current) return;
+
+        try {
+          const map = window.L.map(mapContainerRef.current, {
+            center: [mapCoords.lat, mapCoords.lon],
+            zoom: 13,
+          });
+
+          delete window.L.Icon.Default.prototype._getIconUrl;
+          window.L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+          });
+
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+          }).addTo(map);
+
+          const marker = window.L.marker([mapCoords.lat, mapCoords.lon], {
+            draggable: false,
+          }).addTo(map);
+
+          // Add popup with location info
+          marker.bindPopup(`<strong>${listing.location || 'Product Location'}</strong>`).openPopup();
+
+          markerRef.current = marker;
+          mapRef.current = map;
+          mapInitializedRef.current = true;
+          setMapLoading(false);
+
+          setTimeout(() => {
+            if (map) {
+              map.invalidateSize();
+              map.setView([mapCoords.lat, mapCoords.lon], 13);
+            }
+          }, 300);
+        } catch (error) {
+          console.error('Error initializing map:', error);
+          setMapLoading(false);
+        }
+      };
+
+      checkAndInit();
+    };
+
+    loadLeaflet()
+      .then(() => {
+        tryInitializeMap();
+      })
+      .catch((error) => {
+        console.error('Error loading Leaflet:', error);
+        setMapLoading(false);
+      });
+
+    return () => {
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch {
+          // Ignore errors during cleanup
+        }
+        mapRef.current = null;
+        markerRef.current = null;
+        mapInitializedRef.current = false;
+      }
+    };
+  }, [listing, mapCoords.lat, mapCoords.lon]);
+
+  // Update map when coordinates change
+  useEffect(() => {
+    if (markerRef.current && mapRef.current && mapInitializedRef.current) {
+      markerRef.current.setLatLng([mapCoords.lat, mapCoords.lon]);
+      mapRef.current.setView([mapCoords.lat, mapCoords.lon], 13);
+      if (listing?.location) {
+        markerRef.current.setPopupContent(`<strong>${listing.location}</strong>`).openPopup();
+      }
+      // Force invalidate size after view change
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+        }
+      }, 100);
+    }
+  }, [mapCoords.lat, mapCoords.lon, listing?.location]);
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -285,7 +603,7 @@ export default function ListingDetail() {
                   <span>Send Message to Seller</span>
                 </button>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   <button
                     onClick={handleSave}
                     className={`py-2.5 px-4 rounded-xl border font-paragraph text-sm transition-colors flex items-center justify-center gap-2 ${
@@ -308,6 +626,30 @@ export default function ListingDetail() {
                       />
                     </svg>
                     <span className="hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleFollow}
+                    className={`py-2.5 px-4 rounded-xl border font-paragraph text-sm transition-colors flex items-center justify-center gap-2 ${
+                      isFollowing
+                        ? 'bg-blue-50 border-blue-300 text-blue-700'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <svg
+                      className={`w-5 h-5 ${isFollowing ? 'fill-current' : ''}`}
+                      fill={isFollowing ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                      />
+                    </svg>
+                    <span className="hidden sm:inline">{isFollowing ? 'Following' : 'Follow'}</span>
                   </button>
 
                   <button
@@ -399,23 +741,54 @@ export default function ListingDetail() {
                     Location
                   </h2>
                   <p className="text-dark-brown mb-4">{listing.location}</p>
+                  
+                  {/* Interactive Map */}
                   <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 relative">
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      frameBorder="0"
-                      scrolling="no"
-                      marginHeight="0"
-                      marginWidth="0"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(
-                        getBoundingBox(listing.location)
-                      )}&layer=mapnik&marker=1&q=${encodeURIComponent(listing.location)}`}
-                      title="Location Map"
+                    <div
+                      ref={mapContainerRef}
+                      id="listing-detail-map"
                       className="w-full h-full"
-                    />
+                      style={{
+                        height: '100%',
+                        width: '100%',
+                        zIndex: showSellerProfileModal ? 1 : 'auto',
+                        position: 'relative',
+                      }}
+                    >
+                      {/* Loading indicator */}
+                      {mapLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                          <div className="text-center">
+                            <svg
+                              className="animate-spin h-8 w-8 text-accent-red mx-auto mb-2"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                            <p className="text-sm text-gray-600">Loading map...</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* OpenStreetMap Link */}
                     <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm">
                       <a
-                        href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(listing.location)}`}
+                        href={`https://www.openstreetmap.org/?mlat=${mapCoords.lat}&mlon=${mapCoords.lon}&zoom=13`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-accent-red hover:underline font-medium"
@@ -424,6 +797,42 @@ export default function ListingDetail() {
                       </a>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Seller Details */}
+              {listing && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                  <h2 className="font-heading text-xl text-dark-brown mb-4">Seller Details</h2>
+                  <button
+                    onClick={() => setShowSellerProfileModal(true)}
+                    className="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-dark-brown to-accent-red flex items-center justify-center text-white text-lg font-semibold">
+                        {(sellerData?.name || listing.userId?.split('@')[0])?.charAt(0)?.toUpperCase() || 'S'}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-dark-brown text-lg">
+                          {sellerData?.name || listing.userId?.split('@')[0] || 'Seller'}
+                        </p>
+                        <p className="text-sm text-gray-500">Click to view seller profile</p>
+                      </div>
+                      <svg
+                        className="w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
+                  </button>
                 </div>
               )}
             </div>
@@ -436,6 +845,8 @@ export default function ListingDetail() {
             listing={listing}
             onClose={() => setShowMessageModal(false)}
             currentUser={user}
+            showSuccess={showSuccess}
+            showError={showError}
           />
         )}
 
@@ -445,29 +856,54 @@ export default function ListingDetail() {
             listing={listing}
             onClose={() => setShowReportModal(false)}
             currentUser={user}
+            showSuccess={showSuccess}
+            showError={showError}
           />
+        )}
+
+        {/* Seller Profile Modal */}
+        {showSellerProfileModal && listing && sellerData && (
+          <>
+            {/* Add style to limit Leaflet z-index when modal is open */}
+            <style>{`
+              #listing-detail-map .leaflet-container,
+              #listing-detail-map .leaflet-pane,
+              #listing-detail-map .leaflet-map-pane,
+              #listing-detail-map .leaflet-tile-pane,
+              #listing-detail-map .leaflet-overlay-pane,
+              #listing-detail-map .leaflet-shadow-pane,
+              #listing-detail-map .leaflet-marker-pane,
+              #listing-detail-map .leaflet-tooltip-pane,
+              #listing-detail-map .leaflet-popup-pane,
+              #listing-detail-map .leaflet-control {
+                z-index: 1 !important;
+              }
+            `}</style>
+            <SellerProfileModal
+              seller={sellerData}
+              sellerEmail={listing.userId}
+              onClose={() => setShowSellerProfileModal(false)}
+              currentUser={user}
+              isAuthenticated={isAuthenticated}
+              showSuccess={showSuccess}
+              showError={showError}
+              isFollowing={isFollowing}
+              onFollowChange={(following) => setIsFollowing(following)}
+            />
+          </>
         )}
       </main>
     </div>
   );
 }
 
-// Helper function to get bounding box for OpenStreetMap (simplified)
-// In production, use a geocoding service like Nominatim to get coordinates
-function getBoundingBox(location) {
-  // Default bounding box (can be improved with geocoding)
-  // Format: min_lon,min_lat,max_lon,max_lat
-  // This is a placeholder - ideally you'd geocode the location string
-  return '-180,-90,180,90';
-}
-
 // Message Modal Component
-function MessageModal({ listing, onClose, currentUser }) {
+function MessageModal({ listing, onClose, currentUser, showSuccess, showError }) {
   const [message, setMessage] = useState('');
 
   const handleSend = () => {
     if (!message.trim()) {
-      alert('Please enter a message');
+      showError('Please enter a message');
       return;
     }
 
@@ -489,19 +925,31 @@ function MessageModal({ listing, onClose, currentUser }) {
       };
 
       // Save to seller's inbox
-      const storageKey = `marketplace_inbox_${listing.userId}`;
-      const existingMessages = JSON.parse(
-        localStorage.getItem(storageKey) || '[]'
+      const sellerInboxKey = `marketplace_inbox_${listing.userId}`;
+      const sellerMessages = JSON.parse(
+        localStorage.getItem(sellerInboxKey) || '[]'
       );
-      existingMessages.push(newMessage);
-      localStorage.setItem(storageKey, JSON.stringify(existingMessages));
+      sellerMessages.push(newMessage);
+      localStorage.setItem(sellerInboxKey, JSON.stringify(sellerMessages));
 
-      alert('Message sent! The seller will see it in their inbox.');
+      // Also save to buyer's sent messages
+      const buyerSentKey = `marketplace_sent_messages_${currentUser?.email}`;
+      const sentMessages = JSON.parse(
+        localStorage.getItem(buyerSentKey) || '[]'
+      );
+      sentMessages.push({
+        ...newMessage,
+        toName: listing.userName || listing.userId.split('@')[0],
+        toEmail: listing.userId,
+      });
+      localStorage.setItem(buyerSentKey, JSON.stringify(sentMessages));
+
+      showSuccess('Message sent! The seller will see it in their inbox.');
       setMessage('');
       onClose();
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      showError('Failed to send message. Please try again.');
     }
   };
 
@@ -578,7 +1026,7 @@ function MessageModal({ listing, onClose, currentUser }) {
 }
 
 // Report Modal Component
-function ReportModal({ listing, onClose, currentUser }) {
+function ReportModal({ listing, onClose, currentUser, showSuccess, showError }) {
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
 
@@ -592,7 +1040,7 @@ function ReportModal({ listing, onClose, currentUser }) {
 
   const handleSubmit = () => {
     if (!reason) {
-      alert('Please select a reason');
+      showError('Please select a reason');
       return;
     }
 
@@ -604,7 +1052,7 @@ function ReportModal({ listing, onClose, currentUser }) {
       details: details,
     });
 
-    alert('Thank you for your report. We will review it shortly.');
+    showSuccess('Thank you for your report. We will review it shortly.');
     setReason('');
     setDetails('');
     onClose();

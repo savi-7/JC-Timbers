@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import MarketplaceHeader from '../components/MarketplaceHeader';
+import LocationFilterModal from '../components/LocationFilterModal';
 import { useAuth } from '../hooks/useAuth';
 
 const CONDITION_LABELS = {
@@ -19,19 +20,52 @@ export default function Marketplace() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   // Load all listings from all users
   useEffect(() => {
     loadAllListings();
   }, []);
 
-  // Filter listings based on search and category
+  // Filter listings based on search, category, and location
   useEffect(() => {
-    let filtered = listings.filter((listing) => listing.status === 'active');
+    // Show only active listings (not sold)
+    let filtered = listings.filter((listing) => listing.status === 'active' || !listing.status);
 
     // Hide seller's own listings from marketplace view (only show other users' listings)
     if (isAuthenticated && user?.email) {
       filtered = filtered.filter((listing) => listing.userId !== user.email);
+    }
+
+    // Filter by selected location filter (priority over saved preference)
+    if (selectedLocation?.address) {
+      const filterLocation = selectedLocation.address.split(',')[0].toLowerCase().trim();
+      filtered = filtered.filter((listing) => {
+        if (!listing.location) return false;
+        const listingLocation = listing.location.toLowerCase();
+        return listingLocation.includes(filterLocation) || 
+               filterLocation.includes(listingLocation.split(',')[0]);
+      });
+    } else if (isAuthenticated && user?.email) {
+      // Fallback to saved location preference if no filter is selected
+      try {
+        const locationData = localStorage.getItem(`buyer_location_${user.email}`);
+        if (locationData) {
+          const location = JSON.parse(locationData);
+          if (location.address) {
+            const savedLocation = location.address.split(',')[0].toLowerCase().trim();
+            filtered = filtered.filter((listing) => {
+              if (!listing.location) return false;
+              const listingLocation = listing.location.toLowerCase();
+              return listingLocation.includes(savedLocation) || 
+                     savedLocation.includes(listingLocation.split(',')[0]);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error filtering by location:', error);
+      }
     }
 
     if (searchQuery.trim()) {
@@ -52,7 +86,7 @@ export default function Marketplace() {
     }
 
     setFilteredListings(filtered);
-  }, [listings, searchQuery, selectedCategory, isAuthenticated, user]);
+  }, [listings, searchQuery, selectedCategory, selectedLocation, isAuthenticated, user]);
 
   const loadAllListings = () => {
     try {
@@ -102,6 +136,8 @@ export default function Marketplace() {
           userEmail={user?.email}
           onSearchChange={handleSearchChange}
           onCategorySelect={handleCategorySelect}
+          onLocationClick={() => setShowLocationModal(true)}
+          selectedLocation={selectedLocation}
           onSellClick={() => {
             if (isAuthenticated) {
               navigate('/marketplace/create-listing');
@@ -119,11 +155,11 @@ export default function Marketplace() {
           ) : filteredListings.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
               <h1 className="font-heading text-2xl text-dark-brown mb-2">
-                {searchQuery || selectedCategory ? 'No listings found' : 'No listings yet'}
+                {searchQuery || selectedCategory || selectedLocation ? 'No listings found' : 'No listings yet'}
               </h1>
               <p className="font-paragraph text-gray-600 max-w-xl mx-auto">
-                {searchQuery || selectedCategory
-                  ? 'Try adjusting your search or category filter'
+                {searchQuery || selectedCategory || selectedLocation
+                  ? 'Try adjusting your search, category, or location filter'
                   : 'Be the first to list a furniture item for sale!'}
               </p>
             </div>
@@ -133,6 +169,7 @@ export default function Marketplace() {
                 <h2 className="font-heading text-xl text-dark-brown">
                   {filteredListings.length} {filteredListings.length === 1 ? 'Listing' : 'Listings'}
                   {selectedCategory && ` in ${selectedCategory}`}
+                  {selectedLocation && ` near ${selectedLocation.address.split(',')[0]}`}
                 </h2>
               </div>
 
@@ -151,6 +188,14 @@ export default function Marketplace() {
           )}
         </section>
       </main>
+
+      {/* Location Filter Modal */}
+      <LocationFilterModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onLocationSelect={setSelectedLocation}
+        currentLocation={selectedLocation}
+      />
     </div>
   );
 }
@@ -194,6 +239,11 @@ function PublicListingCard({ listing, onView, isAuthenticated, currentUserId }) 
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
+          </div>
+        )}
+        {listing.status === 'sold' && (
+          <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold z-10">
+            Sold
           </div>
         )}
         {listing.condition && (

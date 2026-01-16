@@ -11,6 +11,8 @@ import { useNavigate } from 'react-router-dom';
  * - userEmail: string (logged-in user's email)
  * - onSearchChange?: (value: string) => void
  * - onCategorySelect?: (category: string) => void
+ * - onLocationClick?: () => void   // called when Location button is clicked
+ * - selectedLocation?: { address: string, lat: number, lon: number } | null
  * - onSellClick?: () => void   // called when Sell button is clicked (in addition to opening modal)
  */
 const DEFAULT_CATEGORIES = [
@@ -31,6 +33,8 @@ export default function MarketplaceHeader({
   userEmail,
   onSearchChange,
   onCategorySelect,
+  onLocationClick,
+  selectedLocation,
   onSellClick,
 }) {
   const navigate = useNavigate();
@@ -70,6 +74,20 @@ export default function MarketplaceHeader({
   };
 
   const handleSellClick = () => {
+    // Check if seller dashboard is enabled
+    if (userEmail) {
+      try {
+        const sellerData = localStorage.getItem(`seller_dashboard_${userEmail}`);
+        if (!sellerData) {
+          // Seller dashboard not enabled, redirect to enable page
+          navigate('/marketplace/enable-seller');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking seller dashboard:', error);
+      }
+    }
+    
     navigate('/marketplace/create-listing');
     if (onSellClick) {
       onSellClick();
@@ -123,12 +141,20 @@ export default function MarketplaceHeader({
             />
           </div>
 
-          {/* Location button (UI only) */}
+          {/* Location button */}
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs sm:text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={onLocationClick}
+            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs sm:text-sm font-paragraph transition-colors ${
+              selectedLocation
+                ? 'border-accent-red bg-accent-red/10 text-accent-red hover:bg-accent-red/20'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={selectedLocation ? `Filtering by: ${selectedLocation.address}` : 'Filter by location'}
           >
-            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-red/10 text-accent-red">
+            <span className={`flex items-center justify-center w-6 h-6 rounded-full ${
+              selectedLocation ? 'bg-accent-red text-white' : 'bg-accent-red/10 text-accent-red'
+            }`}>
               {/* Location icon */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -146,9 +172,18 @@ export default function MarketplaceHeader({
                 <circle cx="12" cy="11" r="2.5" />
               </svg>
             </span>
-            <span className="hidden sm:inline font-paragraph text-xs sm:text-sm">
-              Location
+            <span className="hidden sm:inline">
+              {selectedLocation
+                ? selectedLocation.address.split(',')[0].length > 12
+                  ? selectedLocation.address.split(',')[0].substring(0, 12) + '...'
+                  : selectedLocation.address.split(',')[0]
+                : 'Location'}
             </span>
+            {selectedLocation && (
+              <span className="hidden sm:inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent-red text-white text-[10px] font-semibold ml-1">
+                1
+              </span>
+            )}
           </button>
         </div>
 

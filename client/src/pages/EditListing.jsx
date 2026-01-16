@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../components/NotificationProvider';
 
 const DEFAULT_CATEGORIES = [
   'Sofa',
@@ -28,6 +29,7 @@ export default function EditListing() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user, isAuthenticated, loading } = useAuth();
+  const { showSuccess, showError } = useNotification();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -66,7 +68,7 @@ export default function EditListing() {
       const listing = savedListings.find((l) => l.id === id);
 
       if (!listing) {
-        alert('Listing not found');
+        showError('Listing not found');
         navigate('/marketplace/my-listings');
         return;
       }
@@ -86,7 +88,7 @@ export default function EditListing() {
       }
     } catch (error) {
       console.error('Error loading listing:', error);
-      alert('Failed to load listing');
+      showError('Failed to load listing');
       navigate('/marketplace/my-listings');
     } finally {
       setIsLoading(false);
@@ -209,7 +211,7 @@ export default function EditListing() {
       const listingIndex = savedListings.findIndex((l) => l.id === id);
 
       if (listingIndex === -1) {
-        alert('Listing not found');
+        showError('Listing not found');
         navigate('/marketplace/my-listings');
         return;
       }
@@ -230,7 +232,7 @@ export default function EditListing() {
             `marketplace_listings_${user?.email}`,
             JSON.stringify(savedListings)
           );
-          alert('Listing updated successfully!');
+          showSuccess('Listing updated successfully!');
           navigate('/marketplace/my-listings');
         };
         reader.readAsDataURL(formData.image);
@@ -240,12 +242,12 @@ export default function EditListing() {
           `marketplace_listings_${user?.email}`,
           JSON.stringify(savedListings)
         );
-        alert('Listing updated successfully!');
+        showSuccess('Listing updated successfully!');
         navigate('/marketplace/my-listings');
       }
     } catch (error) {
       console.error('Error updating listing:', error);
-      alert('Failed to update listing. Please try again.');
+      showError('Failed to update listing. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -565,4 +567,5 @@ export default function EditListing() {
     </div>
   );
 }
+
 

@@ -25,3 +25,4 @@ echo "1. Edit .env file and add your PINECONE_API_KEY"
 echo "2. Install dependencies: pip install -r requirements.txt"
 echo "3. Run the script: python generate_embeddings.py"
 
+

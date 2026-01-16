@@ -35,6 +35,15 @@ import MyListings from "./pages/MyListings";
 import EditListing from "./pages/EditListing";
 import ListingDetail from "./pages/ListingDetail";
 import MarketplaceInbox from "./pages/MarketplaceInbox";
+import SavedItems from "./pages/SavedItems";
+import RecentlyViewed from "./pages/RecentlyViewed";
+import MarketplaceFollowing from "./pages/MarketplaceFollowing";
+import LocationSettings from "./pages/LocationSettings";
+import EnableSellerDashboard from "./pages/EnableSellerDashboard";
+import SellerProfile from "./pages/SellerProfile";
+import SellerInbox from "./pages/SellerInbox";
+import SellerFollowers from "./pages/SellerFollowers";
+import SellerLocation from "./pages/SellerLocation";
 import { NotificationProvider } from "./components/NotificationProvider";
 import { CartProvider } from "./contexts/CartContext";
 import AdminWoodQuality from "./pages/AdminWoodQuality";
@@ -168,6 +177,78 @@ export default function App() {
           element={
             <ProtectedRoute role="customer">
               <MarketplaceInbox />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/saved-items" 
+          element={
+            <ProtectedRoute role="customer">
+              <SavedItems />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/recently-viewed" 
+          element={
+            <ProtectedRoute role="customer">
+              <RecentlyViewed />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/following" 
+          element={
+            <ProtectedRoute role="customer">
+              <MarketplaceFollowing />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/location" 
+          element={
+            <ProtectedRoute role="customer">
+              <LocationSettings />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/enable-seller" 
+          element={
+            <ProtectedRoute role="customer">
+              <EnableSellerDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/seller-profile" 
+          element={
+            <ProtectedRoute role="customer">
+              <SellerProfile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/seller-inbox" 
+          element={
+            <ProtectedRoute role="customer">
+              <SellerInbox />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/seller-followers" 
+          element={
+            <ProtectedRoute role="customer">
+              <SellerFollowers />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace/seller-location" 
+          element={
+            <ProtectedRoute role="customer">
+              <SellerLocation />
             </ProtectedRoute>
           } 
         />

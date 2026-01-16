@@ -197,3 +197,4 @@ The API returns appropriate HTTP status codes:
 - Optimize Pinecone index configuration
 - Use GPU if available (modify model loading)
 
+

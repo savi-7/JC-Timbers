@@ -27,3 +27,4 @@ echo 3. Run the script: python generate_embeddings.py
 
 pause
 
+

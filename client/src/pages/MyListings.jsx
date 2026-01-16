@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../components/NotificationProvider';
 
 const CONDITION_LABELS = {
   'new': 'New',
@@ -15,6 +16,7 @@ export default function MyListings() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated, loading } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -77,10 +79,10 @@ export default function MyListings() {
       localStorage.setItem(`marketplace_listings_${user?.email}`, JSON.stringify(updatedListings));
       setListings(updatedListings);
       setDeleteConfirmId(null);
-      alert('Listing deleted successfully');
+      showSuccess('Listing deleted successfully');
     } catch (error) {
       console.error('Error deleting listing:', error);
-      alert('Failed to delete listing. Please try again.');
+      showError('Failed to delete listing. Please try again.');
     }
   };
 
@@ -92,10 +94,10 @@ export default function MyListings() {
       );
       localStorage.setItem(`marketplace_listings_${user?.email}`, JSON.stringify(updatedListings));
       setListings(updatedListings);
-      alert('Listing marked as sold');
+      showSuccess('Listing marked as sold');
     } catch (error) {
       console.error('Error marking listing as sold:', error);
-      alert('Failed to update listing. Please try again.');
+      showError('Failed to update listing. Please try again.');
     }
   };
 
@@ -107,10 +109,10 @@ export default function MyListings() {
       );
       localStorage.setItem(`marketplace_listings_${user?.email}`, JSON.stringify(updatedListings));
       setListings(updatedListings);
-      alert('Listing reactivated');
+      showSuccess('Listing reactivated');
     } catch (error) {
       console.error('Error reactivating listing:', error);
-      alert('Failed to update listing. Please try again.');
+      showError('Failed to update listing. Please try again.');
     }
   };
 

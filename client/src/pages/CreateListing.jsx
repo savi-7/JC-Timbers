@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../components/NotificationProvider';
 
 const DEFAULT_CATEGORIES = [
   'Sofa',
@@ -27,6 +28,7 @@ const CONDITION_OPTIONS = [
 export default function CreateListing() {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading } = useAuth();
+  const { showSuccess, showError } = useNotification();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -41,6 +43,16 @@ export default function CreateListing() {
   const [errors, setErrors] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [mapCoords, setMapCoords] = useState({ lat: 20.5937, lon: 78.9629 });
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
+  const mapInitializedRef = useRef(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -48,6 +60,304 @@ export default function CreateListing() {
       navigate('/login', { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
+
+  // Check if seller dashboard is enabled
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      try {
+        const sellerData = localStorage.getItem(`seller_dashboard_${user.email}`);
+        if (!sellerData) {
+          // Seller dashboard not enabled, redirect to enable page
+          navigate('/marketplace/enable-seller', { replace: true });
+        } else {
+          // Pre-fill location from seller profile if available
+          const seller = JSON.parse(sellerData);
+          if (seller.locationCoords) {
+            setMapCoords(seller.locationCoords);
+            if (seller.location) {
+              setFormData((prev) => ({ ...prev, location: seller.location }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking seller dashboard:', error);
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  const reverseGeocode = useCallback(async (lat, lon) => {
+    setIsReverseGeocoding(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'JC-Timbers-Marketplace/1.0',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Reverse geocoding failed');
+      }
+
+      const data = await response.json();
+      if (data.display_name) {
+        setFormData((prev) => ({ ...prev, location: data.display_name }));
+      }
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+      setFormData((prev) => ({
+        ...prev,
+        location: `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+      }));
+    } finally {
+      setIsReverseGeocoding(false);
+    }
+  }, []);
+
+  // Initialize interactive map
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    let mapInitialized = false;
+
+    // Load Leaflet CSS and JS dynamically
+    const loadLeaflet = () => {
+      return new Promise((resolve, reject) => {
+        // Check if already loaded
+        if (window.L) {
+          resolve();
+          return;
+        }
+
+        // Check if CSS is already loaded
+        const existingCSS = document.querySelector('link[href*="leaflet.css"]');
+        if (!existingCSS) {
+          // Load CSS first
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+          link.crossOrigin = '';
+          document.head.appendChild(link);
+        }
+
+        // Check if script is already loading
+        const existingScript = document.querySelector('script[src*="leaflet.js"]');
+        if (existingScript) {
+          existingScript.onload = resolve;
+          existingScript.onerror = reject;
+          return;
+        }
+
+        // Load JS
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+        script.crossOrigin = '';
+        script.onload = () => {
+          // Wait a bit for CSS to be fully applied
+          setTimeout(resolve, 100);
+        };
+        script.onerror = reject;
+        document.body.appendChild(script);
+      });
+    };
+
+    const tryInitializeMap = () => {
+      // Wait for container to have dimensions (with retry mechanism)
+      const checkAndInit = (attempts = 0) => {
+        if (!mapContainerRef.current) {
+          if (attempts < 20) {
+            setTimeout(() => checkAndInit(attempts + 1), 200);
+          }
+          return;
+        }
+
+        // Check if container has dimensions or if Leaflet is ready
+        const hasDimensions = mapContainerRef.current.offsetHeight > 0 || 
+                             mapContainerRef.current.offsetWidth > 0 ||
+                             mapContainerRef.current.clientHeight > 0;
+
+        if (!hasDimensions && attempts < 20) {
+          // Retry after 200ms if container doesn't have dimensions yet
+          setTimeout(() => checkAndInit(attempts + 1), 200);
+          return;
+        }
+
+        // If still no dimensions after retries, try to initialize anyway (map might work with CSS)
+        if (!window.L || !mapContainerRef.current || mapInitialized || mapInitializedRef.current) return;
+
+        try {
+          // Initialize map
+          const map = window.L.map(mapContainerRef.current, {
+            center: [mapCoords.lat, mapCoords.lon],
+            zoom: 10,
+          });
+
+          // Fix default marker icon issue
+          delete window.L.Icon.Default.prototype._getIconUrl;
+          window.L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+          });
+
+          // Add OpenStreetMap tiles
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+          }).addTo(map);
+
+          // Add initial marker
+          const marker = window.L.marker([mapCoords.lat, mapCoords.lon], {
+            draggable: true,
+          }).addTo(map);
+
+          markerRef.current = marker;
+          mapRef.current = map;
+          mapInitialized = true;
+          mapInitializedRef.current = true;
+
+          // Handle map click
+          map.on('click', async (e) => {
+            const { lat, lng } = e.latlng;
+            setMapCoords({ lat, lon: lng });
+            marker.setLatLng([lat, lng]);
+            await reverseGeocode(lat, lng);
+          });
+
+          // Handle marker drag
+          marker.on('dragend', async (e) => {
+            const { lat, lng } = e.target.getLatLng();
+            setMapCoords({ lat, lon: lng });
+            await reverseGeocode(lat, lng);
+          });
+
+          // Force map to invalidate size after a short delay
+          setTimeout(() => {
+            if (map) {
+              map.invalidateSize();
+              map.setView([mapCoords.lat, mapCoords.lon], 13);
+            }
+          }, 300);
+        } catch (error) {
+          console.error('Error initializing map:', error);
+          mapInitializedRef.current = false;
+        }
+      };
+
+      checkAndInit();
+    };
+
+    loadLeaflet()
+      .then(() => {
+        // Start initialization attempt
+        tryInitializeMap();
+      })
+      .catch((error) => {
+        console.error('Error loading Leaflet:', error);
+      });
+
+    return () => {
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+        mapRef.current = null;
+        markerRef.current = null;
+        mapInitializedRef.current = false;
+      }
+    };
+  }, [reverseGeocode]);
+
+  // Update map when coordinates change (e.g., from search selection)
+  useEffect(() => {
+    // Only update if map is already initialized
+    if (markerRef.current && mapRef.current) {
+      const currentZoom = mapRef.current.getZoom() || 13;
+      // Update marker position
+      markerRef.current.setLatLng([mapCoords.lat, mapCoords.lon]);
+      // Pan map to new location
+      mapRef.current.setView([mapCoords.lat, mapCoords.lon], currentZoom > 12 ? currentZoom : 13, {
+        animate: true,
+        duration: 0.5,
+      });
+      // Force invalidate size in case of layout changes
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+        }
+      }, 100);
+    }
+  }, [mapCoords.lat, mapCoords.lon]);
+
+  const searchLocation = async (query) => {
+    if (!query.trim() || query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=in`,
+        {
+          headers: {
+            'User-Agent': 'JC-Timbers-Marketplace/1.0',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Geocoding failed');
+      }
+
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Error searching location:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      searchLocation(value);
+    }, 500);
+  };
+
+  const handleSelectLocation = (result) => {
+    const address = result.display_name;
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+
+    setFormData((prev) => ({ ...prev, location: address }));
+    setMapCoords({ lat, lon });
+    setSearchQuery('');
+    setSearchResults([]);
+
+    // Update map and marker position with a slight delay to ensure map is ready
+    setTimeout(() => {
+      if (mapRef.current && markerRef.current) {
+        mapRef.current.setView([lat, lon], 13);
+        markerRef.current.setLatLng([lat, lon]);
+        // Force map to invalidate size in case of layout issues
+        mapRef.current.invalidateSize();
+      }
+    }, 100);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -188,6 +498,7 @@ export default function CreateListing() {
           status: 'active',
           createdAt: new Date().toISOString(),
           userId: user?.email,
+          locationCoords: mapCoords, // Save coordinates for map display
         };
 
         // Save to localStorage
@@ -202,7 +513,7 @@ export default function CreateListing() {
         console.log('All listings for user:', existingListings);
 
         // Show success message and redirect
-        alert('Listing created successfully!');
+        showSuccess('Listing created successfully!');
         navigate('/marketplace/my-listings');
       };
 
@@ -222,7 +533,7 @@ export default function CreateListing() {
       }
     } catch (error) {
       console.error('Error creating listing:', error);
-      alert('Failed to create listing. Please try again.');
+      showError('Failed to create listing. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -429,19 +740,187 @@ export default function CreateListing() {
               <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
                 Location <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                placeholder="E.g. Mumbai, Maharashtra"
-                className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
-                  errors.location
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-200 focus:ring-accent-red/70 focus:border-accent-red'
-                }`}
-              />
+              
+              {/* Search Input */}
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search for a city, area, or address..."
+                  className={`w-full rounded-lg border px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 transition-colors ${
+                    errors.location
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-200 focus:ring-accent-red/70 focus:border-accent-red'
+                  }`}
+                />
+                {isSearching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <svg
+                      className="animate-spin h-5 w-5 text-gray-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
+                  {searchResults.map((result, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleSelectLocation(result)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                    >
+                      <p className="text-sm font-medium text-dark-brown mb-1">
+                        {result.display_name.split(',')[0]}
+                      </p>
+                      <p className="text-xs text-gray-500 line-clamp-1">
+                        {result.display_name}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Interactive Map */}
+              <div className="mb-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <div className="flex items-start gap-2">
+                    <svg
+                      className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <div>
+                      <p className="text-xs font-medium text-blue-900 mb-1">
+                        Interactive Map
+                      </p>
+                      <p className="text-xs text-blue-700">
+                        Click anywhere on the map or drag the marker to set your location. You can also search for a location above.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div
+                    ref={mapContainerRef}
+                    id="listing-location-map"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-100 relative"
+                    style={{ 
+                      height: '384px',
+                      minHeight: '384px',
+                      width: '100%'
+                    }}
+                  >
+                    {/* Loading indicator */}
+                    {!mapInitializedRef.current && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                        <div className="text-center">
+                          <svg
+                            className="animate-spin h-8 w-8 text-accent-red mx-auto mb-2"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          <p className="text-sm text-gray-600">Loading map...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {isReverseGeocoding && (
+                    <div className="absolute top-4 left-4 z-[1000] bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md flex items-center gap-2">
+                      <svg
+                        className="animate-spin h-4 w-4 text-accent-red"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      <span className="text-xs text-gray-700 font-medium">Getting address...</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Leaflet CSS fix */}
+                <style>{`
+                  #listing-location-map .leaflet-container {
+                    height: 100% !important;
+                    width: 100% !important;
+                    z-index: 0;
+                  }
+                  #listing-location-map .leaflet-tile-container img {
+                    max-width: none !important;
+                  }
+                `}</style>
+              </div>
+
+              {/* Selected Location Display */}
+              {formData.location && (
+                <div className="bg-gray-50 rounded-lg p-4 mt-3">
+                  <p className="text-xs text-gray-500 mb-1">Selected Location:</p>
+                  <p className="text-sm font-medium text-dark-brown">{formData.location}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Coordinates: {mapCoords.lat.toFixed(6)}, {mapCoords.lon.toFixed(6)}
+                  </p>
+                </div>
+              )}
+
               {errors.location && (
                 <p className="mt-1 text-xs text-red-600">{errors.location}</p>
               )}

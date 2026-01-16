@@ -275,3 +275,4 @@ console.log('Similar products:', response.data.data.results);
 - Add user feedback mechanism for search quality
 - Create admin dashboard for search analytics
 
+

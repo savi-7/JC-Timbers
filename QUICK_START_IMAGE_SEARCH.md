@@ -191,3 +191,4 @@ For production, consider:
 - Check `server/IMAGE_SEARCH_SETUP.md` for integration details
 - Review browser console for specific error messages
 
+

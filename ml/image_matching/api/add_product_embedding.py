@@ -187,3 +187,4 @@ if __name__ == "__main__":
     embedding = generate_embedding_for_image(test_image_data)
     print(f"Test embedding generated: {len(embedding)} dimensions")
 
+

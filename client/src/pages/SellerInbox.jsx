@@ -5,23 +5,21 @@ import MarketplaceHeader from '../components/MarketplaceHeader';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../components/NotificationProvider';
 
-export default function MarketplaceInbox() {
+export default function SellerInbox() {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading } = useAuth();
-  const { showError } = useNotification();
+  const { showSuccess, showError } = useNotification();
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [replyText, setReplyText] = useState('');
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/login', { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
 
-  // Load messages
   useEffect(() => {
     if (isAuthenticated && user) {
       loadMessages();
@@ -30,13 +28,12 @@ export default function MarketplaceInbox() {
 
   const loadMessages = () => {
     try {
-      // Load messages sent by the buyer (not received)
-      const storageKey = `marketplace_sent_messages_${user?.email}`;
+      // Load messages received by seller (from buyers)
+      const storageKey = `marketplace_inbox_${user?.email}`;
       const savedMessages = localStorage.getItem(storageKey);
       
       if (savedMessages) {
         const parsedMessages = JSON.parse(savedMessages);
-        // Sort by date, newest first
         const sorted = parsedMessages.sort((a, b) => 
           new Date(b.timestamp) - new Date(a.timestamp)
         );
@@ -54,7 +51,6 @@ export default function MarketplaceInbox() {
 
   const handleMessageClick = (message) => {
     setSelectedMessage(message);
-    // Mark as read
     if (!message.read) {
       markAsRead(message.id);
     }
@@ -62,7 +58,7 @@ export default function MarketplaceInbox() {
 
   const markAsRead = (messageId) => {
     try {
-      const storageKey = `marketplace_sent_messages_${user?.email}`;
+      const storageKey = `marketplace_inbox_${user?.email}`;
       const updatedMessages = messages.map((msg) =>
         msg.id === messageId ? { ...msg, read: true } : msg
       );
@@ -79,16 +75,39 @@ export default function MarketplaceInbox() {
       return;
     }
 
-    // TODO: Connect to backend API
-    console.log('Sending reply:', {
-      to: selectedMessage.fromEmail,
-      from: user?.email,
-      listingId: selectedMessage.listingId,
-      message: replyText,
-    });
+    try {
+      // Save reply to buyer's inbox
+      const replyMessage = {
+        id: Date.now().toString(),
+        fromEmail: user?.email,
+        fromName: user?.name,
+        toEmail: selectedMessage.fromEmail,
+        listingId: selectedMessage.listingId,
+        listingTitle: selectedMessage.listingTitle,
+        listingPrice: selectedMessage.listingPrice,
+        listingCategory: selectedMessage.listingCategory,
+        listingImage: selectedMessage.listingImage,
+        message: replyText,
+        timestamp: new Date().toISOString(),
+        read: false,
+        isReply: true,
+        originalMessageId: selectedMessage.id,
+      };
 
-    showError('Reply functionality not yet implemented');
-    setReplyText('');
+      // Save to buyer's inbox
+      const buyerInboxKey = `marketplace_inbox_${selectedMessage.fromEmail}`;
+      const buyerMessages = JSON.parse(
+        localStorage.getItem(buyerInboxKey) || '[]'
+      );
+      buyerMessages.push(replyMessage);
+      localStorage.setItem(buyerInboxKey, JSON.stringify(buyerMessages));
+
+      showSuccess('Reply sent successfully!');
+      setReplyText('');
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      showError('Failed to send reply. Please try again.');
+    }
   };
 
   const handleDelete = (messageId) => {
@@ -97,7 +116,7 @@ export default function MarketplaceInbox() {
     }
 
     try {
-      const storageKey = `marketplace_sent_messages_${user?.email}`;
+      const storageKey = `marketplace_inbox_${user?.email}`;
       const updatedMessages = messages.filter((msg) => msg.id !== messageId);
       localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
       setMessages(updatedMessages);
@@ -150,15 +169,9 @@ export default function MarketplaceInbox() {
         <MarketplaceHeader
           userName={user?.name}
           userEmail={user?.email}
-          onSearchChange={(value) => {
-            console.log('Marketplace search:', value);
-          }}
-          onCategorySelect={(category) => {
-            console.log('Marketplace category:', category);
-          }}
-          onSellClick={() => {
-            console.log('Sell clicked');
-          }}
+          onSearchChange={() => {}}
+          onCategorySelect={() => {}}
+          onSellClick={() => navigate('/marketplace/create-listing')}
         />
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -186,9 +199,10 @@ export default function MarketplaceInbox() {
 
           {/* Header */}
           <div className="mb-6">
-            <h1 className="font-heading text-2xl text-dark-brown mb-2">Sent Messages</h1>
+            <h1 className="font-heading text-2xl text-dark-brown mb-2">Inbox</h1>
             <p className="text-sm text-gray-500">
-              Messages you've sent to sellers about their listings
+              Messages from buyers about your listings
+              {unreadCount > 0 && ` • ${unreadCount} unread message${unreadCount > 1 ? 's' : ''}`}
             </p>
           </div>
 
@@ -211,9 +225,9 @@ export default function MarketplaceInbox() {
                   d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                 />
               </svg>
-              <h3 className="font-heading text-lg text-dark-brown mb-2">No sent messages yet</h3>
+              <h3 className="font-heading text-lg text-dark-brown mb-2">No messages yet</h3>
               <p className="text-sm text-gray-500">
-                Messages you send to sellers will appear here
+                Messages from buyers about your listings will appear here
               </p>
             </div>
           ) : (
@@ -265,13 +279,13 @@ export default function MarketplaceInbox() {
                     <div className="flex items-start justify-between mb-6 pb-4 border-b border-gray-100">
                       <div className="flex-1">
                         <h2 className="font-heading text-xl text-dark-brown mb-2">
-                          To: {selectedMessage.toName || selectedMessage.toEmail}
+                          {selectedMessage.fromName || selectedMessage.fromEmail}
                         </h2>
                         <p className="text-sm text-gray-500 mb-1">
-                          {selectedMessage.toEmail}
+                          {selectedMessage.fromEmail}
                         </p>
                         <p className="text-xs text-gray-400">
-                          Sent {formatDate(selectedMessage.timestamp)}
+                          {formatDate(selectedMessage.timestamp)}
                         </p>
                       </div>
                       <button
@@ -335,13 +349,23 @@ export default function MarketplaceInbox() {
                       </div>
                     </div>
 
-                    {/* View Listing Button */}
+                    {/* Reply Section */}
                     <div className="border-t border-gray-100 pt-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Reply to {selectedMessage.fromName || selectedMessage.fromEmail}
+                      </label>
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        rows="4"
+                        placeholder="Type your reply..."
+                        className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-red/70 focus:border-accent-red resize-none mb-3"
+                      />
                       <button
-                        onClick={() => navigate(`/marketplace/listing/${selectedMessage.listingId}`)}
-                        className="w-full px-6 py-2.5 text-sm font-paragraph rounded-lg bg-accent-red text-white hover:bg-accent-red/90 transition-colors"
+                        onClick={handleReply}
+                        className="px-6 py-2.5 text-sm font-paragraph rounded-lg bg-accent-red text-white hover:bg-accent-red/90 transition-colors"
                       >
-                        View Listing
+                        Send Reply
                       </button>
                     </div>
                   </div>
@@ -371,5 +395,4 @@ export default function MarketplaceInbox() {
     </div>
   );
 }
-
 
