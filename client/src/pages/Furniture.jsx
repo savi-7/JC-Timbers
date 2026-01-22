@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../contexts/CartContext';
@@ -10,7 +10,7 @@ import Footer from '../components/Footer';
 
 export default function Furniture() {
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { refreshCartCount } = useCart();
   const { showSuccess, showError } = useNotification();
   const [products, setProducts] = useState([]);
@@ -25,12 +25,14 @@ export default function Furniture() {
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isImageSearchMode, setIsImageSearchMode] = useState(false);
-  const [imageSearchAvailable, setImageSearchAvailable] = useState(true);
+  const [_imageSearchAvailable, setImageSearchAvailable] = useState(true);
+  const [cameraMode, setCameraMode] = useState('upload'); // 'upload' or 'camera'
+  const [stream, setStream] = useState(null);
+  const [cameraError, setCameraError] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
-  const handleLogout = () => {
-    logout();
-    // Navigation is handled by the logout function in useAuth hook
-  };
+  // Logout is handled by the Header component
 
   const handleAddToCart = (product) => {
     if (!isAuthenticated) {
@@ -92,8 +94,92 @@ export default function Furniture() {
   };
 
   const handleImageSearchClick = () => {
+    // Always allow opening the modal - let the actual search handle errors
     setShowImageSearchModal(true);
+    setCameraMode('upload');
+    setSelectedImage(null);
+    setCameraError(null);
   };
+
+  // Start camera when switching to camera mode
+  const startCamera = async () => {
+    try {
+      setCameraError(null);
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' } // Prefer back camera
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setCameraError('Unable to access camera. Please check permissions or use file upload instead.');
+      setCameraMode('upload');
+    }
+  };
+
+  // Stop camera when switching away or closing modal
+  const stopCamera = () => {
+    setStream((currentStream) => {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+      return null;
+    });
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  // Capture photo from camera
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert canvas to blob
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+        setSelectedImage(file);
+        stopCamera();
+        setCameraMode('upload');
+      }
+    }, 'image/jpeg', 0.95);
+  };
+
+  // Handle mode switch
+  const handleModeSwitch = (mode) => {
+    if (mode === 'camera') {
+      setCameraMode('camera');
+      setSelectedImage(null);
+      startCamera();
+    } else {
+      stopCamera();
+      setCameraMode('upload');
+      setSelectedImage(null);
+    }
+  };
+
+  // Cleanup camera on unmount or modal close
+  useEffect(() => {
+    if (!showImageSearchModal) {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [showImageSearchModal]);
 
   const handleImageSelect = (event) => {
     const file = event.target.files[0];
@@ -122,52 +208,187 @@ export default function Furniture() {
       setIsImageSearchMode(true);
       setImageSearchResults(null);
 
+      // Validate image file
+      if (!imageFile) {
+        showError('Please select an image file');
+        setImageSearchLoading(false);
+        return;
+      }
+
+      // Check file size (5MB limit)
+      if (imageFile.size > 5 * 1024 * 1024) {
+        showError('Image file is too large. Maximum size is 5MB.');
+        setImageSearchLoading(false);
+        return;
+      }
+
+      // Check file type
+      if (!imageFile.type.startsWith('image/')) {
+        showError('Please select a valid image file');
+        setImageSearchLoading(false);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('image', imageFile);
       formData.append('top_k', '15'); // Get more results for better filtering
+
+      console.log('Sending image search request:', {
+        fileName: imageFile.name,
+        fileSize: imageFile.size,
+        fileType: imageFile.type,
+        topK: 15
+      });
 
       const response = await api.post('/ml/image-search/by-image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 60000, // 60 second timeout for image processing
       });
 
-      if (response.data.success && response.data.data.results) {
-        const results = response.data.data.results;
-        setImageSearchResults(results);
+      console.log('Image search response received:', {
+        success: response.data.success,
+        hasData: !!response.data.data,
+        hasResults: !!response.data.data?.results,
+        resultsCount: response.data.data?.results?.length || 0,
+        responseStructure: {
+          success: response.data.success,
+          data: response.data.data ? {
+            query_image: response.data.data.query_image,
+            total_results: response.data.data.total_results,
+            top_k: response.data.data.top_k,
+            resultsLength: response.data.data.results?.length
+          } : null
+        }
+      });
+
+      if (!response.data.success) {
+        showError(response.data.message || 'Image search failed');
+        setIsImageSearchMode(false);
+        setImageSearchResults(null);
+        setImageSearchLoading(false);
+        return;
+      }
+
+      if (!response.data.data) {
+        showError('Invalid response from image search service');
+        setIsImageSearchMode(false);
+        setImageSearchResults(null);
+        setImageSearchLoading(false);
+        return;
+      }
+
+      if (!response.data.data.results || response.data.data.results.length === 0) {
+        showError('No similar products found. Try a different image or check if similar products exist in the catalog.');
+        setIsImageSearchMode(false);
+        setImageSearchResults(null);
+        setImageSearchLoading(false);
+        return;
+      }
+
+      const results = response.data.data.results;
+      setImageSearchResults(results);
         
-        // Filter results by minimum similarity score (only high-confidence matches)
-        const MIN_SIMILARITY_SCORE = 0.65; // Only show results with 65%+ similarity
-        const highConfidenceResults = results.filter(r => r.score >= MIN_SIMILARITY_SCORE);
-        
-        console.log('Image search results:', results.map(r => ({
+      console.log('Image search results received:', {
+        totalResults: results.length,
+        results: results.map(r => ({
+          id: r.id,
+          product_id: r.product_id,
+          product_name: r.product_name,
           filename: r.filename,
-          score: r.score.toFixed(3)
-        })));
+          score: r.score?.toFixed(3)
+        }))
+      });
+      
+      // Filter results by minimum similarity score (only high-confidence matches)
+      // Higher threshold ensures only truly similar products are shown
+      const MIN_SIMILARITY_SCORE = 0.70; // 70% similarity required for accurate matches
+      const highConfidenceResults = results.filter(r => r.score >= MIN_SIMILARITY_SCORE);
+      
+      console.log('High confidence results:', highConfidenceResults.length, 'out of', results.length);
+      
+      // Create a map of products by ID for fast lookup (handle both string and ObjectId formats)
+      const productsById = {};
+      const productsByName = {};
+      products.forEach(product => {
+        const productId = product._id?.toString() || product._id;
+        productsById[productId] = product;
+        productsById[productId.toLowerCase()] = product; // Also store lowercase version
+        productsByName[product.name.toLowerCase()] = product;
+      });
+      
+      console.log('Product lookup maps created:', {
+        totalProducts: products.length,
+        productsByIdKeys: Object.keys(productsById).length,
+        productsByNameKeys: Object.keys(productsByName).length,
+        sampleProductIds: products.slice(0, 3).map(p => p._id?.toString())
+      });
+      
+      // Try to match results with actual products
+      const matchedProducts = [];
+      const usedProductIds = new Set(); // Avoid duplicates
+      
+      // Sort results by similarity score (highest first)
+      const sortedResults = [...highConfidenceResults].sort((a, b) => b.score - a.score);
+      
+      console.log('Attempting to match', sortedResults.length, 'results with products...');
+      
+      for (const result of sortedResults) {
+        let matched = null;
         
-        // Try to match results with actual products
-        const matchedProducts = [];
-        const usedProductIds = new Set(); // Avoid duplicates
+        // Strategy 1: Direct product_id match (most reliable)
+        if (result.product_id) {
+          const productIdStr = String(result.product_id).trim();
+          // Try exact match
+          matched = productsById[productIdStr] || productsById[productIdStr.toLowerCase()];
+          
+          if (matched && !usedProductIds.has(matched._id?.toString())) {
+            usedProductIds.add(matched._id?.toString());
+            matchedProducts.push({
+              ...matched,
+              similarityScore: result.score,
+              searchResult: { ...result, matchMethod: 'product_id' }
+            });
+            console.log(`✅ Matched by product_id: ${productIdStr} -> ${matched.name} (score: ${result.score.toFixed(3)})`);
+            continue;
+          } else if (result.product_id) {
+            console.log(`⚠️ Product ID not found in database: ${productIdStr}`);
+          }
+        }
         
-        // Sort results by similarity score (highest first)
-        const sortedResults = [...highConfidenceResults].sort((a, b) => b.score - a.score);
+        // Strategy 2: Product name match from metadata
+        if (result.product_name && !matched) {
+          const productNameLower = result.product_name.toLowerCase().trim();
+          matched = productsByName[productNameLower];
+          
+          if (matched && !usedProductIds.has(matched._id?.toString())) {
+            usedProductIds.add(matched._id?.toString());
+            matchedProducts.push({
+              ...matched,
+              similarityScore: result.score,
+              searchResult: { ...result, matchMethod: 'product_name' }
+            });
+            console.log(`✅ Matched by product_name: "${result.product_name}" -> ${matched.name} (score: ${result.score.toFixed(3)})`);
+            continue;
+          } else if (result.product_name) {
+            console.log(`⚠️ Product name not found: "${result.product_name}"`);
+          }
+        }
         
-        for (const result of sortedResults) {
-          // Extract product name/keywords from filename
+        // Strategy 3: Match by filename/keywords (fallback)
+        if (!matched) {
           const filename = result.filename || '';
           const filenameLower = filename.toLowerCase();
           
-          // Extract keywords from filename (remove extension, split by common separators)
+          // Extract keywords from filename
           const keywords = filenameLower
             .replace(/\.[^/.]+$/, '') // Remove extension
             .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
             .split(/\s+/) // Split by spaces
             .filter(k => k.length > 2); // Filter out very short words
           
-          // Try to find matching product using multiple strategies
-          let matched = null;
-          
-          // Strategy 1: Direct filename match
+          // Try to find matching product
           for (const product of products) {
             if (usedProductIds.has(product._id)) continue;
             
@@ -191,7 +412,7 @@ export default function Furniture() {
             };
             
             let typeMatch = false;
-            for (const [type, variations] of Object.entries(furnitureTypes)) {
+            for (const [, variations] of Object.entries(furnitureTypes)) {
               if (keywords.some(k => variations.includes(k)) && 
                   variations.some(v => productNameLower.includes(v))) {
                 typeMatch = true;
@@ -205,58 +426,133 @@ export default function Furniture() {
             }
           }
           
-          if (matched) {
-            usedProductIds.add(matched._id);
+          if (matched && !usedProductIds.has(matched._id?.toString())) {
+            usedProductIds.add(matched._id?.toString());
             matchedProducts.push({
               ...matched,
               similarityScore: result.score,
-              searchResult: result
+              searchResult: { ...result, matchMethod: 'filename' }
             });
+            console.log(`✅ Matched by filename: "${result.filename}" -> ${matched.name} (score: ${result.score.toFixed(3)})`);
           }
         }
-        
-        // Sort matched products by similarity score (highest first)
-        matchedProducts.sort((a, b) => b.similarityScore - a.similarityScore);
+      }
+      
+      // Sort matched products by similarity score (highest first)
+      matchedProducts.sort((a, b) => b.similarityScore - a.similarityScore);
 
-        if (matchedProducts.length > 0) {
+      console.log('=== MATCHING SUMMARY ===');
+      console.log('Total results from Pinecone:', results.length);
+      console.log('High confidence results (>=70%):', highConfidenceResults.length);
+      console.log('Successfully matched products:', matchedProducts.length);
+      console.log('Matched products:', matchedProducts.map(p => ({
+        id: p._id,
+        name: p.name,
+        score: p.similarityScore?.toFixed(3),
+        matchMethod: p.searchResult?.matchMethod || 'filename'
+      })));
+      
+      if (matchedProducts.length === 0 && highConfidenceResults.length > 0) {
+        console.warn('⚠️ No products matched despite having search results!');
+        console.warn('Sample results that failed to match:', sortedResults.slice(0, 5).map(r => ({
+          product_id: r.product_id,
+          product_name: r.product_name,
+          filename: r.filename,
+          score: r.score?.toFixed(3)
+        })));
+      }
+
+      if (matchedProducts.length > 0) {
+        // Only show if we have truly similar products (70%+ similarity)
+        const topScore = matchedProducts[0].similarityScore;
+        if (topScore >= 0.70) {
           setFilteredProducts(matchedProducts);
-          showSuccess(`Found ${matchedProducts.length} similar products! (Similarity: ${(matchedProducts[0].similarityScore * 100).toFixed(0)}%+)`);
+          showSuccess(`Found ${matchedProducts.length} similar product${matchedProducts.length > 1 ? 's' : ''}! (Similarity: ${(topScore * 100).toFixed(0)}%+)`);
         } else {
-          // If no matches, show message and keep current products
-          showError(`No similar products found with high confidence. Try a different image or check if similar products exist in catalog.`);
+          // Results are not similar enough
+          showError(`No truly similar products found. The uploaded image doesn't match any products in our catalog with sufficient similarity (minimum 70% required).`);
           setIsImageSearchMode(false);
           setImageSearchResults(null);
         }
       } else {
-        showError('No similar products found');
+        // If no matches but we have results, show more helpful message
+        if (highConfidenceResults.length > 0) {
+          showError(`Found ${highConfidenceResults.length} similar images, but couldn't match them to products in the catalog. The products may need to be re-indexed.`);
+        } else if (results.length > 0) {
+          // We have results but they're below the similarity threshold
+          const maxScore = Math.max(...results.map(r => r.score || 0));
+          showError(`No similar products found. The best match had only ${(maxScore * 100).toFixed(0)}% similarity, which is below the required 70% threshold for accurate matches.`);
+        } else {
+          showError(`No similar products found. The uploaded image doesn't match any products in our catalog. Try uploading a different image or check if similar products exist.`);
+        }
         setIsImageSearchMode(false);
+        setImageSearchResults(null);
       }
     } catch (err) {
       console.error('Image search error:', err);
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        data: err?.response?.data,
+        config: {
+          url: err?.config?.url,
+          method: err?.config?.method,
+          timeout: err?.config?.timeout
+        }
+      });
       
-      // Handle 503 Service Unavailable specifically
-      if (err?.response?.status === 503) {
-        const errorDetail = err?.response?.data?.message || err?.response?.data?.error || '';
-        showError(
-          'Image search service is currently unavailable. ' +
-          'Please ensure the FastAPI image search service is running. ' +
-          'Check the console for setup instructions.'
-        );
+      // Handle different error types
+      if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+        showError('Image search timed out. The image might be too large or the service is slow. Please try again with a smaller image.');
+      } else if (err?.response?.status === 503 || err?.code === 'ERR_NETWORK' || err?.code === 'ECONNREFUSED') {
         setImageSearchAvailable(false);
-        console.error(
-          '\n⚠️ Image Search Service Not Available\n' +
-          'To enable image search, start the FastAPI service:\n\n' +
-          '1. Open a terminal and navigate to: ml/image_matching/api\n' +
+        console.warn(
+          '⚠️ Image Search Service Not Available\n' +
+          'The image search feature requires the FastAPI service to be running.\n' +
+          'To enable image search:\n\n' +
+          'QUICK START (Windows):\n' +
+          '1. Open a new terminal/command prompt\n' +
+          '2. Navigate to: ml\\image_matching\\api\n' +
+          '3. Run: start_api_improved.bat\n' +
+          '   (or manually: python -m uvicorn main:app --host 0.0.0.0 --port 8000)\n\n' +
+          'MANUAL SETUP:\n' +
+          '1. Navigate to: ml/image_matching/api\n' +
           '2. Install dependencies: pip install -r requirements.txt\n' +
           '3. Start the service: uvicorn main:app --host 0.0.0.0 --port 8000 --reload\n' +
           '4. Ensure your .env file has PINECONE_API_KEY configured\n\n' +
+          'The service will be available at http://localhost:8000\n' +
+          'API docs: http://localhost:8000/docs\n\n' +
           'See ml/image_matching/api/README.md for detailed setup instructions.'
         );
-      } else {
+        showError('Image search service is unavailable. Please start the FastAPI service (see console for instructions).');
+      } else if (err?.response?.status === 400) {
+        const errorMsg = err?.response?.data?.message || 'Invalid image file. Please try a different image.';
+        showError(errorMsg);
+      } else if (err?.response?.status === 413) {
+        showError('Image file is too large. Maximum size is 5MB.');
+      } else if (err?.response?.status === 500) {
         const errorMsg = err?.response?.data?.message || 
                         err?.response?.data?.error || 
-                        'Failed to search by image. Please try again.';
+                        err?.response?.data?.detail ||
+                        'Server error during image search. Please try again.';
         showError(errorMsg);
+        console.error('Server error details:', {
+          message: err?.response?.data?.message,
+          error: err?.response?.data?.error,
+          detail: err?.response?.data?.detail,
+          code: err?.response?.data?.code,
+          fullResponse: err?.response?.data
+        });
+      } else {
+        // For other errors, show a user-friendly message
+        const errorMsg = err?.response?.data?.message || 
+                        err?.response?.data?.error || 
+                        err?.message ||
+                        'Image search failed. Please try again.';
+        showError(errorMsg);
+        console.warn('Image search error:', errorMsg);
       }
       
       setIsImageSearchMode(false);
@@ -286,7 +582,7 @@ export default function Furniture() {
         } else {
           setImageSearchAvailable(false);
         }
-      } catch (err) {
+      } catch {
         // Silently fail - don't show error, just assume service is not available
         // User can still try to use it, and will get a proper error message if it fails
         setImageSearchAvailable(false);
@@ -465,11 +761,11 @@ export default function Furniture() {
                   <button
                     type="button"
                     onClick={handleImageSearchClick}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-100 transition-colors duration-200 group"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 rounded-lg transition-colors duration-200 group hover:bg-gray-100"
                     title="Search by image"
                   >
                     <svg
-                      className="w-5 h-5 text-gray-500 group-hover:text-accent-red transition-colors"
+                      className="w-5 h-5 text-gray-500 transition-colors group-hover:text-accent-red"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -625,7 +921,10 @@ export default function Furniture() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Search by Image</h3>
                 <button
-                  onClick={() => setShowImageSearchModal(false)}
+                  onClick={() => {
+                    stopCamera();
+                    setShowImageSearchModal(false);
+                  }}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -633,66 +932,187 @@ export default function Furniture() {
                   </svg>
                 </button>
               </div>
-              
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload an image to find similar furniture
-                </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-accent-red transition-colors">
-                  <div className="space-y-1 text-center">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      stroke="currentColor"
-                      fill="none"
-                      viewBox="0 0 48 48"
-                    >
-                      <path
-                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <div className="flex text-sm text-gray-600">
-                      <label className="relative cursor-pointer bg-white rounded-md font-medium text-accent-red hover:text-accent-red/80 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-accent-red">
-                        <span>Upload an image</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageSelect}
-                          className="sr-only"
-                        />
-                      </label>
-                      <p className="pl-1">or drag and drop</p>
-                    </div>
-                    <p className="text-xs text-gray-500">PNG, JPG, WEBP up to 5MB</p>
-                  </div>
-                </div>
-                {selectedImage && (
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-600 mb-2">Selected image:</p>
-                    <div className="relative inline-block">
-                      <img
-                        src={URL.createObjectURL(selectedImage)}
-                        alt="Selected"
-                        className="h-32 w-auto rounded-lg border border-gray-300"
-                      />
-                    </div>
-                  </div>
-                )}
+
+              {/* Mode Tabs */}
+              <div className="flex gap-2 mb-4 border-b border-gray-200">
+                <button
+                  onClick={() => handleModeSwitch('upload')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                    cameraMode === 'upload'
+                      ? 'text-accent-red border-b-2 border-accent-red'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Upload
+                </button>
+                <button
+                  onClick={() => handleModeSwitch('camera')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                    cameraMode === 'camera'
+                      ? 'text-accent-red border-b-2 border-accent-red'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Camera
+                </button>
               </div>
+              
+              {/* Upload Mode */}
+              {cameraMode === 'upload' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload an image to find similar furniture
+                  </label>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-accent-red transition-colors">
+                    <div className="space-y-1 text-center">
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <div className="flex text-sm text-gray-600">
+                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-accent-red hover:text-accent-red/80 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-accent-red">
+                          <span>Upload an image</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageSelect}
+                            className="sr-only"
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">PNG, JPG, WEBP up to 5MB</p>
+                    </div>
+                  </div>
+                  {selectedImage && (
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-600 mb-2">Selected image:</p>
+                      <div className="relative inline-block">
+                        <img
+                          src={URL.createObjectURL(selectedImage)}
+                          alt="Selected"
+                          className="h-32 w-auto rounded-lg border border-gray-300"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Camera Mode */}
+              {cameraMode === 'camera' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Take a photo to find similar furniture
+                  </label>
+                  {cameraError && (
+                    <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{cameraError}</p>
+                  </div>
+                  )}
+                  <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                    {!stream && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                        <div className="text-center text-white">
+                          <svg
+                            className="mx-auto h-12 w-12 mb-2 animate-pulse"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                          <p className="text-sm">Starting camera...</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Hidden canvas for capturing */}
+                    <canvas ref={canvasRef} className="hidden" />
+                  </div>
+                  {stream && (
+                    <button
+                      onClick={capturePhoto}
+                      className="mt-4 w-full py-3 px-4 bg-accent-red text-white rounded-lg hover:bg-accent-red/90 transition-colors flex items-center justify-center gap-2 font-medium"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                      </svg>
+                      Capture Photo
+                    </button>
+                  )}
+                  {selectedImage && (
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-600 mb-2">Captured image:</p>
+                      <div className="relative inline-block">
+                        <img
+                          src={URL.createObjectURL(selectedImage)}
+                          alt="Captured"
+                          className="h-32 w-auto rounded-lg border border-gray-300"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowImageSearchModal(false)}
+                  onClick={() => {
+                    stopCamera();
+                    setShowImageSearchModal(false);
+                  }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 {selectedImage && (
                   <button
-                    onClick={() => handleImageSearch(selectedImage)}
+                    onClick={() => {
+                      stopCamera();
+                      handleImageSearch(selectedImage);
+                    }}
                     className="flex-1 px-4 py-2 bg-accent-red text-white rounded-lg hover:bg-accent-red/90 transition-colors"
                   >
                     Search

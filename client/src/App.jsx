@@ -18,6 +18,7 @@ import LoginSecurity from "./pages/LoginSecurity";
 import AddressManagement from "./pages/AddressManagement";
 import AboutUs from "./pages/AboutUs";
 import ContactUs from "./pages/ContactUs";
+import ServicePage from "./pages/ServicePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Cart from "./pages/Cart";
 import Wishlist from "./pages/Wishlist";
@@ -48,6 +49,12 @@ import { NotificationProvider } from "./components/NotificationProvider";
 import { CartProvider } from "./contexts/CartContext";
 import AdminWoodQuality from "./pages/AdminWoodQuality";
 import AdminCustomerSegments from "./pages/AdminCustomerSegments";
+import AdminServiceSchedule from "./pages/AdminServiceSchedule";
+import AdminServiceEnquiries from "./pages/AdminServiceEnquiries";
+import AdminTimberCuttingEnquiry from "./pages/AdminTimberCuttingEnquiry";
+import ServiceEnquiry from "./pages/ServiceEnquiry";
+import MyServiceEnquiries from "./pages/MyServiceEnquiries";
+import TimberProcessingForm from "./pages/TimberProcessingForm";
 
 export default function App() {
   return (
@@ -69,6 +76,7 @@ export default function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/service" element={<ServicePage />} />
         <Route path="/about" element={<AboutUs />} />
         <Route path="/about-us" element={<AboutUs />} />
         <Route path="/contact-us" element={<ContactUs />} />
@@ -151,6 +159,30 @@ export default function App() {
           element={
             <ProtectedRoute role="admin">
               <AdminWoodQuality />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/service-schedule" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminServiceSchedule />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/service-enquiries" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminServiceEnquiries />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/timber-cutting-enquiry" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminTimberCuttingEnquiry />
             </ProtectedRoute>
           } 
         />
@@ -316,7 +348,31 @@ export default function App() {
             <ProtectedRoute role="customer">
               <Wishlist />
             </ProtectedRoute>
-          } 
+          }
+        />
+        <Route 
+          path="/services/enquiry" 
+          element={
+            <ProtectedRoute role="customer">
+              <ServiceEnquiry />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/services/timber-processing" 
+          element={
+            <ProtectedRoute role="customer">
+              <TimberProcessingForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/services/my-enquiries" 
+          element={
+            <ProtectedRoute role="customer">
+              <MyServiceEnquiries />
+            </ProtectedRoute>
+          }
         />
         <Route 
           path="/customer-profile" 

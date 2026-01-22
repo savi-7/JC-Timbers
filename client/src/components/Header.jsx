@@ -77,6 +77,13 @@ export default function Header({backgroundClass = 'bg-cream'}) {
             </button>
             
             <button 
+              onClick={() => navigate('/service')}
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+            >
+              Service
+            </button>
+            
+            <button 
               onClick={() => {
                 navigate('/about');
                 // Scroll to about us section after navigation

@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import dashboardImg from "../assets/dashboard.png"; // Corrected import name
 
 export default function Hero() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <section className="relative">
@@ -33,13 +35,12 @@ export default function Hero() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex-1">
               <p className="text-dark-brown text-lg leading-relaxed max-w-2xl font-paragraph">
-                Discover handcrafted rustic furniture that brings a warm touch to your home. 
-                Explore our unique designs and sustainable sourcing to create a cozy and inviting atmosphere.
+                {t('hero.subtitle')}
               </p>
             </div>
             <div className="flex-shrink-0">
               <button className="bg-accent-red hover:bg-dark-brown text-white px-8 py-3 rounded-lg font-paragraph transition-colors duration-200">
-                Explore Now
+                {t('hero.cta')}
               </button>
             </div>
           </div>

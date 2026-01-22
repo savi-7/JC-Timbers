@@ -46,7 +46,13 @@ export const uploadImages = upload.array('images', 5);
 export const uploadSingleImage = upload.single('image');
 
 // Error handling middleware for multer
+// This can be used as regular middleware (3 params) or error handler (4 params)
 export const handleUploadError = (error, req, res, next) => {
+  // If no error, skip (used as regular middleware)
+  if (!error) {
+    return next();
+  }
+  
   console.error('Upload error:', error);
   
   if (error instanceof multer.MulterError) {

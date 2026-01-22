@@ -1,156 +1,82 @@
 
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import api from '../api/axios';
-import { useNotification } from './NotificationProvider';
-import { useAuth } from '../hooks/useAuth';
-import { useCart } from '../contexts/CartContext';
-
-const formatINR = (paise) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((paise||0)/100);
-
-const getProductImage = (product) => {
-  if (product.images && product.images.length > 0) {
-    const firstImage = product.images[0];
-    
-    // Check if it's the old Cloudinary format
-    if (firstImage.url) {
-      return firstImage.url;
-    }
-    
-    // Check if it's the new MongoDB format with data
-    if (firstImage.data) {
-      // If data starts with 'data:', it's already a data URL
-      if (firstImage.data.startsWith('data:')) {
-        return firstImage.data;
-      }
-      // Otherwise, construct the data URL
-      return `data:${firstImage.contentType || 'image/jpeg'};base64,${firstImage.data}`;
-    }
-  }
-  
-  // Fallback to old img property or placeholder
-  return product.img || 'https://via.placeholder.com/80/f3f4f6/9ca3af?text=No+Image';
-};
+import { useState } from "react";
+import timberImage from '../assets/timberproduct.png';
+import furnitureImage from '../assets/furnitureshowcase.png';
+import constructionImage from '../assets/construction.png';
+import { getLocationFromPincode, validatePincode } from '../utils/pincodeLookup';
 
 export default function ProductShowcase() {
   const navigate = useNavigate();
-  const { showSuccess, showError } = useNotification();
-  const { isAuthenticated } = useAuth();
-  const { refreshCartCount } = useCart();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [products, setProducts] = useState([]);
   const [pin, setPin] = useState('');
   const [pinResult, setPinResult] = useState(null);
+  const [checking, setChecking] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    const fetch = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await api.get('/products?limit=100');
-        if (mounted) {
-          const fetchedProducts = res.data.products || [];
-          setProducts(fetchedProducts);
-        }
-      } catch (err) {
-        if (mounted) setError(err.response?.data?.message || 'Failed to load products');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    fetch();
-    return () => { mounted = false; };
-  }, []);
 
-  const handleAddToCart = async (product) => {
-    if (!isAuthenticated) {
-      // Store the product that user wants to add to cart
-      localStorage.setItem('pendingCartItem', JSON.stringify({
-        productId: product._id,
-        productName: product.name,
-        quantity: 1,
-        timestamp: Date.now()
-      }));
-      // Store the redirect destination
-      localStorage.setItem('loginRedirect', '/cart');
-      navigate("/login");
-      return;
-    }
-    
-    try {
-      await api.post('/cart', { productId: product._id, quantity: 1 });
-      showSuccess(`${product.name} added to cart!`);
-      // Refresh cart count in header
-      refreshCartCount();
-    } catch (err) {
-      if (err.response?.status === 401) {
-        // Store the product that user wants to add to cart
-        localStorage.setItem('pendingCartItem', JSON.stringify({
-          productId: product._id,
-          productName: product.name,
-          quantity: 1,
-          timestamp: Date.now()
-        }));
-        // Store the redirect destination
-        localStorage.setItem('loginRedirect', '/cart');
-        navigate("/login");
-      } else {
-        showError(err.response?.data?.message || 'Failed to add to cart');
-      }
-    }
-  };
-
-  const addToWishlist = async (productId) => {
-    if (!isAuthenticated) {
-      // Store the product that user wants to add to wishlist
-      localStorage.setItem('pendingWishlistItem', JSON.stringify({
-        productId: productId,
-        timestamp: Date.now()
-      }));
-      // Store the redirect destination
-      localStorage.setItem('loginRedirect', '/wishlist');
-      navigate("/login");
-      return;
-    }
-    
-    try {
-      await api.post(`/wishlist/${productId}`);
-      showSuccess('Added to wishlist');
-    } catch (err) {
-      if (err.response?.status === 401) {
-        navigate("/login");
-      } else {
-        showError(err.response?.data?.message || 'Failed to add to wishlist');
-      }
-    }
-  };
-
-  const checkPincode = (e) => {
+  const checkPincode = async (e) => {
     e.preventDefault();
+    
     if (!/^[0-9]{6}$/.test(pin)) {
       setPinResult({ ok: false, msg: 'Enter a valid 6-digit pincode' });
       return;
     }
-    const serviceable = ['560001', '110001', '400001'];
-    const ok = serviceable.includes(pin);
-    setPinResult({ ok, msg: ok ? 'Delivery available in your area' : 'Delivery not available yet' });
+    
+    setChecking(true);
+    setPinResult(null);
+    
+    // Kerala pincodes start with 67, 68, or 69
+    const keralaPincodePrefixes = ['67', '68', '69'];
+    const pincodePrefix = pin.substring(0, 2);
+    const isKeralaPincode = keralaPincodePrefixes.includes(pincodePrefix);
+    
+    if (isKeralaPincode) {
+      // Fetch exact location name using improved lookup utility
+      try {
+        const locationData = await getLocationFromPincode(pin);
+        
+        if (locationData && locationData.locationName) {
+          // Show exact location name (town/city/village)
+          const locationText = locationData.locationName;
+          const districtText = locationData.district ? `, ${locationData.district}` : '';
+          
+          setPinResult({ 
+            ok: true, 
+            msg: `Delivery available to ${locationText}${districtText}, ${locationData.state}! We deliver to all locations in Kerala.` 
+          });
+        } else if (locationData && locationData.city) {
+          // Fallback to city if location name not available
+          setPinResult({ 
+            ok: true, 
+            msg: `Delivery available to ${locationData.city}, ${locationData.state}! We deliver to all locations in Kerala.` 
+          });
+        } else {
+          // Final fallback
+          setPinResult({ 
+            ok: true, 
+            msg: `Delivery available in your area! We deliver to all locations in Kerala.` 
+          });
+        }
+      } catch (error) {
+        // Fallback if API fails
+        setPinResult({ 
+          ok: true, 
+          msg: `Delivery available in your area! We deliver to all locations in Kerala.` 
+        });
+      }
+    } else {
+      setPinResult({ 
+        ok: false, 
+        msg: 'Delivery not available. We currently deliver only to Kerala state. Please check back later for other locations.' 
+      });
+    }
+    
+    setChecking(false);
   };
 
-  // Filter products by category (case-insensitive) - Show 3 products from each
-  const timberProducts = products.filter(product => 
-    product.category && product.category.toLowerCase() === 'timber'
-  ).slice(0, 3);
-  const furnitureProducts = products.filter(product => 
-    product.category && product.category.toLowerCase() === 'furniture'
-  ).slice(0, 3);
-  const constructionProducts = products.filter(product => 
-    product.category && product.category.toLowerCase() === 'construction'
-  ).slice(0, 3);
-
-  // Product card component
-  const ProductCard = ({ product, category }) => {
+  // Category card component - using the same layout as product cards
+  const CategoryCard = ({ title, description, category, image }) => {
+    const [imageError, setImageError] = useState(false);
+    
     const getCategoryRoute = (category) => {
       switch (category) {
         case 'timber':
@@ -164,52 +90,58 @@ export default function ProductShowcase() {
       }
     };
 
-    const handleProductClick = () => {
+    const handleCategoryClick = () => {
       navigate(getCategoryRoute(category));
+    };
+
+    const getCategoryIcon = () => {
+      switch (category) {
+        case 'timber':
+          return '🪵';
+        case 'furniture':
+          return '🪑';
+        case 'construction':
+          return '🏗️';
+        default:
+          return '🪵';
+      }
     };
 
     return (
       <div 
         className="product-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-lg transition-all duration-300 cursor-pointer"
-        onClick={handleProductClick}
+        onClick={handleCategoryClick}
       >
         <div className="image-container">
-          <img 
-            src={getProductImage(product)} 
-            alt={product.name} 
-            className="product-image" 
-            onError={(e) => {
-              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMDAgMTgwSDIwMFYyMjBIMjAwVjE4MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE4MCAyMDBoNDBWMjIwSDE4MFYyMDBaIiBmaWxsPSIjOUNBM0FGIi8+CjxwYXRoIGQ9Ik0xNzAgMTgwSDIzMFYyMjBIMTcwVjE4MFoiIHN0cm9rZT0iIzlDQTNBRiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
-            }}
-            loading="lazy"
-          />
+          {!imageError ? (
+            <img 
+              src={image} 
+              alt={title}
+              className="product-image"
+              onError={() => setImageError(true)}
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-dark-brown/20 via-accent-red/20 to-dark-brown/10 flex items-center justify-center">
+              <div className="text-6xl opacity-60">{getCategoryIcon()}</div>
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </div>
         <div className="card-content p-6">
           <div className="space-y-3">
-            <h3 className="text-lg font-paragraph text-dark-brown font-medium line-clamp-2">{product.name}</h3>
-            <p className="text-xl font-heading text-dark-brown font-semibold">
-              {product.price ? `₹${product.price}` : formatINR(product.priceInPaise)}
-            </p>
+            <h3 className="text-lg font-paragraph text-dark-brown font-medium line-clamp-2">{title}</h3>
+            <p className="text-sm text-dark-brown/70 font-paragraph line-clamp-2">{description}</p>
           </div>
           <div className="flex gap-2 pt-4 mt-auto">
             <button 
               onClick={(e) => {
                 e.stopPropagation(); // Prevent card click
-                handleAddToCart(product);
+                handleCategoryClick();
               }}
               className="flex-1 bg-accent-red hover:bg-dark-brown text-white px-4 py-3 rounded-lg text-sm font-paragraph transition-colors duration-200 font-medium"
             >
-              Add to Cart
-            </button>
-            <button 
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent card click
-                addToWishlist(product._id || product.id);
-              }}
-              className="px-4 py-3 rounded-lg text-sm bg-cream text-dark-brown hover:bg-white border border-cream font-paragraph transition-colors duration-200 font-medium"
-            >
-              ♥ Wishlist
+              Explore {title}
             </button>
           </div>
         </div>
@@ -217,74 +149,27 @@ export default function ProductShowcase() {
     );
   };
 
-  // Category section component
-  const CategorySection = ({ title, products, description, category }) => {
-    const getCategoryRoute = (category) => {
-      switch (category) {
-        case 'timber':
-          return '/timber-products';
-        case 'furniture':
-          return '/furniture';
-        case 'construction':
-          return '/construction-materials';
-        default:
-          return '/timber-products';
-      }
-    };
-
-    return (
-      <section className="mb-16">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-heading text-dark-brown mb-2">{title}</h2>
-            <p className="text-dark-brown/80 font-paragraph">{description}</p>
-          </div>
-          <button
-            onClick={() => navigate(getCategoryRoute(category))}
-            className="px-6 py-2 bg-accent-red hover:bg-dark-brown text-white rounded-lg font-paragraph text-sm transition-colors duration-200"
-          >
-            View All {title}
-          </button>
-        </div>
-      
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="product-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="image-container">
-                <div className="w-full h-full bg-gray-200 animate-pulse rounded-t-xl" />
-              </div>
-              <div className="card-content p-6">
-                <div className="space-y-3">
-                  <div className="h-5 bg-gray-200 animate-pulse rounded w-3/4" />
-                  <div className="h-6 bg-gray-200 animate-pulse rounded w-1/2" />
-                </div>
-                <div className="flex gap-2 pt-4 mt-auto">
-                  <div className="flex-1 h-10 bg-gray-200 animate-pulse rounded-lg" />
-                  <div className="w-20 h-10 bg-gray-200 animate-pulse rounded-lg" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : products.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-          {products.map((product) => (
-            <ProductCard key={product._id} product={product} category={category} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-xl">
-          <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No {title} Available</h3>
-          <p className="text-gray-500">Check back later for new {title.toLowerCase()} products.</p>
-        </div>
-      )}
-    </section>
-    );
-  };
+  // Category data
+  const categories = [
+    {
+      title: 'Timber Products',
+      description: 'Premium quality timber for all your woodworking needs',
+      category: 'timber',
+      image: timberImage
+    },
+    {
+      title: 'Furniture',
+      description: 'Handcrafted furniture pieces made from the finest materials',
+      category: 'furniture',
+      image: furnitureImage
+    },
+    {
+      title: 'Construction Materials',
+      description: 'Durable construction materials for your building projects',
+      category: 'construction',
+      image: constructionImage
+    }
+  ];
 
   return (
     <section className="py-16 bg-white">
@@ -296,40 +181,25 @@ export default function ProductShowcase() {
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 text-red-700 px-4 py-3 rounded mb-8 text-center">{error}</div>
-        )}
-        
-        {/* Timber Products Section */}
-        <CategorySection
-          title="Timber Products"
-          products={timberProducts}
-          description="Premium quality timber for all your woodworking needs"
-          category="timber"
-        />
-
-        {/* Furniture Section */}
-        <CategorySection
-          title="Furniture"
-          products={furnitureProducts}
-          description="Handcrafted furniture pieces made from the finest materials"
-          category="furniture"
-        />
-
-        {/* Construction Materials Section */}
-        <CategorySection
-          title="Construction Materials"
-          products={constructionProducts}
-          description="Durable construction materials for your building projects"
-          category="construction"
-        />
+        {/* Category Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          {categories.map((category) => (
+            <CategoryCard 
+              key={category.category}
+              title={category.title}
+              description={category.description}
+              category={category.category}
+              image={category.image}
+            />
+          ))}
+        </div>
 
         {/* Inline Pincode Checker */}
         <div className="mt-16 bg-cream rounded-xl p-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
               <h3 className="text-2xl font-heading text-dark-brown">Check Delivery Availability</h3>
-              <p className="text-dark-brown/80 font-paragraph">Enter your pincode to check service in your area.</p>
+              <p className="text-dark-brown/80 font-paragraph">Enter your pincode to check service in your area. We deliver to all locations in Kerala.</p>
             </div>
             <form onSubmit={checkPincode} className="flex w-full md:w-auto gap-2">
               <input
@@ -337,16 +207,48 @@ export default function ProductShowcase() {
                 inputMode="numeric"
                 pattern="[0-9]{6}"
                 value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="e.g. 560001"
-                className="flex-1 md:w-56 border border-cream rounded-lg px-3 py-2 text-dark-brown"
+                onChange={(e) => {
+                  // Only allow numbers and limit to 6 digits
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setPin(value);
+                  // Clear result when user starts typing
+                  if (pinResult) {
+                    setPinResult(null);
+                  }
+                }}
+                placeholder="e.g. 682001"
+                className="flex-1 md:w-56 border border-cream rounded-lg px-3 py-2 text-dark-brown focus:ring-2 focus:ring-dark-brown focus:border-transparent"
+                maxLength={6}
                 required
               />
-              <button className="bg-accent-red hover:bg-dark-brown text-white px-5 py-2 rounded-lg">Check</button>
+              <button 
+                type="submit"
+                disabled={checking}
+                className="bg-accent-red hover:bg-dark-brown text-white px-5 py-2 rounded-lg transition-colors duration-200 font-paragraph disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {checking ? 'Checking...' : 'Check'}
+              </button>
             </form>
           </div>
           {pinResult && (
-            <div className={`mt-3 px-4 py-3 rounded ${pinResult.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{pinResult.msg}</div>
+            <div className={`mt-3 px-4 py-3 rounded-lg flex items-start gap-3 ${
+              pinResult.ok 
+                ? 'bg-green-50 text-green-700 border border-green-200' 
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}>
+              <div className="flex-shrink-0 mt-0.5">
+                {pinResult.ok ? (
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <p className="flex-1 font-paragraph">{pinResult.msg}</p>
+            </div>
           )}
         </div>
       </div>

@@ -123,6 +123,40 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Wood Quality (ML)</span>
             </button>
+            <button 
+              onClick={() => navigate('/admin/service-schedule')}
+              className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
+            >
+              <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="truncate">Service Schedule</span>
+            </button>
+            <button 
+              onClick={() => navigate('/admin/service-enquiries')}
+              className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
+            >
+              <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="truncate">Service Enquiries</span>
+            </button>
+          </div>
+
+          {/* Service Module */}
+          <div className="space-y-1 mt-6">
+            <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Service Module
+            </div>
+            <button 
+              onClick={() => navigate('/admin/timber-cutting-enquiry')}
+              className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
+            >
+              <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              <span className="truncate">Timber Cutting Enquiry</span>
+            </button>
           </div>
 
           {/* Tools Section */}

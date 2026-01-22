@@ -5,6 +5,7 @@ import api from '../api/axios';
 import { useNotification } from '../components/NotificationProvider';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { getLocationFromPincode, validatePincode } from '../utils/pincodeLookup';
 
 export default function AddressManagement() {
   const navigate = useNavigate();
@@ -38,10 +39,7 @@ export default function AddressManagement() {
     return mobileRegex.test(mobile.replace(/\D/g, ''));
   };
 
-  const validatePincode = (pincode) => {
-    const pincodeRegex = /^[1-9][0-9]{5}$/;
-    return pincodeRegex.test(pincode);
-  };
+  // validatePincode is imported from utils/pincodeLookup
 
   const validateAddress = (address) => {
     return address.trim().length >= 10 && address.trim().length <= 200;
@@ -149,6 +147,39 @@ export default function AddressManagement() {
         ...prev,
         [name]: ''
       }));
+    }
+    
+    // Auto-fill location details when pincode is entered
+    if (name === 'pincode' && validatePincode(value)) {
+      handlePincodeLookup(value);
+    }
+  };
+
+  const handlePincodeLookup = async (pincode) => {
+    if (!pincode || !validatePincode(pincode)) {
+      return;
+    }
+
+    try {
+      const locationData = await getLocationFromPincode(pincode);
+      
+      if (locationData && locationData.state) {
+        // Auto-fill state, city, and location name
+        setFormData(prev => ({
+          ...prev,
+          state: locationData.state,
+          city: locationData.city || locationData.locationName || prev.city,
+          pincode: pincode
+        }));
+        
+        // Show success message with exact location name
+        if (locationData.locationName) {
+          showSuccess(`Location found: ${locationData.locationName}${locationData.district ? `, ${locationData.district}` : ''}, ${locationData.state}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error looking up pincode:', error);
+      // Don't show error to user, just log it
     }
   };
 
@@ -365,19 +396,33 @@ export default function AddressManagement() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pincode</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pincode <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="pincode"
                     value={formData.pincode}
                     onChange={handleInputChange}
+                    onBlur={(e) => {
+                      if (validatePincode(e.target.value)) {
+                        handlePincodeLookup(e.target.value);
+                      }
+                    }}
+                    maxLength="6"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 ${
                       errors.pincode ? 'border-red-500' : 'border-gray-300'
                     }`}
+                    placeholder="6-digit pincode"
                     required
                   />
                   {errors.pincode && (
                     <p className="mt-1 text-sm text-red-600">{errors.pincode}</p>
+                  )}
+                  {formData.pincode && validatePincode(formData.pincode) && !errors.pincode && (
+                    <p className="mt-1 text-xs text-green-600">
+                      ✓ Valid pincode - Location details will be auto-filled
+                    </p>
                   )}
                 </div>
                 

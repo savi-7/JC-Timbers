@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useTranslation } from 'react-i18next';
 
 export default function Footer() {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
+    const { t } = useTranslation();
 
     return (
       <footer className="bg-dark-brown text-white py-12">
@@ -14,8 +16,7 @@ export default function Footer() {
             <div>
               <h3 className="text-2xl font-heading text-white mb-4">JC Timbers</h3>
               <p className="text-light-pink leading-relaxed font-paragraph mb-6 max-w-md">
-                Your trusted partner for premium timber products, handcrafted furniture, and quality construction materials. 
-                We bring decades of expertise and craftsmanship to every project.
+                {t('footer.companyDescription')}
               </p>
               <div className="flex space-x-4">
                 <a href="#" className="text-light-pink hover:text-accent-red transition-colors duration-200">
@@ -45,29 +46,29 @@ export default function Footer() {
             <div className="grid grid-cols-2 gap-6">
               {/* Quick Links */}
               <div>
-                <h4 className="font-paragraph font-semibold mb-4 text-white">Quick Links</h4>
+                <h4 className="font-paragraph font-semibold mb-4 text-white">{t('footer.quickLinks')}</h4>
                 <ul className="space-y-3">
-                  <li><button onClick={() => navigate('/customer-home')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Home</button></li>
-                  <li><button onClick={() => navigate('/timber-products')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Timber</button></li>
-                  <li><button onClick={() => navigate('/furniture')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Furniture</button></li>
-                  <li><button onClick={() => navigate('/construction-materials')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Construction</button></li>
+                  <li><button onClick={() => navigate('/customer-home')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">{t('nav.home')}</button></li>
+                  <li><button onClick={() => navigate('/timber-products')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">{t('nav.timber')}</button></li>
+                  <li><button onClick={() => navigate('/furniture')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">{t('nav.furniture')}</button></li>
+                  <li><button onClick={() => navigate('/construction-materials')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">{t('nav.construction')}</button></li>
                 </ul>
               </div>
 
               {/* Services */}
               <div>
-                <h4 className="font-paragraph font-semibold mb-4 text-white">Our Services</h4>
+                <h4 className="font-paragraph font-semibold mb-4 text-white">{t('footer.ourServices')}</h4>
                 <ul className="space-y-3">
                   <li>
                     <button 
                       onClick={() => navigate('/about-us')}
                       className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph"
                     >
-                      About Us
+                      {t('footer.aboutUs')}
                     </button>
                   </li>
-                  <li><button onClick={() => navigate('/contact-us')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Contact Us</button></li>
-                  <li><button onClick={() => navigate('/blog')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">Our Blog</button></li>
+                  <li><button onClick={() => navigate('/contact-us')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">{t('footer.contactUs')}</button></li>
+                  <li><button onClick={() => navigate('/blog')} className="hover:text-accent-red transition-colors duration-200 text-left font-paragraph">{t('footer.ourBlog')}</button></li>
                 </ul>
               </div>
             </div>
@@ -76,12 +77,12 @@ export default function Footer() {
           {/* Bottom Bar */}
           <div className="flex flex-col md:flex-row items-center justify-between pt-6 border-t border-accent-red">
             <div className="text-light-pink font-paragraph mb-4 md:mb-0">
-              © {new Date().getFullYear()} JC Timbers. All rights reserved.
+              © {new Date().getFullYear()} JC Timbers. {t('footer.allRightsReserved')}
             </div>
             <div className="flex items-center space-x-6 text-light-pink">
-              <span className="font-paragraph">Made with ❤️ in India</span>
+              <span className="font-paragraph">{t('footer.madeInIndia')}</span>
               <div className="flex items-center space-x-2">
-                <span className="font-paragraph">Secure Payment:</span>
+                <span className="font-paragraph">{t('footer.securePayment')}:</span>
                 <div className="flex space-x-2">
                   <div className="w-8 h-5 bg-white rounded flex items-center justify-center">
                     <span className="text-xs font-bold text-dark-brown">VISA</span>

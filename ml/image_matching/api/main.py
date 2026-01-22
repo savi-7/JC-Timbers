@@ -19,6 +19,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer, util as st_utils
 from pinecone import Pinecone
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 
 # Load environment variables first (from parent directory and current directory)
 parent_env_path = Path(__file__).parent.parent / '.env'
@@ -51,11 +52,57 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+ # Global model and Pinecone index (loaded on startup)
+model: Optional[SentenceTransformer] = None
+pinecone_index = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events"""
+    # Startup
+    global model, pinecone_index
+    
+    try:
+        logger.info(f"Loading CLIP model: {CLIP_MODEL_NAME}")
+        model = SentenceTransformer(CLIP_MODEL_NAME)
+        logger.info("CLIP model loaded successfully")
+        logger.info(f"Model embedding dimension: {model.get_sentence_embedding_dimension()}")
+        
+        # Initialize Pinecone
+        if not PINECONE_API_KEY:
+            logger.warning("PINECONE_API_KEY not found in environment variables. Pinecone features will be disabled.")
+            logger.warning("To enable Pinecone, set PINECONE_API_KEY in .env file")
+            pinecone_index = None
+        else:
+            try:
+                logger.info("Initializing Pinecone client...")
+                pc = Pinecone(api_key=PINECONE_API_KEY)
+                pinecone_index = pc.Index(PINECONE_INDEX_NAME)
+                logger.info(f"Connected to Pinecone index: {PINECONE_INDEX_NAME}")
+            except Exception as pinecone_error:
+                logger.error(f"Failed to connect to Pinecone: {pinecone_error}")
+                logger.warning("Service will start but image search will not work until Pinecone is configured")
+                pinecone_index = None
+        
+    except Exception as e:
+        logger.error(f"Error during startup: {e}")
+        # Don't raise - allow service to start even if model loading fails
+        # This allows health checks to work
+        logger.warning("Service starting in degraded mode. Some features may not work.")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down image search service...")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Image Search API",
     description="AI-based product image matching using CLIP and Pinecone",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS middleware
@@ -66,10 +113,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
- # Global model and Pinecone index (loaded on startup)
-model: Optional[SentenceTransformer] = None
-pinecone_index = None
 
 # High-level furniture type definitions for classification + filtering
 FURNITURE_TYPES = {
@@ -109,44 +152,6 @@ class SearchResponse(BaseModel):
     top_k: int
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize CLIP model and Pinecone on startup"""
-    global model, pinecone_index
-    
-    try:
-        logger.info(f"Loading CLIP model: {CLIP_MODEL_NAME}")
-        model = SentenceTransformer(CLIP_MODEL_NAME)
-        logger.info("CLIP model loaded successfully")
-        logger.info(f"Model embedding dimension: {model.get_sentence_embedding_dimension()}")
-        
-        # Initialize Pinecone
-        if not PINECONE_API_KEY:
-            logger.warning("PINECONE_API_KEY not found in environment variables. Pinecone features will be disabled.")
-            logger.warning("To enable Pinecone, set PINECONE_API_KEY in .env file")
-            pinecone_index = None
-        else:
-            try:
-                logger.info("Initializing Pinecone client...")
-                pc = Pinecone(api_key=PINECONE_API_KEY)
-                pinecone_index = pc.Index(PINECONE_INDEX_NAME)
-                logger.info(f"Connected to Pinecone index: {PINECONE_INDEX_NAME}")
-            except Exception as pinecone_error:
-                logger.error(f"Failed to connect to Pinecone: {pinecone_error}")
-                logger.warning("Service will start but image search will not work until Pinecone is configured")
-                pinecone_index = None
-        
-    except Exception as e:
-        logger.error(f"Error during startup: {e}")
-        # Don't raise - allow service to start even if model loading fails
-        # This allows health checks to work
-        logger.warning("Service starting in degraded mode. Some features may not work.")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info("Shutting down image search service...")
 
 
 @app.get("/")
@@ -285,13 +290,44 @@ async def add_product_to_search(request: AddProductRequest):
 def preprocess_image(image_bytes: bytes) -> Image.Image:
     """Preprocess image for CLIP model"""
     try:
+        if not image_bytes or len(image_bytes) == 0:
+            raise ValueError("Empty image bytes")
+        
         # Load image from bytes
-        image = Image.open(BytesIO(image_bytes)).convert("RGB")
+        image = Image.open(BytesIO(image_bytes))
+        
+        # Convert to RGB if necessary (handles RGBA, P, etc.)
+        if image.mode != 'RGB':
+            logger.info(f"Converting image from {image.mode} to RGB")
+            image = image.convert("RGB")
+        
+        # Verify image is valid (this will raise an exception if image is corrupted)
+        # Note: verify() closes the image, so we need to reopen it
+        try:
+            image.verify()
+        except Exception as verify_error:
+            logger.error(f"Image verification failed: {verify_error}")
+            raise ValueError(f"Invalid or corrupted image: {verify_error}")
+        
+        # Reopen after verify (verify closes the image)
+        image = Image.open(BytesIO(image_bytes))
+        
+        # Convert to RGB if necessary
+        if image.mode != 'RGB':
+            image = image.convert("RGB")
+        
         # Resize to model input size
         image = image.resize(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
+        
+        # Ensure image is fully loaded (not lazy-loaded) to avoid file handle issues on Windows
+        image.load()
+        
+        logger.debug(f"Image preprocessed: size={image.size}, mode={image.mode}")
         return image
     except Exception as e:
         logger.error(f"Error preprocessing image: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
 
 
@@ -304,11 +340,95 @@ def generate_embedding(image: Image.Image) -> np.ndarray:
     features of the image. This embedding is then used to find similar images.
     """
     try:
-        # Encode the uploaded image into a vector representation
-        embedding = model.encode(image, convert_to_numpy=True)
+        import numpy as np
+        
+        # Validate image before encoding
+        if image is None:
+            raise ValueError("Image is None")
+        
+        if not hasattr(image, 'size'):
+            raise ValueError("Invalid image object - missing size attribute")
+        
+        logger.debug(f"Starting embedding generation for image: mode={image.mode}, size={image.size}")
+        
+        # CRITICAL FIX FOR WINDOWS: Use BytesIO to completely detach from file handles
+        # This is the most reliable method to avoid [Errno 22] Invalid argument
+        from io import BytesIO
+        
+        try:
+            # Method 1: Save to BytesIO and reload (completely detaches from any file handles)
+            buffer = BytesIO()
+            # Ensure image is in RGB mode before saving
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            image.save(buffer, format='PNG')
+            buffer.seek(0)
+            
+            # Reload from buffer - this creates a completely new image with no file references
+            clean_image = Image.open(buffer)
+            clean_image = clean_image.convert('RGB')
+            clean_image.load()
+            
+            # Close the buffer
+            buffer.close()
+            
+            logger.debug(f"Image reloaded from BytesIO: mode={clean_image.mode}, size={clean_image.size}")
+            
+            # Now encode using the completely clean image
+            embedding = model.encode(clean_image, convert_to_numpy=True, show_progress_bar=False)
+            
+        except Exception as encode_error:
+            logger.error(f"Error during BytesIO method: {encode_error}")
+            # Fallback Method 2: Convert to numpy array and back
+            logger.warning("Trying numpy array conversion method...")
+            try:
+                # Get pixel data as numpy array
+                img_array = np.array(image, dtype=np.uint8, copy=True)
+                
+                if img_array.size == 0:
+                    raise ValueError("Image array is empty")
+                
+                if len(img_array.shape) != 3 or img_array.shape[2] != 3:
+                    raise ValueError(f"Invalid image array shape: {img_array.shape}")
+                
+                # Create fresh PIL Image from array
+                clean_image = Image.fromarray(img_array, 'RGB')
+                clean_image.load()
+                
+                # Try encoding
+                embedding = model.encode(clean_image, convert_to_numpy=True, show_progress_bar=False)
+                
+            except Exception as numpy_error:
+                logger.error(f"Numpy method also failed: {numpy_error}")
+                # Last resort: try direct encoding
+                logger.warning("Trying direct encoding as last resort...")
+                try:
+                    if image.mode != 'RGB':
+                        image = image.convert('RGB')
+                    image.load()
+                    embedding = model.encode(image, convert_to_numpy=True, show_progress_bar=False)
+                except Exception as final_error:
+                    logger.error(f"All methods failed. Final error: {final_error}")
+                    raise encode_error  # Raise the original error
+        
+        if embedding is None:
+            raise ValueError("Embedding generation returned None")
+        
+        # Ensure embedding is a proper numpy array
+        if not isinstance(embedding, np.ndarray):
+            embedding = np.array(embedding)
+        
+        if len(embedding) == 0:
+            raise ValueError("Embedding generation returned empty result")
+        
+        logger.debug(f"✅ Embedding generated successfully: shape={embedding.shape}, dtype={embedding.dtype}")
         return embedding
+        
     except Exception as e:
-        logger.error(f"Error generating embedding: {e}")
+        logger.error(f"❌ Error generating embedding: {e}")
+        logger.error(f"Image info: mode={image.mode if image else 'None'}, size={image.size if image and hasattr(image, 'size') else 'N/A'}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error generating embedding: {str(e)}")
 
 
@@ -474,8 +594,29 @@ async def search_by_image(
         
         # Preprocess image
         logger.info(f"📸 Processing uploaded image: {file.filename} ({len(image_bytes)} bytes)")
+        
+        # CRITICAL: Create image from bytes multiple times to ensure clean state
+        # This helps avoid Windows file handle issues
         image = preprocess_image(image_bytes)
         logger.info(f"✅ Image preprocessed successfully: {image.size[0]}x{image.size[1]} pixels")
+        
+        # Force a complete reload by recreating from bytes one more time
+        # This ensures no lingering file handles
+        try:
+            from io import BytesIO
+            import numpy as np
+            # Convert current image to bytes and back to ensure it's completely clean
+            img_bytes_io = BytesIO()
+            image.save(img_bytes_io, format='PNG')
+            img_bytes_io.seek(0)
+            # Reload from the bytes
+            clean_image = Image.open(img_bytes_io).convert('RGB')
+            clean_image.load()
+            image = clean_image
+            logger.debug("Image reloaded from bytes to ensure clean state")
+        except Exception as reload_error:
+            logger.warning(f"Could not reload image (non-critical): {reload_error}")
+            # Continue with original image
         
         # Generate embedding from the uploaded image
         logger.info("🤖 Generating CLIP embedding from uploaded image...")
@@ -511,8 +652,8 @@ async def search_by_image(
         logger.info(f"✅ Found {len(query_results.get('matches', []))} candidate matches from YOUR image")
         
         # Filter by minimum similarity threshold (cosine similarity: 0.0 to 1.0)
-        # Lower threshold to find more matches
-        MIN_SIMILARITY_THRESHOLD = 0.55  # Accept matches with 55%+ similarity
+        # Higher threshold for accurate matches only - prevents false positives
+        MIN_SIMILARITY_THRESHOLD = 0.70  # Only accept matches with 70%+ similarity (strict)
         
         # Format and filter results
         results = []

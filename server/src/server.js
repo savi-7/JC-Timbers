@@ -22,6 +22,10 @@ import segmentationRoutes from "./routes/segmentationRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import mlRoutes from "./routes/mlRoutes.js";
 import woodQualityRoutes from "./routes/woodQualityRoutes.js";
+import serviceScheduleRoutes from "./routes/serviceScheduleRoutes.js";
+import serviceEnquiryRoutes from "./routes/serviceEnquiryRoutes.js";
+import holidayRoutes from "./routes/holidayRoutes.js";
+import { getAvailableSlots } from "./controllers/serviceScheduleController.js";
 import { getProductImage } from "./controllers/imageController.js";
 import Product from "./models/Product.js";
 
@@ -48,7 +52,8 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
+// Parse JSON bodies - but don't parse multipart/form-data (multer handles that)
+app.use(express.json({ limit: '10mb' }));
 
 // Serve static files from uploads directory (fallback for local uploads)
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -72,6 +77,15 @@ app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/segmentation", segmentationRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api", mlRoutes);
+
+// PUBLIC route for availability check - register BEFORE any protected routes
+app.get("/api/services/schedule/available/:date", getAvailableSlots);
+
+// Register service routes AFTER the public route
+app.use("/api/services", serviceScheduleRoutes);
+app.use("/api/services", serviceEnquiryRoutes);
+app.use("/api/holidays", holidayRoutes);
+// Register woodQualityRoutes LAST - it uses router.use(requireAdmin) which applies to ALL routes in that router
 app.use("/api", woodQualityRoutes);
 
 // Image serving route

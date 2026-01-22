@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useTranslation } from 'react-i18next';
 import dashboardImg from "../assets/livingroom.png";
 import api from "../api/axios";
 // import { useNotification } from './NotificationProvider';
@@ -8,6 +9,7 @@ import api from "../api/axios";
 export default function CustomerHero() {
   const navigate = useNavigate();
   const { user,  isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   // const { showInfo } = useNotification();
   const [showShopDropdown, setShowShopDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -98,7 +100,7 @@ export default function CustomerHero() {
   // };
 
   return (
-    <section className="relative">
+    <section className="relative z-10">
       {/* Navigation Header */}
 
       {/* Hero Section */}
@@ -110,12 +112,11 @@ export default function CustomerHero() {
               {/* Personalized Greeting */}
               <div className="space-y-4">
                 <h1 className="text-4xl lg:text-6xl font-heading text-dark-brown leading-tight">
-                  Welcome back,<br />
-                  <span className="text-accent-red">{user?.name || 'Valued Customer'}!</span>
+                  {t('customerHero.welcomeBack')},<br />
+                  <span className="text-accent-red">{user?.name || t('customerHero.valuedCustomer')}!</span>
                 </h1>
                 <p className="text-lg text-gray-700 font-paragraph leading-relaxed">
-                  Discover premium timber products, custom furniture, and construction materials 
-                  tailored to your needs. Your personalized shopping experience awaits.
+                  {t('customerHero.description')}
                 </p>
               </div>
               
@@ -125,13 +126,13 @@ export default function CustomerHero() {
                   onClick={() => navigate('/timber-products')}
                   className="bg-dark-brown text-white px-8 py-4 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                 >
-                  Start Shopping
+                  {t('customerHero.startShopping')}
                 </button>
                 <button
                   onClick={() => navigate('/cart')}
                   className="border-2 border-dark-brown text-dark-brown px-8 py-4 rounded-lg font-paragraph hover:bg-dark-brown hover:text-white transition-colors duration-200"
                 >
-                  View Cart
+                  {t('customerHero.viewCart')}
                 </button>
               </div>
               
@@ -139,15 +140,15 @@ export default function CustomerHero() {
               <div className="grid grid-cols-3 gap-6 pt-8">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-dark-brown">500+</div>
-                  <div className="text-sm text-gray-600">Products</div>
+                  <div className="text-sm text-gray-600">{t('customerHero.products')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-dark-brown">1000+</div>
-                  <div className="text-sm text-gray-600">Happy Customers</div>
+                  <div className="text-sm text-gray-600">{t('customerHero.happyCustomers')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-dark-brown">24/7</div>
-                  <div className="text-sm text-gray-600">Support</div>
+                  <div className="text-sm text-gray-600">{t('customerHero.support')}</div>
                 </div>
               </div>
             </div>

@@ -12,15 +12,27 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // Always set Authorization header - use direct assignment for reliability
+      config.headers['Authorization'] = `Bearer ${token}`;
+      
+      // For FormData, don't set Content-Type - let browser/axios set it with boundary
+      if (config.data instanceof FormData) {
+        // Delete Content-Type so axios can set it with boundary
+        delete config.headers['Content-Type'];
+        // Re-set Authorization after deleting Content-Type to ensure it's still there
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       console.log('Axios request with token:', {
         url: config.url,
         method: config.method,
         hasToken: !!token,
-        tokenPreview: token.substring(0, 20) + '...'
+        isFormData: config.data instanceof FormData,
+        hasAuthHeader: !!config.headers['Authorization'],
+        authHeaderValue: config.headers['Authorization'] ? config.headers['Authorization'].substring(0, 30) + '...' : 'MISSING'
       });
     } else {
-      console.log('Axios request without token:', {
+      console.log('⚠️ Axios request without token:', {
         url: config.url,
         method: config.method
       });
@@ -46,13 +58,19 @@ api.interceptors.response.use(
       method: error.config?.method
     });
     
+    // Handle authentication errors (401) and authorization errors (403) that indicate auth failure
     if (error.response?.status === 401) {
       // Token expired or invalid
-      console.log('Token expired or invalid, clearing auth data');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('role');
-      window.location.href = '/login';
+      const errorMessage = error.response?.data?.message || 'Authentication failed';
+      console.log('Token expired or invalid, clearing auth data:', errorMessage);
+      
+      // Only redirect if it's actually an auth error, not a validation error
+      if (errorMessage.includes('token') || errorMessage.includes('authentication') || errorMessage.includes('Access token')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('role');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

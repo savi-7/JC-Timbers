@@ -8,6 +8,16 @@ export default function Header({ sidebarOpen, setSidebarOpen }) {
   const navigate = useNavigate();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const { showLogoutConfirm, showConfirmation, handleConfirm, handleCancel } = useLogoutConfirmation();
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
+  // Update date and time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -48,7 +58,33 @@ export default function Header({ sidebarOpen, setSidebarOpen }) {
             </button>
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-              <p className="text-sm text-gray-600">Welcome back, {user?.name}</p>
+              <div className="flex items-center space-x-4">
+                <p className="text-sm text-gray-600">Welcome back, {user?.name}</p>
+                <span className="text-gray-300">•</span>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>{currentDateTime.toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}</span>
+                </div>
+                <span className="text-gray-300">•</span>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-mono">{currentDateTime.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                  })}</span>
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex items-center space-x-4">

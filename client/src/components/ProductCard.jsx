@@ -1,12 +1,14 @@
 import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 import { useNotification } from '../components/NotificationProvider';
 
 const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   const { showSuccess, showError } = useNotification();
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
@@ -89,11 +91,11 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate }) 
       if (isWishlisted) {
         await api.delete(`/wishlist/${product._id}`);
         setIsWishlisted(false);
-        showSuccess('Removed from wishlist');
+        showSuccess(t('products.removedFromWishlist'));
       } else {
         await api.post(`/wishlist/${product._id}`);
         setIsWishlisted(true);
-        showSuccess('Added to wishlist');
+        showSuccess(t('products.addedToWishlist'));
       }
       // Notify parent component to update wishlist count
       if (onWishlistUpdate) {
@@ -152,13 +154,13 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate }) 
         <div className="mb-3 space-y-1">
           {product.size && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Size:</span>
+              <span className="text-gray-500">{t('products.size')}:</span>
               <span className="text-gray-900 font-medium">{product.size}</span>
             </div>
           )}
           {product.unit && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Unit:</span>
+              <span className="text-gray-500">{t('products.unit')}:</span>
               <span className="text-gray-900 font-medium">{product.unit}</span>
             </div>
           )}
@@ -177,7 +179,7 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate }) 
             )}
           </div>
           <p className="text-xs text-gray-500">
-            per {product.unit}
+            {t('products.per')} {product.unit}
           </p>
         </div>
 
@@ -207,7 +209,7 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate }) 
                 <circle cx="20" cy="21" r="1"></circle>
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
               </svg>
-              Add to Cart
+              {t('products.addToCart')}
             </button>
 
             {/* Buy Now Button */}
@@ -223,7 +225,7 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate }) 
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Buy Now
+              {t('products.buyNow')}
             </button>
           </div>
           
@@ -240,7 +242,7 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate }) 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
-              View Details
+              {t('products.viewDetails')}
             </button>
             
             <button

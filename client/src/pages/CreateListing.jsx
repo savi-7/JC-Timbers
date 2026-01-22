@@ -48,6 +48,7 @@ export default function CreateListing() {
   const [isSearching, setIsSearching] = useState(false);
   const [mapCoords, setMapCoords] = useState({ lat: 20.5937, lon: 78.9629 });
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
+  const [mapLoading, setMapLoading] = useState(true);
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -120,6 +121,10 @@ export default function CreateListing() {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    // Reset state
+    setMapLoading(true);
+    mapInitializedRef.current = false;
+
     let mapInitialized = false;
 
     // Load Leaflet CSS and JS dynamically
@@ -165,106 +170,95 @@ export default function CreateListing() {
       });
     };
 
-    const tryInitializeMap = () => {
-      // Wait for container to have dimensions (with retry mechanism)
-      const checkAndInit = (attempts = 0) => {
-        if (!mapContainerRef.current) {
-          if (attempts < 20) {
-            setTimeout(() => checkAndInit(attempts + 1), 200);
-          }
-          return;
-        }
-
-        // Check if container has dimensions or if Leaflet is ready
-        const hasDimensions = mapContainerRef.current.offsetHeight > 0 || 
-                             mapContainerRef.current.offsetWidth > 0 ||
-                             mapContainerRef.current.clientHeight > 0;
-
-        if (!hasDimensions && attempts < 20) {
-          // Retry after 200ms if container doesn't have dimensions yet
-          setTimeout(() => checkAndInit(attempts + 1), 200);
-          return;
-        }
-
-        // If still no dimensions after retries, try to initialize anyway (map might work with CSS)
-        if (!window.L || !mapContainerRef.current || mapInitialized || mapInitializedRef.current) return;
-
-        try {
-          // Initialize map
-          const map = window.L.map(mapContainerRef.current, {
-            center: [mapCoords.lat, mapCoords.lon],
-            zoom: 10,
-          });
-
-          // Fix default marker icon issue
-          delete window.L.Icon.Default.prototype._getIconUrl;
-          window.L.Icon.Default.mergeOptions({
-            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-          });
-
-          // Add OpenStreetMap tiles
-          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19,
-          }).addTo(map);
-
-          // Add initial marker
-          const marker = window.L.marker([mapCoords.lat, mapCoords.lon], {
-            draggable: true,
-          }).addTo(map);
-
-          markerRef.current = marker;
-          mapRef.current = map;
-          mapInitialized = true;
-          mapInitializedRef.current = true;
-
-          // Handle map click
-          map.on('click', async (e) => {
-            const { lat, lng } = e.latlng;
-            setMapCoords({ lat, lon: lng });
-            marker.setLatLng([lat, lng]);
-            await reverseGeocode(lat, lng);
-          });
-
-          // Handle marker drag
-          marker.on('dragend', async (e) => {
-            const { lat, lng } = e.target.getLatLng();
-            setMapCoords({ lat, lon: lng });
-            await reverseGeocode(lat, lng);
-          });
-
-          // Force map to invalidate size after a short delay
-          setTimeout(() => {
-            if (map) {
-              map.invalidateSize();
-              map.setView([mapCoords.lat, mapCoords.lon], 13);
-            }
-          }, 300);
-        } catch (error) {
-          console.error('Error initializing map:', error);
-          mapInitializedRef.current = false;
-        }
-      };
-
-      checkAndInit();
-    };
-
     loadLeaflet()
       .then(() => {
-        // Start initialization attempt
-        tryInitializeMap();
+        if (!window.L || !mapContainerRef.current || mapInitialized || mapInitializedRef.current) {
+          setMapLoading(false);
+          return;
+        }
+
+        // Wait a bit for container to be ready, then initialize
+        const initMap = () => {
+          // Ensure container has dimensions
+          if (mapContainerRef.current.offsetHeight === 0) {
+            // Retry after a short delay
+            setTimeout(initMap, 200);
+            return;
+          }
+
+          try {
+            // Initialize map
+            const map = window.L.map(mapContainerRef.current, {
+              center: [mapCoords.lat, mapCoords.lon],
+              zoom: 10,
+            });
+
+            // Fix default marker icon issue
+            delete window.L.Icon.Default.prototype._getIconUrl;
+            window.L.Icon.Default.mergeOptions({
+              iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+              iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+              shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            });
+
+            // Add OpenStreetMap tiles
+            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+              maxZoom: 19,
+            }).addTo(map);
+
+            // Add initial marker
+            const marker = window.L.marker([mapCoords.lat, mapCoords.lon], {
+              draggable: true,
+            }).addTo(map);
+
+            markerRef.current = marker;
+            mapRef.current = map;
+            mapInitialized = true;
+            mapInitializedRef.current = true;
+            setMapLoading(false);
+
+            // Handle map click
+            map.on('click', async (e) => {
+              const { lat, lng } = e.latlng;
+              setMapCoords({ lat, lon: lng });
+              marker.setLatLng([lat, lng]);
+              await reverseGeocode(lat, lng);
+            });
+
+            // Handle marker drag
+            marker.on('dragend', async (e) => {
+              const { lat, lng } = e.target.getLatLng();
+              setMapCoords({ lat, lon: lng });
+              await reverseGeocode(lat, lng);
+            });
+
+            // Force map to invalidate size after a short delay
+            setTimeout(() => {
+              if (map) {
+                map.invalidateSize();
+                map.setView([mapCoords.lat, mapCoords.lon], 13);
+              }
+            }, 300);
+          } catch (error) {
+            console.error('Error initializing map:', error);
+            setMapLoading(false);
+          }
+        };
+
+        // Start initialization with a small delay
+        setTimeout(initMap, 100);
       })
       .catch((error) => {
         console.error('Error loading Leaflet:', error);
+        setMapLoading(false);
       });
 
     return () => {
       if (mapRef.current) {
         try {
           mapRef.current.remove();
-        } catch (e) {
+        } catch {
           // Ignore errors during cleanup
         }
         mapRef.current = null;
@@ -490,6 +484,7 @@ export default function CreateListing() {
       // For now, save to localStorage
       const saveListing = (imagePreviewData) => {
         // Create listing object without the File object (can't be serialized)
+        // eslint-disable-next-line no-unused-vars
         const { image, ...listingData } = formData;
         const newListing = {
           id: Date.now().toString(),
@@ -837,11 +832,13 @@ export default function CreateListing() {
                     style={{ 
                       height: '384px',
                       minHeight: '384px',
-                      width: '100%'
+                      width: '100%',
+                      display: 'block',
+                      visibility: 'visible'
                     }}
                   >
                     {/* Loading indicator */}
-                    {!mapInitializedRef.current && (
+                    {mapLoading && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
                         <div className="text-center">
                           <svg

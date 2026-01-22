@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { useNotification } from './NotificationProvider';
+import { getLocationFromPincode, validatePincode } from '../utils/pincodeLookup';
 
 export default function AddressSection({ address, setAddress, onComplete }) {
   const { showSuccess, showError } = useNotification();
@@ -70,10 +71,52 @@ export default function AddressSection({ address, setAddress, onComplete }) {
   };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+    
+    // Auto-fill location details when pincode is entered
+    if (name === 'pincode' && validatePincode(value)) {
+      handlePincodeLookup(value);
+    }
+  };
+
+  const handlePincodeLookup = async (pincode) => {
+    if (!pincode || !validatePincode(pincode)) {
+      return;
+    }
+
+    try {
+      const locationData = await getLocationFromPincode(pincode);
+      
+      if (locationData && locationData.state) {
+        // Auto-fill state
+        setFormData(prev => ({
+          ...prev,
+          state: locationData.state,
+          city: locationData.city || locationData.locationName || prev.city,
+          // Update address if location name is available
+          addressLine: prev.addressLine || locationData.locationName || prev.addressLine
+        }));
+        
+        setAddress(prev => ({
+          ...prev,
+          state: locationData.state,
+          city: locationData.city || locationData.locationName || prev.city,
+          pincode: pincode
+        }));
+        
+        // Show success message with location name
+        if (locationData.locationName) {
+          showSuccess(`Location found: ${locationData.locationName}, ${locationData.district}, ${locationData.state}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error looking up pincode:', error);
+      // Don't show error to user, just log it
+    }
   };
 
   const handleSave = async () => {
@@ -211,16 +254,28 @@ export default function AddressSection({ address, setAddress, onComplete }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Pincode <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                name="pincode"
-                value={formData.pincode}
-                onChange={handleChange}
-                maxLength="6"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
-                placeholder="6-digit pincode"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  name="pincode"
+                  value={formData.pincode}
+                  onChange={handleChange}
+                  onBlur={(e) => {
+                    if (validatePincode(e.target.value)) {
+                      handlePincodeLookup(e.target.value);
+                    }
+                  }}
+                  maxLength="6"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent"
+                  placeholder="6-digit pincode"
+                  required
+                />
+                {formData.pincode && validatePincode(formData.pincode) && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Valid pincode - Location will be auto-filled
+                  </p>
+                )}
+              </div>
             </div>
             
             <div>
