@@ -1,5 +1,6 @@
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import ServiceEnquiry from "../models/ServiceEnquiry.js";
+import Holiday from "../models/Holiday.js";
 
 // Helper function to check for overlapping time slots
 const checkOverlap = async (date, startTime, endTime, excludeId = null) => {
@@ -267,6 +268,36 @@ export const getAvailableSlots = async (req, res) => {
     const targetDateEnd = new Date(date);
     targetDateEnd.setHours(23, 59, 59, 999);
 
+    // Check if the date is a holiday
+    // Query holidays for the target date (comparing date part only, ignoring time)
+    // Use date range to match any holiday on this day regardless of time stored
+    const holidayStart = new Date(targetDate);
+    holidayStart.setHours(0, 0, 0, 0);
+    const holidayEnd = new Date(targetDate);
+    holidayEnd.setHours(23, 59, 59, 999);
+    
+    const holiday = await Holiday.findOne({
+      date: {
+        $gte: holidayStart,
+        $lte: holidayEnd
+      }
+    });
+
+    // If it's a holiday, return no available slots
+    if (holiday) {
+      console.log('📅 Date is a holiday:', holiday.name);
+      return res.status(200).json({
+        date,
+        requestedDuration,
+        isHoliday: true,
+        holidayName: holiday.name,
+        holidayDescription: holiday.description,
+        availableSlots: [],
+        bookedSlots: [],
+        message: `This date is a holiday: ${holiday.name}. No services are available.`
+      });
+    }
+
     // Get all booked slots from ServiceSchedule
     const bookedScheduleSlots = await ServiceSchedule.find({
       date: targetDateTimestamp,
@@ -293,7 +324,9 @@ export const getAvailableSlots = async (req, res) => {
           status: { $in: ["TIME_ACCEPTED", "SCHEDULED", "IN_PROGRESS"] }
         }
       ]
-    }).sort({ scheduledTime: 1, acceptedStartTime: 1 });
+    })
+    .populate('assignedScheduleId', 'startTime endTime duration')
+    .sort({ scheduledTime: 1, acceptedStartTime: 1 });
 
     // Combine all booked slots
     const bookedSlots = [];
@@ -309,32 +342,38 @@ export const getAvailableSlots = async (req, res) => {
     });
 
     // Add scheduled enquiries
-    scheduledEnquiries.forEach(enquiry => {
-      if (enquiry.scheduledDate && enquiry.scheduledTime) {
-        const startTime = enquiry.scheduledTime;
-        // Calculate end time based on work type or default 2 hours
-        const [startHour, startMin] = startTime.split(':').map(Number);
-        const duration = 120; // Default 2 hours, can be adjusted based on work type
-        const totalMinutes = startHour * 60 + startMin + duration;
-        const endHour = Math.floor(totalMinutes / 60);
-        const endMin = totalMinutes % 60;
-        const endTime = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
-        
+    for (const enquiry of scheduledEnquiries) {
+      let startTime = null;
+      let endTime = null;
+      
+      // Priority 1: Use acceptedStartTime and acceptedEndTime (most accurate - set by admin with duration)
+      if (enquiry.acceptedDate && enquiry.acceptedStartTime && enquiry.acceptedEndTime) {
+        startTime = enquiry.acceptedStartTime;
+        endTime = enquiry.acceptedEndTime;
+      }
+      // Priority 2: Use scheduledTime and check if there's a linked ServiceSchedule
+      else if (enquiry.scheduledDate && enquiry.scheduledTime) {
+        startTime = enquiry.scheduledTime;
+        // If there's an assigned schedule (populated), get the end time from it
+        if (enquiry.assignedScheduleId && enquiry.assignedScheduleId.endTime) {
+          endTime = enquiry.assignedScheduleId.endTime;
+        }
+        // If no schedule found, try to use acceptedEndTime if available
+        if (!endTime && enquiry.acceptedEndTime) {
+          endTime = enquiry.acceptedEndTime;
+        }
+      }
+      
+      // Only add if we have both start and end time
+      if (startTime && endTime) {
         bookedSlots.push({
           startTime: startTime,
           endTime: endTime,
           type: 'enquiry',
           title: `Service: ${enquiry.workType} - ${enquiry.customerName}`
         });
-      } else if (enquiry.acceptedDate && enquiry.acceptedStartTime) {
-        bookedSlots.push({
-          startTime: enquiry.acceptedStartTime,
-          endTime: enquiry.acceptedEndTime || enquiry.acceptedStartTime,
-          type: 'enquiry',
-          title: `Service: ${enquiry.workType} - ${enquiry.customerName}`
-        });
       }
-    });
+    }
 
     // Sort all booked slots by start time
     bookedSlots.sort((a, b) => {

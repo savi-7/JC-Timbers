@@ -582,12 +582,20 @@ export default function AdminTimberCuttingEnquiry() {
                         <td className="px-6 py-4">
                           <div className="text-sm">
                             <div className="font-medium text-gray-900">{enquiry.workType}</div>
-                            {enquiry.woodType && (
-                              <div className="text-gray-600">Wood: {enquiry.woodType}</div>
+                            {enquiry.logItems && enquiry.logItems.length > 0 ? (
+                              <div className="text-gray-500">
+                                {enquiry.logItems.length} log {enquiry.logItems.length === 1 ? 'entry' : 'entries'} • {enquiry.cubicFeet} cu ft total
+                              </div>
+                            ) : (
+                              <>
+                                {enquiry.woodType && (
+                                  <div className="text-gray-600">Wood: {enquiry.woodType}</div>
+                                )}
+                                <div className="text-gray-500">
+                                  {enquiry.numberOfLogs} logs • {enquiry.cubicFeet} cu ft
+                                </div>
+                              </>
                             )}
-                            <div className="text-gray-500">
-                              {enquiry.numberOfLogs} logs • {enquiry.cubicFeet} cu ft
-                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -667,21 +675,7 @@ export default function AdminTimberCuttingEnquiry() {
                     <p className="text-xs text-gray-500">Processing Category</p>
                     <p className="text-sm font-medium text-gray-900">{selectedEnquiry.workType}</p>
                   </div>
-                  {selectedEnquiry.woodType && (
-                    <div>
-                      <p className="text-xs text-gray-500">Wood Type</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedEnquiry.woodType}</p>
-                    </div>
-                  )}
                   <div>
-                    <p className="text-xs text-gray-500">Number of Logs</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedEnquiry.numberOfLogs}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Cubic Feet</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedEnquiry.cubicFeet} cu ft</p>
-                  </div>
-                  <div className="col-span-2">
                     <p className="text-xs text-gray-500">Requested Date & Time</p>
                     <p className="text-sm font-medium text-gray-900">
                       {new Date(selectedEnquiry.requestedDate).toLocaleDateString('en-US', {
@@ -692,7 +686,107 @@ export default function AdminTimberCuttingEnquiry() {
                       })} at {selectedEnquiry.requestedTime}
                     </p>
                   </div>
+                  {typeof selectedEnquiry.processingHours === 'number' && selectedEnquiry.processingHours > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500">Estimated Processing Time</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedEnquiry.processingHours} hour{selectedEnquiry.processingHours === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  )}
+                  {(selectedEnquiry.estimatedCost || selectedEnquiry.paymentStatus) && (
+                    <div>
+                      <p className="text-xs text-gray-500">Billing & Payment</p>
+                      {selectedEnquiry.estimatedCost && (
+                        <p className="text-sm font-medium text-gray-900">
+                          Estimated: ₹{selectedEnquiry.estimatedCost.toLocaleString('en-IN')}
+                        </p>
+                      )}
+                      {selectedEnquiry.paymentStatus && (
+                        <p className="text-xs mt-1 text-gray-700">
+                          Payment:{' '}
+                          <span
+                            className={
+                              selectedEnquiry.paymentStatus === 'PAID'
+                                ? 'font-semibold text-green-700'
+                                : selectedEnquiry.paymentStatus === 'FAILED'
+                                ? 'font-semibold text-red-600'
+                                : 'font-semibold text-orange-600'
+                            }
+                          >
+                            {selectedEnquiry.paymentStatus === 'PAID'
+                              ? `Paid (${selectedEnquiry.paymentMethod === 'OFFLINE' ? 'Offline' : 'Online'})`
+                              : selectedEnquiry.paymentStatus === 'FAILED'
+                              ? 'Failed'
+                              : 'Pending'}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Log Items Display */}
+                {selectedEnquiry.logItems && selectedEnquiry.logItems.length > 0 ? (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">Wood Log Entries ({selectedEnquiry.logItems.length})</h4>
+                    <div className="space-y-3">
+                      {selectedEnquiry.logItems.map((item, idx) => (
+                        <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3">
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+                            <div>
+                              <p className="text-xs text-gray-500">Wood Type</p>
+                              <p className="font-medium text-gray-900">{item.woodType}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Number of Logs</p>
+                              <p className="font-medium text-gray-900">{item.numberOfLogs}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Dimensions</p>
+                              <p className="font-medium text-gray-900">
+                                {item.thickness && item.width && item.length 
+                                  ? `${item.thickness}" × ${item.width}" × ${item.length}"`
+                                  : 'N/A'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Cubic Feet</p>
+                              <p className="font-medium text-gray-900">{item.cubicFeet} cu ft</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Entry #{idx + 1}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">Total Cubic Feet:</span>
+                        <span className="text-base font-semibold text-gray-900">{selectedEnquiry.cubicFeet} cu ft</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Legacy format - single log entry */
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    {selectedEnquiry.woodType && (
+                      <div>
+                        <p className="text-xs text-gray-500">Wood Type</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedEnquiry.woodType}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs text-gray-500">Number of Logs</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedEnquiry.numberOfLogs || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Cubic Feet</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedEnquiry.cubicFeet} cu ft</p>
+                    </div>
+                  </div>
+                )}
                 {selectedEnquiry.notes && (
                   <div className="mt-3">
                     <p className="text-xs text-gray-500">Customer Notes</p>
@@ -769,25 +863,66 @@ export default function AdminTimberCuttingEnquiry() {
                 </div>
               )}
 
-              {/* Status Management */}
+              {/* Status & Payment Management */}
               {(selectedEnquiry.status === 'SCHEDULED' || selectedEnquiry.status === 'TIME_ACCEPTED') && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-green-900 mb-3">Service Lifecycle</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus('IN_PROGRESS')}
-                      className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Mark as In Progress
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus('COMPLETED')}
-                      className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Mark as Completed
-                    </button>
+                  <h3 className="text-sm font-medium text-green-900 mb-3">Service Lifecycle & Payment</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus('IN_PROGRESS')}
+                        className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        Mark as In Progress
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus('COMPLETED')}
+                        className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        Mark as Completed
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs text-green-900 font-medium">Payment Controls</p>
+                      {selectedEnquiry.paymentStatus !== 'PAID' ? (
+                        <>
+                          <p className="text-xs text-green-800">
+                            Customer can pay online once the request is confirmed. Use this option if they pay offline
+                            at the mill.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const note = window.prompt('Add an optional note for this offline payment (e.g., receipt no.):', '');
+                              if (note === null) return;
+                              try {
+                                setLoading(true);
+                                await axios.post(`/services/admin/enquiries/${selectedEnquiry._id}/payments/offline/mark-paid`, {
+                                  note,
+                                });
+                                fetchEnquiries();
+                                showSuccess('Offline payment marked as received');
+                              } catch (err) {
+                                console.error('Error marking offline payment:', err);
+                                showError(err.response?.data?.message || 'Failed to mark offline payment');
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                            className="w-full px-4 py-3 bg-dark-brown text-white rounded-lg hover:bg-accent-red transition-colors"
+                          >
+                            Mark Offline Payment as Received
+                          </button>
+                        </>
+                      ) : (
+                        <p className="text-xs text-green-800">
+                          Payment received ({selectedEnquiry.paymentMethod === 'OFFLINE' ? 'Offline' : 'Online'}).
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

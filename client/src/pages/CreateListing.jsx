@@ -49,6 +49,7 @@ export default function CreateListing() {
   const [mapCoords, setMapCoords] = useState({ lat: 20.5937, lon: 78.9629 });
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [mapLoading, setMapLoading] = useState(true);
+  const [mapError, setMapError] = useState(null);
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -119,19 +120,86 @@ export default function CreateListing() {
 
   // Initialize interactive map
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    // Wait for component to be fully mounted and visible
+    const checkAndInit = () => {
+      if (!mapContainerRef.current) {
+        // Retry if container not ready (max 50 attempts = 5 seconds)
+        let attempts = 0;
+        const retry = setInterval(() => {
+          attempts++;
+          if (mapContainerRef.current || attempts >= 50) {
+            clearInterval(retry);
+            if (mapContainerRef.current) {
+              initMapLogic();
+            } else {
+              console.error('Map container not found after retries');
+              setMapLoading(false);
+            }
+          }
+        }, 100);
+        return;
+      }
 
-    // Reset state
-    setMapLoading(true);
-    mapInitializedRef.current = false;
+      // Check if container is visible
+      const rect = mapContainerRef.current.getBoundingClientRect();
+      const isVisible = rect.width > 0 && rect.height > 0;
+      
+      if (!isVisible) {
+        // Use Intersection Observer to wait for visibility
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting && entry.intersectionRatio > 0) {
+                observer.disconnect();
+                // Small delay to ensure container is fully rendered
+                setTimeout(() => {
+                  initMapLogic();
+                }, 300);
+              }
+            });
+          },
+          { threshold: 0.1 }
+        );
 
-    let mapInitialized = false;
+        if (mapContainerRef.current) {
+          observer.observe(mapContainerRef.current);
+        }
 
-    // Load Leaflet CSS and JS dynamically
-    const loadLeaflet = () => {
+        // Fallback: if observer doesn't trigger, try after 2 seconds
+        setTimeout(() => {
+          observer.disconnect();
+          if (mapContainerRef.current) {
+            const rect = mapContainerRef.current.getBoundingClientRect();
+            if (rect.width > 0 || rect.height > 0) {
+              initMapLogic();
+            }
+          }
+        }, 2000);
+
+        return;
+      }
+
+      // Container is ready, proceed with initialization
+      setTimeout(() => {
+        initMapLogic();
+      }, 100);
+    };
+
+    const initMapLogic = () => {
+      if (!mapContainerRef.current) return;
+
+      // Reset state
+      setMapLoading(true);
+      mapInitializedRef.current = false;
+
+      let mapInitialized = false;
+
+      // Load Leaflet CSS and JS dynamically
+      const loadLeaflet = () => {
       return new Promise((resolve, reject) => {
         // Check if already loaded
         if (window.L) {
+          console.log('Leaflet already loaded');
           resolve();
           return;
         }
@@ -146,13 +214,24 @@ export default function CreateListing() {
           link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
           link.crossOrigin = '';
           document.head.appendChild(link);
+          console.log('Leaflet CSS loaded');
         }
 
         // Check if script is already loading
         const existingScript = document.querySelector('script[src*="leaflet.js"]');
-        if (existingScript) {
-          existingScript.onload = resolve;
+        if (existingScript && !window.L) {
+          // Script is loading, wait for it
+          existingScript.onload = () => {
+            console.log('Leaflet JS loaded from existing script');
+            setTimeout(resolve, 200);
+          };
           existingScript.onerror = reject;
+          return;
+        }
+
+        if (existingScript && window.L) {
+          // Already loaded
+          resolve();
           return;
         }
 
@@ -162,31 +241,80 @@ export default function CreateListing() {
         script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
         script.crossOrigin = '';
         script.onload = () => {
+          console.log('Leaflet JS loaded');
           // Wait a bit for CSS to be fully applied
-          setTimeout(resolve, 100);
+          setTimeout(resolve, 200);
         };
-        script.onerror = reject;
+        script.onerror = (error) => {
+          console.error('Error loading Leaflet script:', error);
+          reject(error);
+        };
         document.body.appendChild(script);
       });
     };
 
     loadLeaflet()
       .then(() => {
-        if (!window.L || !mapContainerRef.current || mapInitialized || mapInitializedRef.current) {
+        console.log('Leaflet loaded, initializing map...');
+        
+        if (!window.L) {
+          console.error('Leaflet (window.L) is not available after loading');
+          setMapLoading(false);
+          setMapError('Failed to load map library. Please check your internet connection and refresh the page.');
+          return;
+        }
+
+        if (!mapContainerRef.current) {
+          console.error('Map container ref is not available');
+          setMapLoading(false);
+          setMapError('Map container not found. Please refresh the page.');
+          return;
+        }
+
+        if (mapInitialized || mapInitializedRef.current) {
+          console.log('Map already initialized');
           setMapLoading(false);
           return;
         }
 
         // Wait a bit for container to be ready, then initialize
-        const initMap = () => {
+        const initMap = (attempts = 0) => {
           // Ensure container has dimensions
-          if (mapContainerRef.current.offsetHeight === 0) {
-            // Retry after a short delay
-            setTimeout(initMap, 200);
+          if (!mapContainerRef.current) {
+            console.error('Map container ref lost during initialization');
+            setMapLoading(false);
+            return;
+          }
+
+          const hasDimensions = 
+            mapContainerRef.current.offsetHeight > 0 || 
+            mapContainerRef.current.offsetWidth > 0 ||
+            mapContainerRef.current.clientHeight > 0;
+
+          if (!hasDimensions && attempts < 30) {
+            // Retry after a short delay (up to 30 times = 6 seconds)
+            console.log(`Map container has no dimensions, retrying... (attempt ${attempts + 1})`);
+            setTimeout(() => initMap(attempts + 1), 200);
+            return;
+          }
+
+          if (!hasDimensions) {
+            console.error('Map container still has no dimensions after retries');
+            setMapLoading(false);
+            setMapError('Map container is not visible. Please scroll to the location section.');
             return;
           }
 
           try {
+            console.log('Initializing Leaflet map...', {
+              container: mapContainerRef.current,
+              dimensions: {
+                height: mapContainerRef.current.offsetHeight,
+                width: mapContainerRef.current.offsetWidth
+              },
+              coords: mapCoords
+            });
+
             // Initialize map
             const map = window.L.map(mapContainerRef.current, {
               center: [mapCoords.lat, mapCoords.lon],
@@ -218,6 +346,8 @@ export default function CreateListing() {
             mapInitializedRef.current = true;
             setMapLoading(false);
 
+            console.log('Map initialized successfully');
+
             // Handle map click
             map.on('click', async (e) => {
               const { lat, lng } = e.latlng;
@@ -238,21 +368,28 @@ export default function CreateListing() {
               if (map) {
                 map.invalidateSize();
                 map.setView([mapCoords.lat, mapCoords.lon], 13);
+                console.log('Map size invalidated and view set');
               }
-            }, 300);
+            }, 500);
           } catch (error) {
             console.error('Error initializing map:', error);
             setMapLoading(false);
+            setMapError(`Error initializing map: ${error.message}. Please refresh the page.`);
           }
         };
 
         // Start initialization with a small delay
-        setTimeout(initMap, 100);
+        setTimeout(() => initMap(0), 100);
       })
       .catch((error) => {
         console.error('Error loading Leaflet:', error);
         setMapLoading(false);
+        setMapError('Failed to load map. Please refresh the page and try again.');
       });
+    };
+
+    // Start checking for container readiness
+    checkAndInit();
 
     return () => {
       if (mapRef.current) {
@@ -423,6 +560,9 @@ export default function CreateListing() {
       newErrors.title = 'Title must be at least 5 characters';
     } else if (formData.title.trim().length > 100) {
       newErrors.title = 'Title must be less than 100 characters';
+    } else if (/^\d+$/.test(formData.title.trim())) {
+      // Check if title contains only numbers
+      newErrors.title = 'Title cannot contain only numbers. Please add text to your title.';
     }
 
     // Price validation
@@ -432,6 +572,8 @@ export default function CreateListing() {
       const priceNum = parseFloat(formData.price);
       if (isNaN(priceNum) || priceNum <= 0) {
         newErrors.price = 'Please enter a valid price greater than 0';
+      } else if (priceNum >= 100000) {
+        newErrors.price = 'Price must be less than ₹100,000';
       }
     }
 
@@ -633,6 +775,7 @@ export default function CreateListing() {
                   onChange={handleInputChange}
                   placeholder="0.00"
                   min="0"
+                  max="99999.99"
                   step="0.01"
                   className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                     errors.price
@@ -834,11 +977,13 @@ export default function CreateListing() {
                       minHeight: '384px',
                       width: '100%',
                       display: 'block',
-                      visibility: 'visible'
+                      visibility: 'visible',
+                      position: 'relative',
+                      zIndex: 0
                     }}
                   >
                     {/* Loading indicator */}
-                    {mapLoading && (
+                    {mapLoading && !mapError && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
                         <div className="text-center">
                           <svg
@@ -862,6 +1007,48 @@ export default function CreateListing() {
                             ></path>
                           </svg>
                           <p className="text-sm text-gray-600">Loading map...</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Error message */}
+                    {mapError && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                        <div className="text-center p-4">
+                          <svg
+                            className="h-12 w-12 text-red-500 mx-auto mb-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <p className="text-sm font-medium text-red-600 mb-2">{mapError}</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMapError(null);
+                              setMapLoading(true);
+                              mapInitializedRef.current = false;
+                              // Force re-initialization
+                              if (mapContainerRef.current) {
+                                const checkAndInit = () => {
+                                  if (mapContainerRef.current) {
+                                    window.location.reload();
+                                  }
+                                };
+                                setTimeout(checkAndInit, 100);
+                              }
+                            }}
+                            className="text-xs text-accent-red hover:text-accent-red/80 underline"
+                          >
+                            Retry
+                          </button>
                         </div>
                       </div>
                     )}
@@ -896,13 +1083,39 @@ export default function CreateListing() {
                 
                 {/* Leaflet CSS fix */}
                 <style>{`
+                  #listing-location-map {
+                    position: relative !important;
+                    z-index: 0 !important;
+                  }
                   #listing-location-map .leaflet-container {
                     height: 100% !important;
                     width: 100% !important;
-                    z-index: 0;
+                    z-index: 0 !important;
+                    position: relative !important;
                   }
                   #listing-location-map .leaflet-tile-container img {
                     max-width: none !important;
+                  }
+                  #listing-location-map .leaflet-pane {
+                    z-index: 400 !important;
+                  }
+                  #listing-location-map .leaflet-tile-pane {
+                    z-index: 200 !important;
+                  }
+                  #listing-location-map .leaflet-overlay-pane {
+                    z-index: 400 !important;
+                  }
+                  #listing-location-map .leaflet-shadow-pane {
+                    z-index: 500 !important;
+                  }
+                  #listing-location-map .leaflet-marker-pane {
+                    z-index: 600 !important;
+                  }
+                  #listing-location-map .leaflet-tooltip-pane {
+                    z-index: 650 !important;
+                  }
+                  #listing-location-map .leaflet-popup-pane {
+                    z-index: 700 !important;
                   }
                 `}</style>
               </div>

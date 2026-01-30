@@ -11,6 +11,9 @@ import {
   adminGetEnquiryStats,
   adminAcceptRequestedTime,
   adminProposeAlternateTime,
+  createServicePaymentOrder,
+  verifyServicePayment,
+  adminMarkOfflinePaymentReceived,
 } from "../controllers/serviceEnquiryController.js";
 import { authenticateToken, requireAdmin, requireCustomer } from "../middleware/auth.js";
 import { uploadImages, handleUploadError } from "../middleware/upload.js";
@@ -52,6 +55,18 @@ router.get("/enquiries/my", authenticateToken, getMyEnquiries);
 router.get("/enquiries/:id", authenticateToken, getEnquiryById);
 router.put("/enquiries/:id/cancel", authenticateToken, cancelEnquiry);
 
+// Customer payment routes for timber services
+router.post(
+  "/enquiries/:id/payments/razorpay/order",
+  authenticateToken,
+  createServicePaymentOrder
+);
+router.post(
+  "/enquiries/:id/payments/razorpay/verify",
+  authenticateToken,
+  verifyServicePayment
+);
+
 // Admin routes - require authentication and admin role
 router.get("/admin/enquiries", authenticateToken, requireAdmin, adminGetAllEnquiries);
 router.get("/admin/enquiries/stats", authenticateToken, requireAdmin, adminGetEnquiryStats);
@@ -60,5 +75,11 @@ router.put("/admin/enquiries/:id", authenticateToken, requireAdmin, adminUpdateE
 router.delete("/admin/enquiries/:id", authenticateToken, requireAdmin, adminDeleteEnquiry);
 router.post("/admin/enquiries/:id/accept-time", authenticateToken, requireAdmin, adminAcceptRequestedTime);
 router.post("/admin/enquiries/:id/propose-time", authenticateToken, requireAdmin, adminProposeAlternateTime);
+router.post(
+  "/admin/enquiries/:id/payments/offline/mark-paid",
+  authenticateToken,
+  requireAdmin,
+  adminMarkOfflinePaymentReceived
+);
 
 export default router;

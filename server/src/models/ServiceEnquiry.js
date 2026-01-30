@@ -20,8 +20,9 @@ const serviceEnquirySchema = new mongoose.Schema(
     },
     phoneNumber: {
       type: String,
-      required: true,
+      required: false, // Optional - can be retrieved from user profile
       trim: true,
+      default: "",
     },
     workType: {
       type: String,
@@ -29,6 +30,40 @@ const serviceEnquirySchema = new mongoose.Schema(
       enum: ["Planing", "Resawing", "Debarking", "Sawing", "Other"],
       index: true,
     },
+    // Array of log items - each item represents a different wood type/batch
+    logItems: [{
+      woodType: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      numberOfLogs: {
+        type: Number,
+        required: true,
+        min: 1,
+      },
+      thickness: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      width: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      length: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      cubicFeet: {
+        type: Number,
+        required: true,
+        min: 0.1,
+      },
+    }],
+    // Legacy fields for backward compatibility (deprecated, use logItems instead)
     woodType: {
       type: String,
       trim: true,
@@ -36,13 +71,24 @@ const serviceEnquirySchema = new mongoose.Schema(
     },
     numberOfLogs: {
       type: Number,
-      required: true,
       min: 1,
+      default: null,
     },
     cubicFeet: {
       type: Number,
       required: true,
       min: 0.1,
+    },
+    // Derived processing details based on cubic feet
+    processingHours: {
+      type: Number, // Total processing time in hours (rounded up)
+      min: 0,
+      default: 0,
+    },
+    ratePerHour: {
+      type: Number, // Billing rate per processing hour
+      min: 0,
+      default: 1200, // ₹1200 per hour
     },
     requestedDate: {
       type: Date,
@@ -137,6 +183,42 @@ const serviceEnquirySchema = new mongoose.Schema(
     actualCost: {
       type: Number,
       min: 0,
+      default: null,
+    },
+    // Payment tracking
+    paymentStatus: {
+      type: String,
+      enum: ["PENDING", "PAID", "FAILED"],
+      default: "PENDING",
+      index: true,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["NONE", "ONLINE", "OFFLINE"],
+      default: "NONE",
+    },
+    razorpayOrderId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    razorpayPaymentId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    razorpaySignature: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    offlinePaymentNote: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    paymentDate: {
+      type: Date,
       default: null,
     },
     completedAt: {

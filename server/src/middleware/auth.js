@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 // JWT Authentication Middleware
-export const authenticateToken = (req, res, next) => {
+export const   authenticateToken = (req, res, next) => {
   // Try multiple header formats
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   const token = authHeader && authHeader.split(' ')[1];

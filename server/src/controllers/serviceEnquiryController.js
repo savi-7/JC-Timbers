@@ -1,8 +1,25 @@
 import ServiceEnquiry from "../models/ServiceEnquiry.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
+import Holiday from "../models/Holiday.js";
 import User from "../models/User.js";
 import path from "path";
 import { convertImageToBase64 } from "../middleware/upload.js";
+import Razorpay from "razorpay";
+import crypto from "crypto";
+
+// Lazy initialization of Razorpay instance specifically for service enquiries
+const getRazorpayInstanceForServices = () => {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    throw new Error(
+      "Razorpay credentials not configured. Please add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to .env file"
+    );
+  }
+
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+};
 
 // Customer: Submit a new service enquiry
 export const createEnquiry = async (req, res) => {
@@ -35,9 +52,8 @@ export const createEnquiry = async (req, res) => {
 
     const {
       workType,
-      woodType,
-      numberOfLogs,
-      cubicFeet,
+      logItems, // Array of log items (will be JSON string from FormData)
+      cubicFeet, // Total cubic feet
       requestedDate,
       requestedTime,
       phoneNumber,
@@ -45,10 +61,63 @@ export const createEnquiry = async (req, res) => {
       notes,
     } = req.body;
 
+    // Parse logItems if it's a string (from FormData)
+    let parsedLogItems = [];
+    if (logItems) {
+      try {
+        parsedLogItems = typeof logItems === 'string' ? JSON.parse(logItems) : logItems;
+      } catch (error) {
+        return res.status(400).json({
+          message: "Invalid log items format",
+        });
+      }
+    }
+
     // Validate required fields
-    if (!workType || !numberOfLogs || !cubicFeet || !requestedDate || !requestedTime || !phoneNumber || !name) {
+    if (!workType || !requestedDate || !requestedTime) {
       return res.status(400).json({
-        message: "All required fields must be provided",
+        message: "Work type, requested date, and requested time are required",
+      });
+    }
+
+    // Validate logItems array
+    if (!parsedLogItems || !Array.isArray(parsedLogItems) || parsedLogItems.length === 0) {
+      return res.status(400).json({
+        message: "At least one log entry is required",
+      });
+    }
+
+    // Validate each log item
+    for (let i = 0; i < parsedLogItems.length; i++) {
+      const item = parsedLogItems[i];
+      if (!item.woodType || !item.numberOfLogs || !item.cubicFeet) {
+        return res.status(400).json({
+          message: `Log entry ${i + 1}: Wood type, number of logs, and cubic feet are required`,
+        });
+      }
+      if (parseInt(item.numberOfLogs) < 1) {
+        return res.status(400).json({
+          message: `Log entry ${i + 1}: Number of logs must be at least 1`,
+        });
+      }
+      if (parseFloat(item.cubicFeet) < 0.1) {
+        return res.status(400).json({
+          message: `Log entry ${i + 1}: Cubic feet must be at least 0.1`,
+        });
+      }
+    }
+
+    // Calculate total cubic feet from all log items
+    const totalCubicFeet = parsedLogItems.reduce((sum, item) => {
+      return sum + (parseFloat(item.cubicFeet) || 0);
+    }, 0);
+
+    // Use provided cubicFeet or calculated total
+    const finalCubicFeet = cubicFeet ? parseFloat(cubicFeet) : totalCubicFeet;
+
+    if (finalCubicFeet < 0.1) {
+      return res.status(400).json({
+        message: "Total cubic feet must be at least 0.1",
       });
     }
 
@@ -60,9 +129,26 @@ export const createEnquiry = async (req, res) => {
       });
     }
 
-    // Check if the requested time slot is already booked
+    // Check if the requested date is a holiday
     const requestedDateObj = new Date(requestedDate);
     requestedDateObj.setHours(0, 0, 0, 0);
+    const holidayStart = new Date(requestedDateObj);
+    holidayStart.setHours(0, 0, 0, 0);
+    const holidayEnd = new Date(requestedDateObj);
+    holidayEnd.setHours(23, 59, 59, 999);
+    
+    const holiday = await Holiday.findOne({
+      date: {
+        $gte: holidayStart,
+        $lte: holidayEnd
+      }
+    });
+    
+    if (holiday) {
+      return res.status(400).json({
+        message: `This date is a holiday: ${holiday.name}. No services are available on this date. Please select another date.`
+      });
+    }
     
     // Calculate end time (default 2 hours)
     const [startHour, startMin] = requestedTime.split(':').map(Number);
@@ -118,19 +204,24 @@ export const createEnquiry = async (req, res) => {
           status: { $in: ["TIME_ACCEPTED", "SCHEDULED", "IN_PROGRESS"] }
         }
       ]
-    });
+    })
+    .populate('assignedScheduleId', 'startTime endTime duration');
     
     const overlappingEnquiry = allScheduledEnquiries.find(enquiry => {
-      const conflictStart = enquiry.scheduledTime || enquiry.acceptedStartTime;
+      const conflictStart = enquiry.acceptedStartTime || enquiry.scheduledTime;
       if (!conflictStart) return false;
       
-      let conflictEnd;
-      if (enquiry.scheduledTime) {
-        const [h, m] = conflictStart.split(':').map(Number);
-        const total = h * 60 + m + 120;
-        conflictEnd = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-      } else {
-        conflictEnd = enquiry.acceptedEndTime || conflictStart;
+      // Priority 1: Use acceptedEndTime if available (set by admin with actual duration)
+      let conflictEnd = enquiry.acceptedEndTime;
+      
+      // Priority 2: If no acceptedEndTime, check if there's an assigned schedule (populated)
+      if (!conflictEnd && enquiry.assignedScheduleId && enquiry.assignedScheduleId.endTime) {
+        conflictEnd = enquiry.assignedScheduleId.endTime;
+      }
+      
+      // Last resort: if still no end time, use start time (shouldn't happen for scheduled enquiries)
+      if (!conflictEnd) {
+        conflictEnd = conflictStart;
       }
       
       // Check if requested time overlaps with enquiry time
@@ -140,14 +231,14 @@ export const createEnquiry = async (req, res) => {
     });
     
     if (overlappingEnquiry) {
-      const conflictTime = overlappingEnquiry.scheduledTime || overlappingEnquiry.acceptedStartTime;
-      let conflictEnd;
-      if (overlappingEnquiry.scheduledTime) {
-        const [h, m] = conflictTime.split(':').map(Number);
-        const total = h * 60 + m + 120;
-        conflictEnd = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-      } else {
-        conflictEnd = overlappingEnquiry.acceptedEndTime || conflictTime;
+      const conflictTime = overlappingEnquiry.acceptedStartTime || overlappingEnquiry.scheduledTime;
+      // Use the actual stored end time (set by admin with duration)
+      let conflictEnd = overlappingEnquiry.acceptedEndTime;
+      if (!conflictEnd && overlappingEnquiry.assignedScheduleId && overlappingEnquiry.assignedScheduleId.endTime) {
+        conflictEnd = overlappingEnquiry.assignedScheduleId.endTime;
+      }
+      if (!conflictEnd) {
+        conflictEnd = conflictTime;
       }
       
       return res.status(409).json({
@@ -186,21 +277,43 @@ export const createEnquiry = async (req, res) => {
       }
     }
 
+    // Prepare log items for storage (ensure all fields are properly formatted)
+    const logItemsToStore = parsedLogItems.map(item => ({
+      woodType: item.woodType,
+      numberOfLogs: parseInt(item.numberOfLogs),
+      thickness: parseFloat(item.thickness) || 0,
+      width: parseFloat(item.width) || 0,
+      length: parseFloat(item.length) || 0,
+      cubicFeet: parseFloat(item.cubicFeet),
+    }));
+
+    // Derive processing time and estimated cost
+    // Time: every 10 cubic feet = 1 hour, rounded UP to the next full hour
+    const processingHours = finalCubicFeet > 0 ? Math.ceil(finalCubicFeet / 10) : 0;
+    const ratePerHour = 1200; // ₹1200 per hour
+    const ratePerCubicFoot = ratePerHour / 10; // ₹120 per cubic foot
+    // Cost scales exactly with cubic feet (e.g. 5 cu ft = 600, 15 cu ft = 1800)
+    const estimatedCost = finalCubicFeet * ratePerCubicFoot;
+
     // Create enquiry
     const enquiry = new ServiceEnquiry({
       customerId: req.user.userId,
       customerName: name || customer.name || "Customer",
       customerEmail: customer.email || "",
-      phoneNumber,
+      phoneNumber: phoneNumber || customer.phone || "",
       workType,
-      woodType: woodType || "",
-      numberOfLogs: parseInt(numberOfLogs),
-      cubicFeet: parseFloat(cubicFeet),
+      logItems: logItemsToStore,
+      cubicFeet: finalCubicFeet, // Total cubic feet
+      processingHours,
+      ratePerHour,
+      estimatedCost,
       requestedDate: new Date(requestedDate),
       requestedTime,
       notes: notes || "",
       images: imageArray,
       status: "ENQUIRY_RECEIVED",
+      paymentStatus: "PENDING",
+      paymentMethod: "NONE",
     });
 
     await enquiry.save();
@@ -467,6 +580,177 @@ export const adminGetEnquiryStats = async (req, res) => {
   } catch (error) {
     console.error("Error fetching stats:", error);
     res.status(500).json({ message: "Failed to fetch statistics" });
+  }
+};
+
+// ===========================
+// Payment APIs (Timber Service)
+// ===========================
+
+// Customer: Create Razorpay order for a service enquiry
+export const createServicePaymentOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const enquiry = await ServiceEnquiry.findById(id);
+    if (!enquiry) {
+      return res.status(404).json({ message: "Enquiry not found" });
+    }
+
+    // Ensure the enquiry belongs to the current user
+    if (enquiry.customerId.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({ message: "You are not allowed to pay for this enquiry" });
+    }
+
+    if (!enquiry.estimatedCost || enquiry.estimatedCost <= 0) {
+      return res.status(400).json({ message: "Estimated cost not available for this enquiry" });
+    }
+
+    const razorpay = getRazorpayInstanceForServices();
+
+    const amountInPaise = Math.round(enquiry.estimatedCost * 100);
+    const shortEnquiryId = enquiry._id.toString().slice(-8);
+    const timestamp = Date.now().toString().slice(-10);
+
+    const options = {
+      amount: amountInPaise,
+      currency: "INR",
+      receipt: `svc_${shortEnquiryId}_${timestamp}`,
+      notes: {
+        enquiryId: enquiry._id.toString(),
+        customerName: enquiry.customerName,
+        customerPhone: enquiry.phoneNumber || "",
+        workType: enquiry.workType,
+      },
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    // Store order id on enquiry
+    enquiry.razorpayOrderId = order.id;
+    enquiry.paymentMethod = "ONLINE";
+    enquiry.paymentStatus = "PENDING";
+    await enquiry.save();
+
+    res.status(200).json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      customer: {
+        name: enquiry.customerName,
+        phone: enquiry.phoneNumber || "",
+        email: enquiry.customerEmail || "",
+      },
+    });
+  } catch (error) {
+    console.error("Error creating service payment order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create payment order",
+      error: error.message,
+    });
+  }
+};
+
+// Customer: Verify Razorpay payment for a service enquiry
+export const verifyServicePayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = req.body;
+
+    const enquiry = await ServiceEnquiry.findById(id);
+    if (!enquiry) {
+      return res.status(404).json({ message: "Enquiry not found" });
+    }
+
+    if (enquiry.customerId.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({ message: "You are not allowed to pay for this enquiry" });
+    }
+
+    if (!enquiry.razorpayOrderId || enquiry.razorpayOrderId !== razorpay_order_id) {
+      return res.status(400).json({ message: "Order mismatch. Please try again." });
+    }
+
+    // Verify Razorpay signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment verification failed",
+      });
+    }
+
+    // Mark payment as successful
+    enquiry.paymentStatus = "PAID";
+    enquiry.paymentMethod = "ONLINE";
+    enquiry.razorpayPaymentId = razorpay_payment_id;
+    enquiry.razorpaySignature = razorpay_signature;
+    enquiry.paymentDate = new Date();
+    // For now, actualCost = estimatedCost; can be adjusted later by admin
+    if (!enquiry.actualCost && enquiry.estimatedCost) {
+      enquiry.actualCost = enquiry.estimatedCost;
+    }
+    await enquiry.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Payment verified successfully",
+      paymentStatus: enquiry.paymentStatus,
+    });
+  } catch (error) {
+    console.error("Error verifying service payment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Payment verification failed",
+      error: error.message,
+    });
+  }
+};
+
+// Admin: mark offline payment as received
+export const adminMarkOfflinePaymentReceived = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note } = req.body;
+
+    const enquiry = await ServiceEnquiry.findById(id);
+    if (!enquiry) {
+      return res.status(404).json({ message: "Enquiry not found" });
+    }
+
+    enquiry.paymentMethod = "OFFLINE";
+    enquiry.paymentStatus = "PAID";
+    enquiry.offlinePaymentNote = note || enquiry.offlinePaymentNote;
+    enquiry.paymentDate = new Date();
+    if (!enquiry.actualCost && enquiry.estimatedCost) {
+      enquiry.actualCost = enquiry.estimatedCost;
+    }
+
+    await enquiry.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Offline payment marked as received",
+      enquiry,
+    });
+  } catch (error) {
+    console.error("Error marking offline payment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark offline payment",
+      error: error.message,
+    });
   }
 };
 

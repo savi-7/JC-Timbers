@@ -33,52 +33,52 @@ export default function Header({backgroundClass = 'bg-cream'}) {
         <div className="flex justify-between items-center">
           {/* Left - Brand Name */}
           <div 
-            className="text-xl font-paragraph text-dark-brown tracking-wide cursor-pointer"
+            className="text-xl font-paragraph text-dark-brown tracking-wide cursor-pointer whitespace-nowrap mr-8 lg:mr-12"
             onClick={() => navigate('/')}
           >
             JC Timbers
           </div>
           
           {/* Center - Navigation Links */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center gap-6 lg:gap-8">
             <button 
               onClick={() => navigate(location.pathname === '/' ? '/' : '/customer-home')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
             >
               Home
             </button>
             
             <button 
               onClick={() => navigate('/timber-products')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
             >
               Timber Products
             </button>
 
             <button 
               onClick={() => navigate('/furniture')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
             >
               Furniture
             </button>
 
             <button 
               onClick={() => navigate('/construction-materials')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
             >
               Construction Materials
             </button>
             
             <button 
               onClick={() => navigate('/marketplace')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
             >
               Marketplace
             </button>
             
             <button 
               onClick={() => navigate('/service')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
             >
               Service
             </button>
@@ -94,14 +94,14 @@ export default function Header({backgroundClass = 'bg-cream'}) {
                 //   }
                 // }, 100);
               }}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
             >
               About Us
             </button>
             
             <button 
               onClick={() => navigate('/contact-us')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph"
+              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
             >
               Contact Us
             </button>
