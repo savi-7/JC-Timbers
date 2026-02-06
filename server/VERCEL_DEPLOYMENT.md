@@ -45,6 +45,8 @@ Add these in Vercel Dashboard → Project → Settings → Environment Variables
 
 **Important:** Use MongoDB Atlas (or similar) - `localhost` MongoDB will not work on Vercel.
 
+**MongoDB Atlas Network Access:** Vercel uses dynamic IPs. In Atlas → Network Access, add `0.0.0.0/0` to allow connections from anywhere. Without this, you may see "buffering timed out" errors.
+
 ### 4. Update Your Frontend
 
 After deployment, set your frontend's API base URL to the Vercel backend URL, e.g.:

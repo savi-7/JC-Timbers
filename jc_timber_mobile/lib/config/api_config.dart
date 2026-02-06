@@ -2,11 +2,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// API configuration - same backend as MERN web app.
 ///
-/// Auto-selects by platform:
-/// - Web (Chrome):     http://localhost:5001
-/// - Android emulator: http://10.0.2.2:5001
-/// - Physical device:  set _apiBaseUrlOverride to your PC's LAN IP
-const String _apiBaseUrlOverride = 'http://192.168.41.99:5001';
+/// Production: Vercel backend (works on any device, no LAN needed).
+/// Local dev: set _apiBaseUrlOverride to empty and use --dart-define=API_BASE_URL=...
+///
+/// - Production (Vercel): https://jc-timbersbackend.vercel.app
+/// - Web (Chrome):        http://localhost:5001
+/// - Android emulator:    http://10.0.2.2:5001
+/// - Physical device:     Your PC's LAN IP, e.g. http://192.168.1.5:5001
+const String _apiBaseUrlOverride = 'https://jc-timbersbackend.vercel.app';
 
 class ApiConfig {
   static String get baseUrl {

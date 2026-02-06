@@ -25,21 +25,21 @@ Backend runs on `http://localhost:5001` by default.
 
 ### 2. Configure API base URL
 
-The app defaults to `http://10.0.2.2:5001` (Android emulator → localhost).
+**Production (default):** The app uses the Vercel backend `https://jc-timbersbackend.vercel.app` – works on any Android device (emulator or physical) without needing to be on the same network.
+
+**Local development:** Edit `lib/config/api_config.dart` – set `_apiBaseUrlOverride` to empty string `''` to use local defaults:
 
 | Target | Base URL |
 |--------|----------|
-| Android emulator | `http://10.0.2.2:5001` (default) |
+| Android emulator | `http://10.0.2.2:5001` |
 | iOS simulator | `http://localhost:5001` |
 | Physical device | Your machine's LAN IP, e.g. `http://192.168.1.5:5001` |
 
-To override, run with:
+Or run with:
 
 ```bash
 flutter run --dart-define=API_BASE_URL=http://192.168.1.5:5001
 ```
-
-Or edit `lib/config/api_config.dart` and change the default.
 
 ### 3. Run the app
 

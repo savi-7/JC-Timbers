@@ -6,7 +6,11 @@ const connectDB = async () => {
     if (mongoose.connection.readyState >= 1) {
       return;
     }
-    await mongoose.connect(process.env.MONGODB_URI);
+    const opts = {
+      serverSelectionTimeoutMS: 15000, // Allow more time for cold starts
+      connectTimeoutMS: 15000,
+    };
+    await mongoose.connect(process.env.MONGODB_URI, opts);
     console.log("✅ MongoDB Connected");
   } catch (error) {
     console.error("❌ Database connection failed:", error.message);

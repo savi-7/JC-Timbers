@@ -70,6 +70,18 @@ app.use(cors({
 // Parse JSON bodies - but don't parse multipart/form-data (multer handles that)
 app.use(express.json({ limit: '10mb' }));
 
+// Ensure DB is connected before API requests (fixes Vercel serverless cold-start buffering timeout)
+app.use(async (req, res, next) => {
+  if (req.path === '/api/health') return next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('DB connection failed:', err.message);
+    res.status(503).json({ message: 'Service temporarily unavailable. Please try again.' });
+  }
+});
+
 // Serve static files from uploads directory (fallback for local uploads)
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
