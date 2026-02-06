@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import Order from "../models/Order.js";
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
+import { getBaseUrl } from "../utils/getBaseUrl.js";
 
 // Get dashboard overview data (admin only)
 export const getDashboardOverview = async (req, res) => {
@@ -273,7 +274,7 @@ const getProductImageUrl = (images) => {
     }
     // If it's a local upload path
     if (images.startsWith('/uploads/')) {
-      return `http://localhost:5001${images}`;
+      return `${getBaseUrl()}${images}`;
     }
     // If it's base64 data
     if (images.startsWith('data:')) {
@@ -299,7 +300,7 @@ const getProductImageUrl = (images) => {
       }
       // If it's a local upload path
       if (firstImage.startsWith('/uploads/')) {
-        return `http://localhost:5001${firstImage}`;
+        return `${getBaseUrl()}${firstImage}`;
       }
       // If it's base64 data
       if (firstImage.startsWith('data:')) {

@@ -1,5 +1,5 @@
-# MongoDB Connection
-MONGO_URI=mongodb://localhost:27017/jc-timbers
+# MongoDB Connection (use MONGODB_URI - for Vercel use MongoDB Atlas)
+MONGODB_URI=mongodb://localhost:27017/jc-timbers
 
 # JWT Secret for authentication
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
@@ -13,7 +13,7 @@ NODE_ENV=development
 RAZORPAY_KEY_ID=rzp_test_YOUR_KEY_ID_HERE
 RAZORPAY_KEY_SECRET=YOUR_KEY_SECRET_HERE
 
-# Frontend URL (for CORS)
-CLIENT_URL=http://localhost:5173
+# Frontend URL (for CORS) - use CLIENT_ORIGIN for Vercel (e.g. https://your-app.vercel.app)
+CLIENT_ORIGIN=http://localhost:5173
 
 

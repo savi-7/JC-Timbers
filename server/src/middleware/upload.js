@@ -1,9 +1,12 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
-// Create uploads directory and uploads/products (for full URLs like http://host:port/uploads/products/chair.jpg)
-const uploadsDir = path.join(process.cwd(), 'uploads');
+// On Vercel: use /tmp (ephemeral, writable). Locally: use uploads/
+const uploadsDir = process.env.VERCEL
+  ? path.join(os.tmpdir(), 'uploads')
+  : path.join(process.cwd(), 'uploads');
 const uploadsProductsDir = path.join(uploadsDir, 'products');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });

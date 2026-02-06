@@ -55,9 +55,12 @@ const allowedOrigins = new Set([
 // Allow Flutter web dev server (random port, e.g. localhost:53340)
 const isLocalhostOrigin = (origin) =>
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+// Allow Vercel deployments (frontend URLs like https://xxx.vercel.app)
+const isVercelOrigin = (origin) =>
+  /^https?:\/\/([a-z0-9-]+\.)*vercel\.app(:\d+)?$/.test(origin);
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(origin) || isLocalhostOrigin(origin)) {
+    if (!origin || allowedOrigins.has(origin) || isLocalhostOrigin(origin) || isVercelOrigin(origin)) {
       return callback(null, true);
     }
     return callback(null, false);
@@ -111,6 +114,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Server Start
+// Server Start (skip on Vercel - app is exported as serverless handler)
 const PORT = Number(process.env.PORT) || 5001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+export default app;

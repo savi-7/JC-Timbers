@@ -1,12 +1,15 @@
 /**
  * Base URL for the API (used for full image URLs in JSON responses).
- * Set BASE_URL in .env for production, e.g. http://192.168.1.5:5000
- * Example image URL: http://192.168.1.5:5000/uploads/products/chair.jpg
- * Or product image: http://192.168.1.5:5000/api/images/:productId/:imageIndex
+ * Set BASE_URL in .env for production, e.g. https://your-api.vercel.app
+ * On Vercel: uses VERCEL_URL or BASE_URL
  */
 export function getBaseUrl(req = null) {
   if (process.env.BASE_URL) {
     return process.env.BASE_URL.replace(/\/$/, '');
+  }
+  // Vercel provides VERCEL_URL (e.g. "your-project.vercel.app")
+  if (process.env.VERCEL && process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
   }
   if (req && req.get && req.protocol) {
     const host = req.get('host');
