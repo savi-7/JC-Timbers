@@ -58,50 +58,86 @@ class _MyEnquiriesScreenState extends State<MyEnquiriesScreen> {
         foregroundColor: JcTimberTheme.cream,
         title: const Text('My Service Enquiries'),
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header - matches MERN MyServiceEnquiries
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'My Service Enquiries',
-                        style: JcTimberTheme.headingStyle(fontSize: 24, fontWeight: FontWeight.w700),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header - responsive row/column to avoid right overflow on small devices
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 360;
+                    final titleSection = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'My Service Enquiries',
+                          style: JcTimberTheme.headingStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Track your service requests',
+                          style: JcTimberTheme.paragraphStyle(
+                            fontSize: 14,
+                            color: JcTimberTheme.darkBrown70,
+                          ),
+                        ),
+                      ],
+                    );
+                    final button = FilledButton(
+                      onPressed: () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TimberBookingScreen()),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Track your service requests',
-                        style: JcTimberTheme.paragraphStyle(fontSize: 14, color: JcTimberTheme.darkBrown70),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: JcTimberTheme.darkBrown,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ],
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const TimberBookingScreen()),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: JcTimberTheme.darkBrown,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: Text(
-                      '+ New Enquiry',
-                      style: JcTimberTheme.paragraphStyle(fontSize: 14, fontWeight: FontWeight.w500, color: JcTimberTheme.cream),
-                    ),
-                  ),
-                ],
-              ),
+                      child: Text(
+                        '+ New Enquiry',
+                        style: JcTimberTheme.paragraphStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: JcTimberTheme.cream,
+                        ),
+                      ),
+                    );
+
+                    if (isNarrow) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          titleSection,
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: button,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: titleSection),
+                        const SizedBox(width: 12),
+                        button,
+                      ],
+                    );
+                  },
+                ),
               const SizedBox(height: 20),
               // Filter
               Container(

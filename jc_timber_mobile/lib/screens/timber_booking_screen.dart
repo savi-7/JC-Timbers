@@ -82,13 +82,27 @@ class _TimberBookingScreenState extends State<TimberBookingScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Timber Processing Request', style: JcTimberTheme.paragraphStyle(fontSize: 18, fontWeight: FontWeight.w500, color: JcTimberTheme.cream)),
+        title: Text(
+          'Timber Processing Request',
+          style: JcTimberTheme.paragraphStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: JcTimberTheme.cream,
+          ),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 24,
+            // Add bottom padding so content scrolls above the keyboard on small screens
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Header - MERN: text-center mb-8
             Text(
               'Timber Cutting & Processing Request',
@@ -416,8 +430,18 @@ class _TimberBookingScreenState extends State<TimberBookingScreen> {
             // View My Previous Requests - MERN: text-accent-red text-center
             Center(
               child: TextButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyEnquiriesScreen())),
-                child: Text('View My Previous Requests →', style: JcTimberTheme.paragraphStyle(fontSize: 14, fontWeight: FontWeight.w500, color: JcTimberTheme.accentRed)),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyEnquiriesScreen()),
+                ),
+                child: Text(
+                  'View My Previous Requests →',
+                  style: JcTimberTheme.paragraphStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: JcTimberTheme.accentRed,
+                  ),
+                ),
               ),
             ),
           ],
