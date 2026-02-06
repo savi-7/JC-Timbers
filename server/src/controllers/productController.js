@@ -218,9 +218,19 @@ export const getAllProducts = async (req, res) => {
       .sort(sortOptions)
       .limit(limit * 1)
       .skip((page - 1) * limit)
-      .select('-__v');
+      .select('-__v')
+      .lean();
 
     const total = await Product.countDocuments(query);
+    const baseUrl = req.baseUrl || `${req.protocol}://${req.get('host')}`;
+
+    // Attach full image URLs (e.g. http://192.168.1.5:5000/api/images/:productId/:index)
+    const productsWithUrls = products.map((p) => ({
+      ...p,
+      imageUrls: (p.images && p.images.length)
+        ? p.images.map((_, i) => `${baseUrl}/api/images/${p._id}/${i}`)
+        : [],
+    }));
 
     // Get product statistics
     const stats = await Product.aggregate([
@@ -241,7 +251,7 @@ export const getAllProducts = async (req, res) => {
     ]);
 
     res.json({
-      products,
+      products: productsWithUrls,
       totalPages: Math.ceil(total / limit),
       currentPage: parseInt(page),
       total,
@@ -269,7 +279,7 @@ export const getProductById = async (req, res) => {
     const product = await Product.findOne({ 
       _id: id, 
       isActive: true 
-    }).select('-__v');
+    }).select('-__v').lean();
 
     if (!product) {
       return res.status(404).json({
@@ -277,7 +287,15 @@ export const getProductById = async (req, res) => {
       });
     }
 
-    res.json({ product });
+    const baseUrl = req.baseUrl || `${req.protocol}://${req.get('host')}`;
+    const productWithUrls = {
+      ...product,
+      imageUrls: (product.images && product.images.length)
+        ? product.images.map((_, i) => `${baseUrl}/api/images/${product._id}/${i}`)
+        : [],
+    };
+
+    res.json({ product: productWithUrls });
   } catch (error) {
     console.error('Error fetching product:', error);
     res.status(500).json({

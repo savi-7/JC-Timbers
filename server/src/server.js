@@ -25,16 +25,25 @@ import woodQualityRoutes from "./routes/woodQualityRoutes.js";
 import serviceScheduleRoutes from "./routes/serviceScheduleRoutes.js";
 import serviceEnquiryRoutes from "./routes/serviceEnquiryRoutes.js";
 import holidayRoutes from "./routes/holidayRoutes.js";
+import marketplaceRoutes from "./routes/marketplaceRoutes.js";
 import { getAvailableSlots } from "./controllers/serviceScheduleController.js";
 import { getProductImage } from "./controllers/imageController.js";
-import Product from "./models/Product.js";
+import { getBaseUrl } from "./utils/getBaseUrl.js";
 
 dotenv.config();
 connectDB();
 
 const app = express();
 
-// Middleware
+// Backend requirements: Return JSON | JWT auth (see routes/middleware) | Full image URLs (see getBaseUrl, product/marketplace responses)
+
+// Middleware: attach base URL for full image URLs (e.g. http://192.168.1.5:5000)
+app.use((req, res, next) => {
+  req.baseUrl = getBaseUrl(req);
+  next();
+});
+
+// Middleware - CORS
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 const allowedOrigins = new Set([
   CLIENT_ORIGIN,
@@ -43,9 +52,12 @@ const allowedOrigins = new Set([
   "http://localhost:3000",
   "http://127.0.0.1:3000"
 ]);
+// Allow Flutter web dev server (random port, e.g. localhost:53340)
+const isLocalhostOrigin = (origin) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(origin)) {
+    if (!origin || allowedOrigins.has(origin) || isLocalhostOrigin(origin)) {
       return callback(null, true);
     }
     return callback(null, false);
@@ -85,11 +97,14 @@ app.get("/api/services/schedule/available/:date", getAvailableSlots);
 app.use("/api/services", serviceScheduleRoutes);
 app.use("/api/services", serviceEnquiryRoutes);
 app.use("/api/holidays", holidayRoutes);
+app.use("/api/marketplace", marketplaceRoutes);
 // Register woodQualityRoutes LAST - it uses router.use(requireAdmin) which applies to ALL routes in that router
 app.use("/api", woodQualityRoutes);
 
 // Image serving route
 app.get("/api/images/:productId/:imageIndex", getProductImage);
+
+// API responses are JSON (res.json). Protected routes use JWT via middleware/auth.js (Authorization: Bearer <token>).
 
 // Health check
 app.get('/api/health', (req, res) => {

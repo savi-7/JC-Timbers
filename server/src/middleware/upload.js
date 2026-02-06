@@ -2,10 +2,14 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-// Create uploads directory if it doesn't exist
+// Create uploads directory and uploads/products (for full URLs like http://host:port/uploads/products/chair.jpg)
 const uploadsDir = path.join(process.cwd(), 'uploads');
+const uploadsProductsDir = path.join(uploadsDir, 'products');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(uploadsProductsDir)) {
+  fs.mkdirSync(uploadsProductsDir, { recursive: true });
 }
 
 // Configure multer for temporary file storage

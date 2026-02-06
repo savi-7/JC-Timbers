@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+ import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api/axios';
 
 export default function AdminCustomerSegments() {
