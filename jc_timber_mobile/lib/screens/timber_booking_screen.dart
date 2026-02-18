@@ -91,18 +91,11 @@ class _TimberBookingScreenState extends State<TimberBookingScreen> {
           ),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 24,
-            // Add bottom padding so content scrolls above the keyboard on small screens
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             // Header - MERN: text-center mb-8
             Text(
               'Timber Cutting & Processing Request',
@@ -148,12 +141,42 @@ class _TimberBookingScreenState extends State<TimberBookingScreen> {
                     // Wood Log Entries - MERN: border-t border-gray-200 pt-6
                     _sectionDivider(),
                     const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Wood Log Entries', style: JcTimberTheme.paragraphStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-                        _addLogButton(),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 360;
+                        final title = Text(
+                          'Wood Log Entries',
+                          style: JcTimberTheme.paragraphStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                        final addButton = _addLogButton();
+
+                        if (isNarrow) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              title,
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: addButton,
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(child: title),
+                            const SizedBox(width: 12),
+                            addButton,
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     ...List.generate(_logItems.length, (i) => _LogEntryCard(
@@ -173,10 +196,23 @@ class _TimberBookingScreenState extends State<TimberBookingScreen> {
                         border: Border.all(color: JcTimberTheme.darkBrown20),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Total Cubic Feet:', style: JcTimberTheme.paragraphStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                          Text('${_totalCubicFeet.toStringAsFixed(2)} cu ft', style: JcTimberTheme.paragraphStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                          Expanded(
+                            child: Text(
+                              'Total Cubic Feet:',
+                              style: JcTimberTheme.paragraphStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${_totalCubicFeet.toStringAsFixed(2)} cu ft',
+                            style: JcTimberTheme.paragraphStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -717,48 +753,40 @@ class _LogEntryCardState extends State<_LogEntryCard> {
             ],
           ),
           const SizedBox(height: 16),
-          // Wood Type & Number of Logs - MERN: grid-cols-2
-          Row(
+          // Wood Type & Number of Logs - stacked vertically to avoid horizontal overflow
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label('Wood Type', required: true),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: widget.item.woodType.isEmpty ? '' : widget.item.woodType,
-                      decoration: _inputDec(),
-                      items: [const DropdownMenuItem(value: '', child: Text('Select Wood Type')), ..._woodTypes.map((t) => DropdownMenuItem(value: t, child: Text(t)))],
-                      onChanged: (v) {
-                        widget.onChanged(_LogItemState(
-                          woodType: v ?? '',
-                          numberOfLogs: widget.item.numberOfLogs,
-                          thickness: widget.item.thickness,
-                          width: widget.item.width,
-                          length: widget.item.length,
-                          cubicFeet: widget.item.cubicFeet,
-                        ));
-                      },
+              _label('Wood Type', required: true),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: widget.item.woodType.isEmpty ? '' : widget.item.woodType,
+                decoration: _inputDec(),
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('Select Wood Type')),
+                  ..._woodTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))),
+                ],
+                onChanged: (v) {
+                  widget.onChanged(
+                    _LogItemState(
+                      woodType: v ?? '',
+                      numberOfLogs: widget.item.numberOfLogs,
+                      thickness: widget.item.thickness,
+                      width: widget.item.width,
+                      length: widget.item.length,
+                      cubicFeet: widget.item.cubicFeet,
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label('Number of Logs', required: true),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _logs,
-                      keyboardType: TextInputType.number,
-                      decoration: _inputDec(hint: 'e.g., 10'),
-                      onChanged: (_) => _emit(),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 16),
+              _label('Number of Logs', required: true),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _logs,
+                keyboardType: TextInputType.number,
+                decoration: _inputDec(hint: 'e.g., 10'),
+                onChanged: (_) => _emit(),
               ),
             ],
           ),

@@ -121,6 +121,83 @@ class AuthService extends ChangeNotifier {
     if (_token == null) return {};
     return {'Authorization': 'Bearer $_token'};
   }
+
+  /// Update profile - PUT /api/auth/profile
+  /// Updates name / email / phone for the logged-in user and refreshes local cache.
+  Future<AuthResult> updateProfile({
+    required String name,
+    required String email,
+    String? phone,
+  }) async {
+    if (_token == null) {
+      return AuthResult.fail('Not authenticated');
+    }
+    try {
+      final res = await http.put(
+        Uri.parse(ApiConfig.authProfile),
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+        }),
+      );
+
+      final data = jsonDecode(res.body) as Map<String, dynamic>? ?? {};
+
+      if (res.statusCode == 200) {
+        final userMap = data['user'] as Map<String, dynamic>?;
+        if (userMap == null) {
+          return AuthResult.fail('Invalid response from server');
+        }
+        final updatedUser = User.fromJson(userMap);
+        await _persist(_token, updatedUser);
+        notifyListeners();
+        return AuthResult.success(updatedUser);
+      }
+
+      return AuthResult.fail(
+        data['message'] as String? ?? 'Profile update failed',
+      );
+    } catch (e) {
+      return AuthResult.fail(e.toString());
+    }
+  }
+
+  /// Change password - PUT /api/auth/change-password
+  Future<AuthResult> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (_token == null) {
+      return AuthResult.fail('Not authenticated');
+    }
+    try {
+      final res = await http.put(
+        Uri.parse(ApiConfig.authChangePassword),
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+      );
+      final data = jsonDecode(res.body) as Map<String, dynamic>? ?? {};
+      if (res.statusCode == 200) {
+        return AuthResult._(success: true, user: _user);
+      }
+      return AuthResult.fail(
+        data['message'] as String? ?? 'Password change failed',
+      );
+    } catch (e) {
+      return AuthResult.fail(e.toString());
+    }
+  }
 }
 
 class AuthResult {

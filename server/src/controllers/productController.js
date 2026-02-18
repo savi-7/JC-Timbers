@@ -1,5 +1,6 @@
 import Product from '../models/Product.js';
 import { convertImageToBase64, cleanupTempFiles } from '../middleware/upload.js';
+import { uploadToCloudinary, isCloudinaryConfigured, deleteFromCloudinary } from '../config/cloudinary.js';
 import axios from 'axios';
 
 // Create new product with images
@@ -54,10 +55,11 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    // Process uploaded images
+    // Process uploaded images: Cloudinary if configured, else base64 in MongoDB
     const images = [];
+    let pineconeImages = []; // for ML embedding (needs data; we build from files when using Cloudinary)
     if (req.files && req.files.length > 0) {
-      console.log(`Processing ${req.files.length} uploaded images`);
+      console.log(`Processing ${req.files.length} uploaded images (Cloudinary: ${isCloudinaryConfigured()})`);
       for (const file of req.files) {
         console.log('File details:', {
           fieldname: file.fieldname,
@@ -67,20 +69,43 @@ export const createProduct = async (req, res) => {
           path: file.path,
           filename: file.filename
         });
-        
-        // Convert image to base64
-        const base64Data = convertImageToBase64(file.path);
-        if (base64Data) {
-          // Store as data URL for easier frontend handling
-          const dataUrl = `data:${file.mimetype};base64,${base64Data}`;
-          images.push({
-            data: dataUrl,
-            contentType: file.mimetype,
-            filename: file.originalname
-          });
-          console.log(`Image converted: ${file.originalname}, size: ${base64Data.length} chars`);
+
+        if (isCloudinaryConfigured()) {
+          const cloudResult = await uploadToCloudinary(file.path);
+          if (cloudResult) {
+            images.push({
+              url: cloudResult.url,
+              publicId: cloudResult.publicId,
+              contentType: file.mimetype,
+              filename: file.originalname
+            });
+            console.log(`Image uploaded to Cloudinary: ${file.originalname} -> ${cloudResult.url}`);
+            // ML/Pinecone still needs image data; provide base64 from file for embedding
+            const base64Data = convertImageToBase64(file.path);
+            if (base64Data) {
+              pineconeImages.push({
+                data: `data:${file.mimetype};base64,${base64Data}`,
+                contentType: file.mimetype,
+                filename: file.originalname
+              });
+            }
+          } else {
+            console.error(`Failed to upload image to Cloudinary: ${file.originalname}`);
+          }
         } else {
-          console.error(`Failed to convert image: ${file.originalname}`);
+          const base64Data = convertImageToBase64(file.path);
+          if (base64Data) {
+            const dataUrl = `data:${file.mimetype};base64,${base64Data}`;
+            images.push({
+              data: dataUrl,
+              contentType: file.mimetype,
+              filename: file.originalname
+            });
+            pineconeImages.push({ data: dataUrl, contentType: file.mimetype, filename: file.originalname });
+            console.log(`Image converted (fallback): ${file.originalname}, size: ${base64Data.length} chars`);
+          } else {
+            console.error(`Failed to convert image: ${file.originalname}`);
+          }
         }
       }
     }
@@ -123,27 +148,20 @@ export const createProduct = async (req, res) => {
     console.log('Product saved successfully with ID:', product._id);
 
     // Add product images to Pinecone for image search (async, non-blocking)
-    if (product.category === 'furniture' && product.images && product.images.length > 0) {
-      // Call FastAPI service to add embeddings (fire and forget)
-      const axios = require('axios');
+    const imagesForPinecone = pineconeImages.length > 0 ? pineconeImages : (product.images || []).filter(img => img.data).map(img => ({ data: img.data, filename: img.filename, contentType: img.contentType }));
+    if (product.category === 'furniture' && imagesForPinecone.length > 0) {
       const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
-      
       axios.post(`${FASTAPI_URL}/add-product`, {
         product_id: product._id.toString(),
         product_name: product.name,
         category: product.category,
         subcategory: product.subcategory || '',
-        images: product.images.map(img => ({
-          data: img.data,
-          filename: img.filename,
-          contentType: img.contentType
-        }))
+        images: imagesForPinecone
       }, {
-        timeout: 10000 // 10 second timeout
+        timeout: 10000
       }).then(response => {
         console.log(`✅ Product ${product._id} added to image search:`, response.data.message);
       }).catch(error => {
-        // Don't fail product creation if Pinecone update fails
         console.warn(`⚠️ Could not add product ${product._id} to image search:`, error.message);
       });
     }
@@ -165,7 +183,7 @@ export const createProduct = async (req, res) => {
         images: product.images.map(img => ({
           filename: img.filename,
           contentType: img.contentType,
-          data: img.data.substring(0, 50) + '...' // Truncate for response
+          url: img.url || (img.data ? img.data.substring(0, 50) + '...' : null)
         })),
         attributes: product.attributes,
         createdAt: product.createdAt
@@ -224,11 +242,10 @@ export const getAllProducts = async (req, res) => {
     const total = await Product.countDocuments(query);
     const baseUrl = req.baseUrl || `${req.protocol}://${req.get('host')}`;
 
-    // Attach full image URLs (e.g. http://192.168.1.5:5000/api/images/:productId/:index)
     const productsWithUrls = products.map((p) => ({
       ...p,
       imageUrls: (p.images && p.images.length)
-        ? p.images.map((_, i) => `${baseUrl}/api/images/${p._id}/${i}`)
+        ? p.images.map((img, i) => img.url || `${baseUrl}/api/images/${p._id}/${i}`)
         : [],
     }));
 
@@ -291,7 +308,7 @@ export const getProductById = async (req, res) => {
     const productWithUrls = {
       ...product,
       imageUrls: (product.images && product.images.length)
-        ? product.images.map((_, i) => `${baseUrl}/api/images/${product._id}/${i}`)
+        ? product.images.map((img, i) => img.url || `${baseUrl}/api/images/${product._id}/${i}`)
         : [],
     };
 
@@ -339,11 +356,12 @@ export const updateProduct = async (req, res) => {
       updateData.quantity = parseInt(updateData.quantity);
     }
 
-    // Process uploaded images if any
+    // Process uploaded images if any: Cloudinary if configured, else base64
+    let pineconeImagesForUpdate = [];
     if (req.files && req.files.length > 0) {
-      console.log(`Processing ${req.files.length} uploaded images for update`);
+      console.log(`Processing ${req.files.length} uploaded images for update (Cloudinary: ${isCloudinaryConfigured()})`);
       const images = [];
-      
+
       for (const file of req.files) {
         console.log('File details:', {
           fieldname: file.fieldname,
@@ -353,29 +371,50 @@ export const updateProduct = async (req, res) => {
           path: file.path,
           filename: file.filename
         });
-        
-        // Convert image to base64
-        const base64Data = convertImageToBase64(file.path);
-        if (base64Data) {
-          // Store as data URL for easier frontend handling
-          const dataUrl = `data:${file.mimetype};base64,${base64Data}`;
-          images.push({
-            data: dataUrl,
-            contentType: file.mimetype,
-            filename: file.originalname
-          });
-          console.log(`Image converted: ${file.originalname}, size: ${base64Data.length} chars`);
+
+        if (isCloudinaryConfigured()) {
+          const cloudResult = await uploadToCloudinary(file.path);
+          if (cloudResult) {
+            images.push({
+              url: cloudResult.url,
+              publicId: cloudResult.publicId,
+              contentType: file.mimetype,
+              filename: file.originalname
+            });
+            console.log(`Image uploaded to Cloudinary: ${file.originalname} -> ${cloudResult.url}`);
+            const base64Data = convertImageToBase64(file.path);
+            if (base64Data) {
+              pineconeImagesForUpdate.push({
+                data: `data:${file.mimetype};base64,${base64Data}`,
+                contentType: file.mimetype,
+                filename: file.originalname
+              });
+            }
+          } else {
+            console.error(`Failed to upload image to Cloudinary: ${file.originalname}`);
+          }
         } else {
-          console.error(`Failed to convert image: ${file.originalname}`);
+          const base64Data = convertImageToBase64(file.path);
+          if (base64Data) {
+            const dataUrl = `data:${file.mimetype};base64,${base64Data}`;
+            images.push({
+              data: dataUrl,
+              contentType: file.mimetype,
+              filename: file.originalname
+            });
+            pineconeImagesForUpdate.push({ data: dataUrl, contentType: file.mimetype, filename: file.originalname });
+            console.log(`Image converted: ${file.originalname}, size: ${base64Data.length} chars`);
+          } else {
+            console.error(`Failed to convert image: ${file.originalname}`);
+          }
         }
       }
-      
+
       if (images.length > 0) {
         updateData.images = images;
         console.log(`Added ${images.length} images to update data`);
       }
-      
-      // Clean up temporary files
+
       cleanupTempFiles(req.files);
     }
 
@@ -400,28 +439,21 @@ export const updateProduct = async (req, res) => {
 
     console.log('Product updated successfully:', product.name);
     
-    // Update product images in Pinecone for image search (async, non-blocking)
-    if (product.category === 'furniture' && product.images && product.images.length > 0) {
-      // Call FastAPI service to update embeddings (fire and forget)
+    const imagesForPineconeUpdate = pineconeImagesForUpdate.length > 0
+      ? pineconeImagesForUpdate
+      : (product.images || []).filter(img => img.data).map(img => ({ data: img.data, filename: img.filename, contentType: img.contentType }));
+    if (product.category === 'furniture' && imagesForPineconeUpdate.length > 0) {
       const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
-      
       axios.post(`${FASTAPI_URL}/add-product`, {
         product_id: product._id.toString(),
         product_name: product.name,
         category: product.category,
         subcategory: product.subcategory || '',
-        images: product.images.map(img => ({
-          data: img.data,
-          filename: img.filename,
-          contentType: img.contentType
-        }))
-      }, {
-        timeout: 10000 // 10 second timeout
-      }).then(response => {
-        console.log(`✅ Product ${product._id} updated in image search:`, response.data.message);
+        images: imagesForPineconeUpdate
+      }, { timeout: 10000 }).then(response => {
+        console.log(`Product ${product._id} updated in image search:`, response.data.message);
       }).catch(error => {
-        // Don't fail product update if Pinecone update fails
-        console.warn(`⚠️ Could not update product ${product._id} in image search:`, error.message);
+        console.warn(`Could not update product ${product._id} in image search:`, error.message);
       });
     }
     
@@ -451,10 +483,11 @@ export const deleteProduct = async (req, res) => {
       });
     }
 
-    // Images are stored in MongoDB, no need to delete from external service
-    console.log(`Product has ${product.images ? product.images.length : 0} images stored in MongoDB`);
+    for (const img of product.images || []) {
+      if (img.publicId) await deleteFromCloudinary(img.publicId);
+    }
+    console.log(`Product has ${product.images ? product.images.length : 0} images (Cloudinary assets cleaned)`);
 
-    // Soft delete by setting isActive to false
     await Product.findByIdAndUpdate(id, { isActive: false });
 
     res.json({
@@ -482,7 +515,8 @@ export const removeProductImage = async (req, res) => {
       });
     }
 
-    // Remove image from product (stored in MongoDB)
+    const toRemove = product.images.find(img => img.filename === filename);
+    if (toRemove?.publicId) await deleteFromCloudinary(toRemove.publicId);
     product.images = product.images.filter(img => img.filename !== filename);
     await product.save();
 

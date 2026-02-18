@@ -1,5 +1,7 @@
-import express from "express";
 import dotenv from "dotenv";
+dotenv.config(); // Load .env BEFORE any other imports that use process.env
+
+import express from "express";
 import cors from "cors";
 import path from "path";
 import connectDB from "./config/db.js";
@@ -30,7 +32,6 @@ import { getAvailableSlots } from "./controllers/serviceScheduleController.js";
 import { getProductImage } from "./controllers/imageController.js";
 import { getBaseUrl } from "./utils/getBaseUrl.js";
 
-dotenv.config();
 connectDB();
 
 const app = express();

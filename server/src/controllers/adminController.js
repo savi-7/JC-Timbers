@@ -287,9 +287,9 @@ const getProductImageUrl = (images) => {
   if (Array.isArray(images) && images.length > 0) {
     const firstImage = images[0];
     
-    // If it's an object with data property (base64)
-    if (typeof firstImage === 'object' && firstImage.data) {
-      return firstImage.data;
+    if (typeof firstImage === 'object') {
+      if (firstImage.url) return firstImage.url;
+      if (firstImage.data) return firstImage.data;
     }
     
     // If it's a string

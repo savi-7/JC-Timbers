@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../auth/auth_service.dart';
+import '../services/cart_service.dart';
+import '../services/wishlist_service.dart';
+import '../services/pending_actions_storage.dart';
 import '../theme/jc_timber_theme.dart';
 import 'register_screen.dart';
 import '../pages/home_page.dart';
+import 'cart_screen.dart';
+import 'wishlist_screen.dart';
 
 /// Login Screen - exact UI/UX match to MERN LoginPage.
 class LoginScreen extends StatefulWidget {
@@ -61,6 +66,55 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (result.success) {
+      // MERN-style: process pending cart/wishlist and redirect
+      final redirect = await PendingActionsStorage.getLoginRedirect();
+      final pendingCart = await PendingActionsStorage.getPendingCartItem();
+      final pendingWishlist = await PendingActionsStorage.getPendingWishlistItem();
+
+      if (pendingCart != null && (redirect == 'cart' || redirect == 'checkout')) {
+        await PendingActionsStorage.clearAll();
+        final cartService = CartService(auth);
+        final addResult = await cartService.addToCart(
+          productId: pendingCart.productId,
+          quantity: pendingCart.quantity,
+        );
+        if (!mounted) return;
+        if (addResult.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Added ${pendingCart.quantity} ${pendingCart.productName} to cart')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(addResult.errorMessage ?? 'Failed to add to cart')),
+          );
+        }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const CartScreen()),
+        );
+        return;
+      }
+
+      if (pendingWishlist != null && redirect == 'wishlist') {
+        await PendingActionsStorage.clearAll();
+        final wishlistService = WishlistService(auth);
+        final addResult = await wishlistService.toggleWishlist(pendingWishlist.productId, add: true);
+        if (!mounted) return;
+        if (addResult.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Added ${pendingWishlist.productName} to wishlist')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(addResult.errorMessage ?? 'Failed to add to wishlist')),
+          );
+        }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const WishlistScreen()),
+        );
+        return;
+      }
+
+      await PendingActionsStorage.clearAll();
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomePage()),
       );

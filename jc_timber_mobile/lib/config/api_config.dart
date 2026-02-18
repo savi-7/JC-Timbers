@@ -24,6 +24,28 @@ class ApiConfig {
   static String get authLogin => '$baseUrl/api/auth/login';
   static String get authRegister => '$baseUrl/api/auth/register';
   static String get authProfile => '$baseUrl/api/auth/profile';
+  static String get authChangePassword => '$baseUrl/api/auth/change-password';
+
+  // Ecommerce - products (shared with MERN web)
+  static String get products => '$baseUrl/api/products';
+  static String productById(String id) => '$baseUrl/api/products/$id';
+
+  // Ecommerce - cart
+  static String get cart => '$baseUrl/api/cart';
+
+  // Ecommerce - wishlist
+  static String get wishlist => '$baseUrl/api/wishlist';
+  static String wishlistItem(String productId) =>
+      '$baseUrl/api/wishlist/$productId';
+
+  // Payments (Razorpay & COD)
+  static String get paymentRazorpay => '$baseUrl/api/payment/razorpay';
+  static String get paymentVerify => '$baseUrl/api/payment/verify';
+  static String get paymentCod => '$baseUrl/api/payment/cod';
+
+  static String get addresses => '$baseUrl/api/addresses';
+  static String addressById(String id) => '$baseUrl/api/addresses/$id';
+  static String addressSetDefault(String id) => '$baseUrl/api/addresses/$id/default';
 
   static String get serviceEnquiries => '$baseUrl/api/services/enquiries';
   static String myEnquiry(String id) => '$baseUrl/api/services/enquiries/$id';

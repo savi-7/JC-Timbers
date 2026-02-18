@@ -58,40 +58,37 @@ class _MyEnquiriesScreenState extends State<MyEnquiriesScreen> {
         foregroundColor: JcTimberTheme.cream,
         title: const Text('My Service Enquiries'),
       ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header - responsive row/column to avoid right overflow on small devices
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 360;
-                    final titleSection = Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'My Service Enquiries',
-                          style: JcTimberTheme.headingStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Track your service requests',
-                          style: JcTimberTheme.paragraphStyle(
-                            fontSize: 14,
-                            color: JcTimberTheme.darkBrown70,
-                          ),
-                        ),
-                      ],
-                    );
-                    final button = FilledButton(
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header - always stacked to avoid horizontal overflow
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'My Service Enquiries',
+                    style: JcTimberTheme.headingStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Track your service requests',
+                    style: JcTimberTheme.paragraphStyle(
+                      fontSize: 14,
+                      color: JcTimberTheme.darkBrown70,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton(
                       onPressed: () => Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (_) => const TimberBookingScreen()),
@@ -111,33 +108,10 @@ class _MyEnquiriesScreenState extends State<MyEnquiriesScreen> {
                           color: JcTimberTheme.cream,
                         ),
                       ),
-                    );
-
-                    if (isNarrow) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          titleSection,
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: button,
-                          ),
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(child: titleSection),
-                        const SizedBox(width: 12),
-                        button,
-                      ],
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               // Filter
               Container(
@@ -147,34 +121,44 @@ class _MyEnquiriesScreenState extends State<MyEnquiriesScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: JcTimberTheme.gray200),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Filter by Status:', style: JcTimberTheme.paragraphStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _filterStatus ?? '',
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: '', child: Text('All')),
-                          DropdownMenuItem(value: 'ENQUIRY_RECEIVED', child: Text('Enquiry Received')),
-                          DropdownMenuItem(value: 'UNDER_REVIEW', child: Text('Under Review')),
-                          DropdownMenuItem(value: 'TIME_ACCEPTED', child: Text('Time Accepted')),
-                          DropdownMenuItem(value: 'ALTERNATE_TIME_PROPOSED', child: Text('Alternate Time Proposed')),
-                          DropdownMenuItem(value: 'SCHEDULED', child: Text('Scheduled')),
-                          DropdownMenuItem(value: 'IN_PROGRESS', child: Text('In Progress')),
-                          DropdownMenuItem(value: 'COMPLETED', child: Text('Completed')),
-                          DropdownMenuItem(value: 'CANCELLED', child: Text('Cancelled')),
-                          DropdownMenuItem(value: 'REJECTED', child: Text('Rejected')),
-                        ],
-                        onChanged: (v) => setState(() {
-                          _filterStatus = v?.isEmpty == true ? null : v;
-                          _load();
-                        }),
+                    Text(
+                      'Filter by Status:',
+                      style: JcTimberTheme.paragraphStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _filterStatus ?? '',
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: '', child: Text('All')),
+                        DropdownMenuItem(value: 'ENQUIRY_RECEIVED', child: Text('Enquiry Received')),
+                        DropdownMenuItem(value: 'UNDER_REVIEW', child: Text('Under Review')),
+                        DropdownMenuItem(value: 'TIME_ACCEPTED', child: Text('Time Accepted')),
+                        DropdownMenuItem(value: 'ALTERNATE_TIME_PROPOSED', child: Text('Alternate Time Proposed')),
+                        DropdownMenuItem(value: 'SCHEDULED', child: Text('Scheduled')),
+                        DropdownMenuItem(value: 'IN_PROGRESS', child: Text('In Progress')),
+                        DropdownMenuItem(value: 'COMPLETED', child: Text('Completed')),
+                        DropdownMenuItem(value: 'CANCELLED', child: Text('Cancelled')),
+                        DropdownMenuItem(value: 'REJECTED', child: Text('Rejected')),
+                      ],
+                      onChanged: (v) => setState(() {
+                        _filterStatus = v?.isEmpty == true ? null : v;
+                        _load();
+                      }),
                     ),
                   ],
                 ),
@@ -281,14 +265,19 @@ class _EnquiryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Status + submitted date
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         _StatusChip(status: enquiry.status),
-                        const SizedBox(width: 8),
                         if (enquiry.createdAt != null)
                           Text(
                             'Submitted on ${_formatDate(enquiry.createdAt!)}',
-                            style: JcTimberTheme.paragraphStyle(fontSize: 12, color: JcTimberTheme.darkBrown70),
+                            style: JcTimberTheme.paragraphStyle(
+                              fontSize: 12,
+                              color: JcTimberTheme.darkBrown70,
+                            ),
                           ),
                       ],
                     ),
@@ -460,18 +449,25 @@ class _EnquiryCard extends StatelessWidget {
                     // Cost & payment status
                     if (enquiry.estimatedCost != null || enquiry.paymentStatus != null) ...[
                       const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           if (enquiry.estimatedCost != null)
                             Text(
                               'Estimated Cost: ₹${enquiry.estimatedCost!.toStringAsFixed(0)}',
-                              style: JcTimberTheme.paragraphStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                              style: JcTimberTheme.paragraphStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           if (enquiry.paymentStatus != null)
                             Text(
                               'Payment: ${enquiry.paymentStatus}',
-                              style: JcTimberTheme.paragraphStyle(fontSize: 12, color: JcTimberTheme.darkBrown70),
+                              style: JcTimberTheme.paragraphStyle(
+                                fontSize: 12,
+                                color: JcTimberTheme.darkBrown70,
+                              ),
                             ),
                         ],
                       ),

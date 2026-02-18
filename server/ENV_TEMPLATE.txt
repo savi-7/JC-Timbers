@@ -16,4 +16,9 @@ RAZORPAY_KEY_SECRET=YOUR_KEY_SECRET_HERE
 # Frontend URL (for CORS) - use CLIENT_ORIGIN for Vercel (e.g. https://your-app.vercel.app)
 CLIENT_ORIGIN=http://localhost:5173
 
+# Cloudinary (product images) - get from https://console.cloudinary.com
+# If not set, product images fall back to base64 in MongoDB
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 

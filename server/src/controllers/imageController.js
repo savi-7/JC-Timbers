@@ -21,22 +21,25 @@ export const getProductImage = async (req, res) => {
     
     const image = product.images[imageIndexNum];
     console.log(`Serving image: ${image.filename}, type: ${image.contentType}`);
-    
-    // Extract base64 data from data URL if needed
+
+    if (image.url) {
+      return res.redirect(302, image.url);
+    }
+
+    if (!image.data) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+
     let base64Data = image.data;
     if (image.data.startsWith('data:')) {
-      // Extract base64 part from data URL (format: data:image/jpeg;base64,{base64_string})
       base64Data = image.data.split(',')[1];
     }
-    
-    // Set appropriate headers
+
     res.set({
       'Content-Type': image.contentType,
-      'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
+      'Cache-Control': 'public, max-age=31536000',
       'Content-Length': Buffer.byteLength(base64Data, 'base64')
     });
-    
-    // Send the base64 image data
     res.send(Buffer.from(base64Data, 'base64'));
   } catch (error) {
     console.error('Error serving image:', error);
