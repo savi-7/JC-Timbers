@@ -47,10 +47,9 @@ const marketplaceListingSchema = new mongoose.Schema({
     }
   },
   image: {
-    data: {
-      type: String,
-      required: true
-    },
+    data: { type: String },
+    url: { type: String },
+    publicId: { type: String },
     contentType: {
       type: String,
       required: true
@@ -94,6 +93,13 @@ const marketplaceListingSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+marketplaceListingSchema.pre("save", function (next) {
+  if (this.image && !this.image.data && !this.image.url) {
+    return next(new Error("Listing image must have either data or url"));
+  }
+  next();
 });
 
 // Index for better query performance

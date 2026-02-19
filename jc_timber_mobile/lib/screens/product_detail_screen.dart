@@ -35,6 +35,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
   bool _showSpecifications = false;
   bool _isWishlisted = false;
+  bool _addingToCart = false;
+  bool _buyingNow = false;
+  bool _updatingWishlist = false;
 
   @override
   void initState() {
@@ -88,7 +91,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _addToCart() async {
-    if (_product == null) return;
+    if (_product == null || _addingToCart) return;
     final auth = context.read<AuthService>();
     if (!auth.isLoggedIn) {
       await PendingActionsStorage.setPendingCartItem(
@@ -103,24 +106,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
       return;
     }
-    final result = await _cartService.addToCart(
-      productId: _product!.id,
-      quantity: _quantity,
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.success
-              ? 'Added ${_quantity} ${_product!.name} to cart'
-              : (result.errorMessage ?? 'Failed to add to cart'),
+    setState(() {
+      _addingToCart = true;
+    });
+    try {
+      final result = await _cartService.addToCart(
+        productId: _product!.id,
+        quantity: _quantity,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.success
+                ? 'Added ${_quantity} ${_product!.name} to cart'
+                : (result.errorMessage ?? 'Failed to add to cart'),
+          ),
+          backgroundColor: result.success ? Colors.green : Colors.red,
         ),
-      ),
-    );
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _addingToCart = false;
+        });
+      }
+    }
   }
 
   Future<void> _buyNow() async {
-    if (_product == null) return;
+    if (_product == null || _buyingNow) return;
     final auth = context.read<AuthService>();
     if (!auth.isLoggedIn) {
       await PendingActionsStorage.setPendingCartItem(
@@ -135,24 +150,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
       return;
     }
-    final result = await _cartService.addToCart(
-      productId: _product!.id,
-      quantity: _quantity,
-    );
-    if (!mounted) return;
-    if (!result.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.errorMessage ?? 'Failed to add to cart')),
+    setState(() {
+      _buyingNow = true;
+    });
+    try {
+      final result = await _cartService.addToCart(
+        productId: _product!.id,
+        quantity: _quantity,
       );
-      return;
+      if (!mounted) return;
+      if (!result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.errorMessage ?? 'Failed to add to cart'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const CartScreen()),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _buyingNow = false;
+        });
+      }
     }
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const CartScreen()),
-    );
   }
 
   Future<void> _toggleWishlist() async {
-    if (_product == null) return;
+    if (_product == null || _updatingWishlist) return;
     final auth = context.read<AuthService>();
     if (!auth.isLoggedIn) {
       await PendingActionsStorage.setPendingWishlistItem(
@@ -166,30 +195,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
       return;
     }
-    final result = await _wishlistService.toggleWishlist(
-      _product!.id,
-      add: !_isWishlisted,
-    );
-    if (!mounted) return;
-    if (result.success) {
-      setState(() {
-        _isWishlisted = result.wasAdded == true;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.wasAdded == true
-                ? 'Added ${_product!.name} to wishlist'
-                : result.wasAdded == false
-                    ? 'Removed from wishlist'
-                    : (result.errorMessage ?? 'Updated wishlist'),
+    setState(() {
+      _updatingWishlist = true;
+    });
+    try {
+      final result = await _wishlistService.toggleWishlist(
+        _product!.id,
+        add: !_isWishlisted,
+      );
+      if (!mounted) return;
+      if (result.success) {
+        setState(() {
+          _isWishlisted = result.wasAdded == true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.wasAdded == true
+                  ? 'Added ${_product!.name} to wishlist'
+                  : result.wasAdded == false
+                      ? 'Removed from wishlist'
+                      : (result.errorMessage ?? 'Updated wishlist'),
+            ),
+            backgroundColor: Colors.green,
           ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.errorMessage ?? 'Failed to update wishlist')),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.errorMessage ?? 'Failed to update wishlist'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingWishlist = false;
+        });
+      }
     }
   }
 
@@ -265,11 +309,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         children: [
                           // Image Gallery
                           _buildImageGallery(),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 24),
 
                           // Product Info
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -329,7 +373,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 16),
 
                                 // Product Name
                                 Text(
@@ -339,11 +383,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 10),
 
                                 // Price
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.baseline,
+                                  textBaseline: TextBaseline.alphabetic,
                                   children: [
                                     Text(
                                       '₹${_product!.price.toStringAsFixed(0)}',
@@ -363,7 +408,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 20),
 
                                 // Rating (if available)
                                 if (_product!.rating > 0)
@@ -393,19 +438,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 // Description
                                 if (_product!.description != null &&
                                     _product!.description!.isNotEmpty) ...[
-                                  Text(
-                                    'Description',
-                                    style: JcTimberTheme.headingStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: JcTimberTheme.darkBrown.withOpacity(0.04),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _product!.description!,
-                                    style: JcTimberTheme.paragraphStyle(
-                                      fontSize: 14,
-                                      color: JcTimberTheme.darkBrown70,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Description',
+                                          style: JcTimberTheme.headingStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          _product!.description!,
+                                          style: JcTimberTheme.paragraphStyle(
+                                            fontSize: 14,
+                                            color: JcTimberTheme.darkBrown70,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(height: 24),
@@ -417,7 +482,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                                 // Purchase Section
                                 _buildPurchaseSection(),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 32),
                               ],
                             ),
                           ),
@@ -433,7 +498,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (_product == null || _product!.images.isEmpty) {
       return Container(
         height: 300,
-        color: Colors.grey.shade100,
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Center(
           child: Icon(
             Icons.chair_outlined,
@@ -450,35 +519,51 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return Column(
       children: [
         // Main Image
-        Container(
-          height: 350,
-          width: double.infinity,
-          color: Colors.grey.shade100,
-          child: imageUrl == null
-              ? Icon(
-                  Icons.chair_outlined,
-                  size: 64,
-                  color: Colors.brown.shade300,
-                )
-              : Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.chair_outlined,
-                    size: 64,
-                    color: Colors.brown.shade300,
-                  ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            height: 360,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: JcTimberTheme.darkBrown.withOpacity(0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
                 ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: imageUrl == null
+                  ? Icon(
+                      Icons.chair_outlined,
+                      size: 64,
+                      color: Colors.brown.shade300,
+                    )
+                  : Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.chair_outlined,
+                        size: 64,
+                        color: Colors.brown.shade300,
+                      ),
+                    ),
+            ),
+          ),
         ),
 
         // Thumbnails
         if (_product!.images.length > 1) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           SizedBox(
-            height: 80,
+            height: 84,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               itemCount: _product!.images.length,
               itemBuilder: (context, index) {
                 final thumb = _product!.images[index];
@@ -491,20 +576,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     });
                   },
                   child: Container(
-                    width: 80,
-                    height: 80,
-                    margin: const EdgeInsets.only(right: 12),
+                    width: 84,
+                    height: 84,
+                    margin: const EdgeInsets.only(right: 14),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isSelected
                             ? JcTimberTheme.darkBrown
                             : JcTimberTheme.gray200,
                         width: isSelected ? 2 : 1,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: JcTimberTheme.darkBrown.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(11),
+                      borderRadius: BorderRadius.circular(14),
                       child: thumbUrl == null
                           ? Container(
                               color: Colors.grey.shade200,
@@ -574,87 +666,105 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     if (specs.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: () {
-            setState(() {
-              _showSpecifications = !_showSpecifications;
-            });
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Specifications',
-                style: JcTimberTheme.headingStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Icon(
-                _showSpecifications
-                    ? Icons.keyboard_arrow_up
-                    : Icons.keyboard_arrow_down,
-                color: JcTimberTheme.darkBrown,
-              ),
-            ],
-          ),
-        ),
-        if (_showSpecifications) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: specs.map((spec) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        spec.key,
-                        style: JcTimberTheme.paragraphStyle(
-                          fontSize: 13,
-                          color: JcTimberTheme.darkBrown70,
-                        ),
-                      ),
-                      Text(
-                        spec.value,
-                        style: JcTimberTheme.paragraphStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: JcTimberTheme.darkBrown.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
-      ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                _showSpecifications = !_showSpecifications;
+              });
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Specifications',
+                    style: JcTimberTheme.headingStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Icon(
+                    _showSpecifications
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: JcTimberTheme.darkBrown,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_showSpecifications) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: specs.map((spec) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          spec.key,
+                          style: JcTimberTheme.paragraphStyle(
+                            fontSize: 13,
+                            color: JcTimberTheme.darkBrown70,
+                          ),
+                        ),
+                        Text(
+                          spec.value,
+                          style: JcTimberTheme.paragraphStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
   Widget _buildPurchaseSection() {
     final total = _product!.price * _quantity;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: JcTimberTheme.gray200),
         boxShadow: [
           BoxShadow(
-            color: JcTimberTheme.darkBrown.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: JcTimberTheme.darkBrown.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -711,10 +821,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           // Total Price
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -744,9 +854,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _addToCart,
-                  icon: const Icon(Icons.shopping_cart_outlined),
-                  label: const Text('Add to Cart'),
+                  onPressed: _addingToCart ? null : _addToCart,
+                  icon: _addingToCart
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.shopping_cart_outlined),
+                  label: Text(_addingToCart ? 'Adding...' : 'Add to Cart'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     side: BorderSide(
@@ -761,9 +877,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _buyNow,
-                  icon: const Icon(Icons.flash_on),
-                  label: const Text('Buy Now'),
+                  onPressed: _buyingNow ? null : _buyNow,
+                  icon: _buyingNow
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.flash_on),
+                  label: Text(_buyingNow ? 'Processing...' : 'Buy Now'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange.shade600,
                     foregroundColor: Colors.white,
@@ -780,13 +902,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: _toggleWishlist,
-              icon: Icon(
-                _isWishlisted ? Icons.favorite : Icons.favorite_border,
-                color: _isWishlisted ? Colors.red : JcTimberTheme.darkBrown,
-              ),
+              onPressed: _updatingWishlist ? null : _toggleWishlist,
+              icon: _updatingWishlist
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      _isWishlisted ? Icons.favorite : Icons.favorite_border,
+                      color: _isWishlisted ? Colors.red : JcTimberTheme.darkBrown,
+                    ),
               label: Text(
-                _isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist',
+                _updatingWishlist
+                    ? 'Updating...'
+                    : (_isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'),
               ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),

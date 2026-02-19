@@ -49,6 +49,18 @@ flutter pub get
 flutter run
 ```
 
+### 4. App icon (JC Timbers logo)
+
+The wood-grain logo is in `assets/logo.png`. To regenerate the Android launcher icon from it (e.g. after changing the logo), run:
+
+```bash
+cd jc_timber_mobile
+flutter pub get
+dart run flutter_launcher_icons
+```
+
+This updates all `mipmap-*/ic_launcher.png` files so the app icon on the device matches the logo.
+
 ## Backend APIs Used
 
 | Endpoint | Auth | Purpose |

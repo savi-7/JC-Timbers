@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth/auth_service.dart';
-import 'pages/home_page.dart';
-import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'theme/jc_timber_theme.dart';
 
 void main() async {
@@ -25,8 +24,8 @@ class MyApp extends StatelessWidget {
         title: 'JC Timbers',
         debugShowCheckedModeBanner: false,
         theme: JcTimberTheme.theme,
-        // Auto login: if JWT exists → Home, else → Login
-        home: auth.isLoggedIn ? const HomePage() : const LoginScreen(),
+        // Splash with logo + slogan, then Home or Login
+        home: const SplashScreen(),
       ),
     );
   }

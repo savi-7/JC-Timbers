@@ -9,6 +9,7 @@ import '../screens/my_enquiries_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/furniture_list_screen.dart';
 import '../screens/cart_screen.dart';
+import '../screens/marketplace_screen.dart';
 import '../theme/jc_timber_theme.dart';
 
 class HomePage extends StatefulWidget {
@@ -294,6 +295,17 @@ class _HomePageState extends State<HomePage> {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => const CartScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _CategoryChip(
+                            label: 'Marketplace',
+                            icon: Icons.store_outlined,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const MarketplaceScreen(),
                                 ),
                               );
                             },

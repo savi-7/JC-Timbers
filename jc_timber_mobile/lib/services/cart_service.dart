@@ -21,13 +21,34 @@ class CartService {
     if (!_auth.isLoggedIn) return [];
     try {
       final res = await http.get(Uri.parse(ApiConfig.cart), headers: _headers);
-      if (res.statusCode != 200) return [];
-      final data = jsonDecode(res.body) as Map<String, dynamic>? ?? {};
+      if (res.statusCode != 200) {
+        // Log error for debugging
+        print('Cart API error: ${res.statusCode} - ${res.body}');
+        return [];
+      }
+      Map<String, dynamic> data = {};
+      try {
+        if (res.body.isNotEmpty) {
+          data = jsonDecode(res.body) as Map<String, dynamic>? ?? {};
+        }
+      } catch (e) {
+        print('Cart API JSON parse error: $e');
+        return [];
+      }
       final list = data['items'] as List<dynamic>? ?? [];
       return list
-          .map((e) => CartItem.fromJson(e as Map<String, dynamic>))
+          .map((e) {
+            try {
+              return CartItem.fromJson(e as Map<String, dynamic>);
+            } catch (e) {
+              print('Cart item parse error: $e');
+              return null;
+            }
+          })
+          .whereType<CartItem>()
           .toList();
-    } catch (_) {
+    } catch (e) {
+      print('Cart API network error: $e');
       return [];
     }
   }
@@ -46,14 +67,37 @@ class CartService {
         headers: _headers,
         body: jsonEncode({'productId': productId, 'quantity': quantity}),
       );
-      final data = jsonDecode(res.body) as Map<String, dynamic>? ?? {};
+      
+      Map<String, dynamic> data = {};
+      try {
+        if (res.body.isNotEmpty) {
+          data = jsonDecode(res.body) as Map<String, dynamic>? ?? {};
+        }
+      } catch (e) {
+        // If response body is not valid JSON, continue with empty data
+      }
+      
       final message = data['message'] as String?;
+      
       if (res.statusCode == 200 || res.statusCode == 201) {
         return (success: true, errorMessage: null);
       }
-      return (success: false, errorMessage: message ?? 'Failed to add to cart');
+      
+      // Handle specific error status codes
+      String errorMsg = message ?? 'Failed to add to cart';
+      if (res.statusCode == 400) {
+        errorMsg = message ?? 'Invalid request. Please check product availability.';
+      } else if (res.statusCode == 401) {
+        errorMsg = 'Please log in to add to cart';
+      } else if (res.statusCode == 404) {
+        errorMsg = message ?? 'Product not found';
+      } else if (res.statusCode == 500) {
+        errorMsg = message ?? 'Server error. Please try again later.';
+      }
+      
+      return (success: false, errorMessage: errorMsg);
     } catch (e) {
-      return (success: false, errorMessage: 'Failed to add to cart');
+      return (success: false, errorMessage: 'Network error. Please check your connection and try again.');
     }
   }
 

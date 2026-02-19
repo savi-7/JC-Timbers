@@ -53,4 +53,26 @@ class ApiConfig {
       '$baseUrl/api/services/enquiries/$id/cancel';
   static String availableSlots(String date, {int duration = 120}) =>
       '$baseUrl/api/services/schedule/available/$date?duration=$duration';
+
+  // Marketplace (same backend as MERN)
+  static String get marketplaceListings => '$baseUrl/api/marketplace/listings';
+  static String marketplaceListingById(String id) =>
+      '$baseUrl/api/marketplace/listings/$id';
+  static String marketplaceListingImage(String id) =>
+      '$baseUrl/api/marketplace/listings/$id/image';
+
+  /// Resolve marketplace listing image URL for display. Handles null/empty,
+  /// relative URLs from backend, and fallback to /listings/:id/image.
+  static String marketplaceListingImageUrl(String listingId, String? imageUrl) {
+    if (imageUrl == null || imageUrl.trim().isEmpty) {
+      return marketplaceListingImage(listingId);
+    }
+    if (imageUrl.startsWith(RegExp(r'https?://'))) {
+      return imageUrl;
+    }
+    if (imageUrl.startsWith('/')) {
+      return '$baseUrl$imageUrl';
+    }
+    return marketplaceListingImage(listingId);
+  }
 }

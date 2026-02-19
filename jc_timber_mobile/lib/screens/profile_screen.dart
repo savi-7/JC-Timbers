@@ -5,6 +5,7 @@ import '../theme/jc_timber_theme.dart';
 import 'login_security_screen.dart';
 import 'addresses_screen.dart';
 import 'my_enquiries_screen.dart';
+import 'login_screen.dart';
 
 /// My Profile screen - matches MERN CustomerProfile: header + option cards.
 /// Options: Login & Security, Address Management, My Service Requests.
@@ -168,6 +169,55 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         );
                       },
+                    ),
+                    const SizedBox(height: 24),
+                    // Sign Out button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Sign out'),
+                              content: const Text(
+                                'Are you sure you want to sign out?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Sign out'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true && context.mounted) {
+                            await context.read<AuthService>().logout();
+                            if (context.mounted) {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
+                                (route) => false,
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Sign out'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red.shade700,
+                          side: BorderSide(color: Colors.red.shade700),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

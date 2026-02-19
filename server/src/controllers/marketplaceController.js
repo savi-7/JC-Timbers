@@ -1,14 +1,21 @@
 import MarketplaceListing from "../models/MarketplaceListing.js";
 import { convertImageToBase64, cleanupTempFiles } from "../middleware/upload.js";
+import { uploadToCloudinary, isCloudinaryConfigured } from "../config/cloudinary.js";
 
-// Serve listing image as binary (full URL: http://host:port/api/marketplace/listings/:id/image)
+// Serve listing image: redirect to Cloudinary URL or stream base64
 export const getListingImage = async (req, res) => {
   try {
     const listing = await MarketplaceListing.findById(req.params.id).select("image").lean();
-    if (!listing || !listing.image || !listing.image.data) {
+    if (!listing || !listing.image) {
       return res.status(404).json({ message: "Image not found" });
     }
     const image = listing.image;
+    if (image.url) {
+      return res.redirect(302, image.url);
+    }
+    if (!image.data) {
+      return res.status(404).json({ message: "Image not found" });
+    }
     let base64Data = image.data;
     if (base64Data.startsWith("data:")) {
       base64Data = base64Data.split(",")[1];
@@ -45,11 +52,13 @@ export const listListings = async (req, res) => {
       .lean();
 
     const total = await MarketplaceListing.countDocuments(query);
-    const baseUrl = req.baseUrl || `${req.protocol}://${req.get("host")}`;
+    const origin = `${req.protocol}://${req.get("host")}`;
 
     const listingsWithUrls = listings.map((l) => ({
       ...l,
-      imageUrl: l.image ? `${baseUrl}/api/marketplace/listings/${l._id}/image` : null,
+      imageUrl: l.image
+        ? (l.image.url || `${origin}/api/marketplace/listings/${l._id}/image`)
+        : null,
     }));
 
     res.json({
@@ -79,10 +88,12 @@ export const getListingById = async (req, res) => {
       return res.status(404).json({ message: "Listing not found" });
     }
 
-    const baseUrl = req.baseUrl || `${req.protocol}://${req.get("host")}`;
+    const origin = `${req.protocol}://${req.get("host")}`;
     const listingWithUrl = {
       ...listing,
-      imageUrl: listing.image ? `${baseUrl}/api/marketplace/listings/${listing._id}/image` : null,
+      imageUrl: listing.image
+        ? (listing.image.url || `${origin}/api/marketplace/listings/${listing._id}/image`)
+        : null,
     };
 
     res.json({ listing: listingWithUrl });
@@ -117,12 +128,28 @@ export const createListing = async (req, res) => {
       return res.status(400).json({ message: "One image is required" });
     }
 
-    const base64Data = convertImageToBase64(req.file.path);
-    if (!base64Data) {
-      return res.status(400).json({ message: "Failed to process image" });
-    }
+    let imagePayload = { contentType: req.file.mimetype, filename: req.file.originalname };
 
-    const dataUrl = `data:${req.file.mimetype};base64,${base64Data}`;
+    if (isCloudinaryConfigured()) {
+      const cloudResult = await uploadToCloudinary(req.file.path, {
+        folder: "jc-timbers/marketplace",
+      });
+      if (cloudResult) {
+        imagePayload.url = cloudResult.url;
+        imagePayload.publicId = cloudResult.publicId;
+      } else {
+        const base64Data = convertImageToBase64(req.file.path);
+        if (base64Data) {
+          imagePayload.data = `data:${req.file.mimetype};base64,${base64Data}`;
+        }
+      }
+    } else {
+      const base64Data = convertImageToBase64(req.file.path);
+      if (!base64Data) {
+        return res.status(400).json({ message: "Failed to process image" });
+      }
+      imagePayload.data = `data:${req.file.mimetype};base64,${base64Data}`;
+    }
 
     const listing = new MarketplaceListing({
       user: userId,
@@ -133,11 +160,7 @@ export const createListing = async (req, res) => {
       description: description.trim(),
       location: location.trim(),
       locationCoords: { lat: parseFloat(lat), lon: parseFloat(lon) },
-      image: {
-        data: dataUrl,
-        contentType: req.file.mimetype,
-        filename: req.file.originalname,
-      },
+      image: imagePayload,
       status: "pending",
       paymentStatus: "pending",
     });
