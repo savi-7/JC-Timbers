@@ -31,6 +31,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   String _sortBy = 'createdAt';
   String _sortOrder = 'desc';
   String? _locationFilter;
+  double? _filterLat;
+  double? _filterLon;
+  int? _filterRadiusKm;
   int _page = 1;
   int _totalPages = 1;
   final _scrollController = ScrollController();
@@ -130,9 +133,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             l.location.toLowerCase().contains(q);
       }).toList();
     }
-    if (_locationFilter != null && _locationFilter!.trim().isNotEmpty) {
-      final loc = _locationFilter!.toLowerCase();
-      list = list.where((l) => l.location.toLowerCase().contains(loc)).toList();
+    // Distance-based location filter using map coordinates
+    if (_filterLat != null && _filterLon != null && _filterRadiusKm != null) {
+      final lat = _filterLat!;
+      final lon = _filterLon!;
+      final radiusKm = _filterRadiusKm!.toDouble();
+      list = list.where((l) {
+        if (l.locationCoords == null) return true; // include listings without coords
+        final distance = l.locationCoords!.distanceKmTo(lat, lon);
+        return distance <= radiusKm;
+      }).toList();
     }
     setState(() => _filtered = list);
   }
@@ -207,8 +217,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                         _search.isNotEmpty ||
                                                 _category.isNotEmpty ||
                                                 _condition.isNotEmpty ||
-                                                (_locationFilter != null &&
-                                                    _locationFilter!.isNotEmpty)
+                                                (_filterLat != null &&
+                                                    _filterLon != null)
                                             ? 'No listings match your filters'
                                             : 'No listings yet',
                                         style: JcTimberTheme.headingStyle(
@@ -347,20 +357,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 ),
                 const SizedBox(width: 8),
                 _filterChip(
-                  label: _locationFilter?.isNotEmpty == true
-                      ? 'Location ✓'
+                  label: _locationFilter != null && _locationFilter!.isNotEmpty
+                      ? '${_filterRadiusKm ?? 25} km ✓'
                       : 'Location',
                   onTap: () async {
                     final result = await Navigator.of(context).push<Map<String, dynamic>>(
                       MaterialPageRoute(
                         builder: (_) => MarketplaceLocationFilterScreen(
                           initialAddress: _locationFilter,
+                          initialLat: _filterLat,
+                          initialLon: _filterLon,
+                          initialRadiusKm: _filterRadiusKm,
                         ),
                       ),
                     );
-                    if (result != null && result['address'] != null) {
+                    if (result != null) {
                       setState(() {
                         _locationFilter = result['address'] as String?;
+                        _filterLat = result['lat'] as double?;
+                        _filterLon = result['lon'] as double?;
+                        _filterRadiusKm = result['radiusKm'] as int?;
                         _applyFilters();
                       });
                     }

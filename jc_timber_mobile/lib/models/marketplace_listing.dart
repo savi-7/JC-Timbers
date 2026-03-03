@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 /// Marketplace listing - matches backend MarketplaceListing schema.
 class MarketplaceListing {
   final String id;
@@ -89,4 +91,18 @@ class LocationCoords {
   final double lon;
 
   const LocationCoords({required this.lat, required this.lon});
+
+  /// Haversine distance in km to another point. Used for location filter radius.
+  double distanceKmTo(double toLat, double toLon) {
+    const R = 6371.0; // Earth radius in km
+    final dLat = (toLat - lat) * math.pi / 180;
+    final dLon = (toLon - lon) * math.pi / 180;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat * math.pi / 180) *
+            math.cos(toLat * math.pi / 180) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return R * c;
+  }
 }
