@@ -45,13 +45,48 @@ export default function SimilarProducts({ productId, maxItems = 4 }) {
   };
 
   const getProductImage = (product) => {
+    const placeholder = 'https://via.placeholder.com/300x300/f3f4f6/9ca3af?text=No+Image';
+    if (!product) return placeholder;
+
+    // Prefer pre-computed image URLs if available (same shape as product detail)
+    if (product.imageUrls && product.imageUrls.length > 0) {
+      return product.imageUrls[0];
+    }
+
+    // Fallback to images array from MongoDB
     if (product.images && product.images.length > 0) {
       const firstImage = product.images[0];
+
+      // Cloudinary / absolute URL
+      if (firstImage.url) {
+        if (firstImage.url.startsWith('http') || firstImage.url.startsWith('data:')) {
+          return firstImage.url;
+        }
+        // Relative URL from backend (e.g. /uploads/...)
+        const apiRoot = API_BASE.replace(/\/api$/, '');
+        return `${apiRoot}${firstImage.url}`;
+      }
+
+      // Embedded/base64 data
       if (firstImage.data) {
-        return firstImage.data;
+        if (firstImage.data.startsWith('data:') || firstImage.data.startsWith('http')) {
+          return firstImage.data;
+        }
+        return `data:${firstImage.contentType || 'image/jpeg'};base64,${firstImage.data}`;
+      }
+
+      // As a last resort, use server image route
+      if (product._id) {
+        return `${API_BASE}/images/${product._id}/0`;
       }
     }
-    return 'https://via.placeholder.com/300x300/f3f4f6/9ca3af?text=No+Image';
+
+    // Final fallback if no image info present
+    if (product._id) {
+      return `${API_BASE}/images/${product._id}/0`;
+    }
+
+    return placeholder;
   };
 
   const handleProductClick = (productId) => {
@@ -85,7 +120,7 @@ export default function SimilarProducts({ productId, maxItems = 4 }) {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-2xl font-heading text-dark-brown">Similar Products You May Like</h3>
         <span className="text-sm text-gray-500">
-          Based on category, price, and specifications
+          Based on category and price
         </span>
       </div>
       
@@ -140,12 +175,12 @@ export default function SimilarProducts({ productId, maxItems = 4 }) {
                       Similar Price
                     </span>
                   )}
-                  {product.matchReasons.subcategoryMatch && (
+                  {product.matchReasons.sameType && (
                     <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
                       Same Type
                     </span>
                   )}
-                  {product.matchReasons.sizeMatch && (
+                  {product.matchReasons.sameSize && (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
                       Same Size
                     </span>

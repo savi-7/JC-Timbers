@@ -4,6 +4,9 @@ dotenv.config(); // Load .env BEFORE any other imports that use process.env
 import express from "express";
 import cors from "cors";
 import path from "path";
+import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
+import rateLimit from "express-rate-limit";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import protectedRoutes from "./routes/protectedRoutes.js";
@@ -44,6 +47,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// HTTP security headers
+app.use(helmet());
+
+// Global API rate limiting (bot & abuse protection)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // limit each IP to 200 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests from this IP, please try again later." },
+});
+app.use("/api", apiLimiter);
+
 // Middleware - CORS
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 const allowedOrigins = new Set([
@@ -70,6 +86,9 @@ app.use(cors({
 }));
 // Parse JSON bodies - but don't parse multipart/form-data (multer handles that)
 app.use(express.json({ limit: '10mb' }));
+
+// NoSQL injection protection - sanitize request data for MongoDB
+app.use(mongoSanitize());
 
 // Ensure DB is connected before API requests (fixes Vercel serverless cold-start buffering timeout)
 app.use(async (req, res, next) => {
