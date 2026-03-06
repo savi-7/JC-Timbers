@@ -85,523 +85,511 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,
+          color: JcTimberTheme.accentRed,
+          backgroundColor: JcTimberTheme.cream,
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  children: [
-                    // HERO: greeting + main actions
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            JcTimberTheme.darkBrown,
-                            const Color(0xFF8C5B4A),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
+              : CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                        child: _buildHeader(auth),
                       ),
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildHeroBanner(context),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      sliver: SliverToBoxAdapter(
+                        child: Text(
+                          'Our Services',
+                          style: JcTimberTheme.headingStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 16,
+                          childAspectRatio: 0.85,
+                        ),
+                        delegate: SliverChildListDelegate([
+                          _buildModuleCard(
+                            context: context,
+                            title: 'Furniture Store',
+                            subtitle: 'Shop premium curated pieces',
+                            icon: Icons.chair_alt_rounded,
+                            color: JcTimberTheme.darkBrown,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (_) => const FurnitureListScreen()),
+                            ),
+                          ),
+                          _buildModuleCard(
+                            context: context,
+                            title: 'Timber Services',
+                            subtitle: 'Book custom processing',
+                            icon: Icons.forest_rounded,
+                            color: JcTimberTheme.accentRed,
+                            onTap: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const TimberBookingScreen()),
+                              );
+                              _load();
+                            },
+                          ),
+                          _buildModuleCard(
+                            context: context,
+                            title: 'Marketplace',
+                            subtitle: 'Buy & sell timber goods',
+                            icon: Icons.storefront_rounded,
+                            color: const Color(0xFF6B443D), // A rich mid-brown
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (_) => const MarketplaceScreen()),
+                            ),
+                          ),
+                          _buildQuickActionsCard(context),
+                        ]),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                      sliver: SliverToBoxAdapter(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Recent Bookings',
+                              style: JcTimberTheme.headingStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (_enquiries.isNotEmpty)
+                              TextButton(
+                                onPressed: () async {
+                                  await Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) => const MyEnquiriesScreen()),
+                                  );
+                                  _load();
+                                },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: JcTimberTheme.accentRed,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                child: Text(
+                                  'View All',
+                                  style: JcTimberTheme.paragraphStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: JcTimberTheme.accentRed,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: _enquiries.isEmpty
+                          ? SliverToBoxAdapter(
+                              child: Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: JcTimberTheme.gray200),
+                                ),
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'Good ${_greeting()},',
-                                      style: JcTimberTheme.paragraphStyle(
-                                        fontSize: 14,
-                                        color: JcTimberTheme.cream
-                                            .withOpacity(0.8),
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: JcTimberTheme.lightCream,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.receipt_long_rounded,
+                                        size: 32,
+                                        color: JcTimberTheme.darkBrown20,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 16),
                                     Text(
-                                      auth.user?.name ?? 'JC Timbers customer',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: JcTimberTheme.headingStyle(
-                                        fontSize: 22,
+                                      'No bookings yet',
+                                      style: JcTimberTheme.paragraphStyle(
+                                        fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                      ).copyWith(color: JcTimberTheme.cream),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Start by booking a timber service or checking out the marketplace.',
+                                      textAlign: TextAlign.center,
+                                      style: JcTimberTheme.paragraphStyle(
+                                        fontSize: 14,
+                                        color: JcTimberTheme.gray500,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const ProfileScreen(),
-                                    ),
+                            )
+                          : SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  // Show max 3 recent bookings
+                                  if (index >= 3) return const SizedBox.shrink();
+                                  final enquiry = _enquiries[index];
+                                  return _EnquiryCard(
+                                    enquiry: enquiry,
+                                    onCancel: () async {
+                                      final timber = TimberService(auth);
+                                      await timber.cancelEnquiry(enquiry.id);
+                                      _load();
+                                    },
                                   );
                                 },
-                                child: CircleAvatar(
-                                  radius: 22,
-                                  backgroundColor:
-                                      JcTimberTheme.cream.withOpacity(0.2),
-                                  child: Text(
-                                    (() {
-                                      final name = auth.user?.name.trim();
-                                      if (name == null || name.isEmpty) {
-                                        return 'JT';
-                                      }
-                                      final parts =
-                                          name.split(RegExp(r'\s+'));
-                                      final initials = parts
-                                          .take(2)
-                                          .map((p) => p[0])
-                                          .join();
-                                      return initials.toUpperCase();
-                                    })(),
-                                    style: const TextStyle(
-                                      color: JcTimberTheme.cream,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Manage timber processing and shop curated furniture in one place.',
-                            style: JcTimberTheme.paragraphStyle(
-                              fontSize: 13,
-                              color:
-                                  JcTimberTheme.cream.withOpacity(0.85),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: FilledButton(
-                                  onPressed: () async {
-                                    await Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const TimberBookingScreen(),
-                                      ),
-                                    );
-                                    _load();
-                                  },
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: JcTimberTheme.cream,
-                                    foregroundColor: JcTimberTheme.darkBrown,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: const Text('Book timber'),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const FurnitureListScreen(),
-                                      ),
-                                    );
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(
-                                      color: JcTimberTheme.cream
-                                          .withOpacity(0.9),
-                                    ),
-                                    foregroundColor: JcTimberTheme.cream,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: const Text('Shop furniture'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // HIGHLIGHTED CATEGORIES
-                    SizedBox(
-                      height: 110,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          _CategoryChip(
-                            label: 'Timber services',
-                            icon: Icons.forest_outlined,
-                            onTap: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const TimberBookingScreen(),
-                                ),
-                              );
-                              _load();
-                            },
-                          ),
-                          _CategoryChip(
-                            label: 'Furniture store',
-                            icon: Icons.chair_outlined,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const FurnitureListScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          _CategoryChip(
-                            label: 'My enquiries',
-                            icon: Icons.list_alt_outlined,
-                            onTap: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const MyEnquiriesScreen(),
-                                ),
-                              );
-                              _load();
-                            },
-                          ),
-                          _CategoryChip(
-                            label: 'My cart',
-                            icon: Icons.shopping_cart_outlined,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const CartScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          _CategoryChip(
-                            label: 'Marketplace',
-                            icon: Icons.store_outlined,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const MarketplaceScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // OVERVIEW CARD
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: JcTimberTheme.gray200),
-                        boxShadow: [
-                          BoxShadow(
-                            color: JcTimberTheme.darkBrown.withOpacity(0.06),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: JcTimberTheme.accentRed
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.event_note,
-                              color: JcTimberTheme.accentRed,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Your timber bookings',
-                                  style: JcTimberTheme.paragraphStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _enquiries.isEmpty
-                                      ? 'You have no active requests yet.'
-                                      : 'You have ${_enquiries.length} request${_enquiries.length == 1 ? '' : 's'} in the system.',
-                                  style: JcTimberTheme.paragraphStyle(
-                                    fontSize: 13,
-                                    color:
-                                        JcTimberTheme.darkBrown70,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.arrow_forward_ios,
-                                size: 16),
-                            onPressed: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const MyEnquiriesScreen(),
-                                ),
-                              );
-                              _load();
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Services Section (Timber overview)
-                    Text(
-                      'Timber services',
-                      style: JcTimberTheme.headingStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Professional timber processing and woodworking services tailored to your needs.',
-                      style: JcTimberTheme.paragraphStyle(
-                        fontSize: 14,
-                        color: JcTimberTheme.darkBrown70,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Timber Processing Card
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: JcTimberTheme.darkBrown.withOpacity(0.08),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                        border: Border.all(color: JcTimberTheme.gray200),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Center(
-                              child: Icon(
-                                Icons.forest,
-                                size: 48,
-                                color: JcTimberTheme.accentRed,
+                                childCount: _enquiries.length > 3 ? 3 : _enquiries.length,
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Timber Cutting & Processing',
-                              style: JcTimberTheme.headingStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Planing, resawing, debarking and sawing — handled with industrial precision.',
-                              style: JcTimberTheme.paragraphStyle(
-                                fontSize: 14,
-                                color: JcTimberTheme.darkBrown70,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            _buildFeatureItem('Planing – smooth, accurate finishes'),
-                            _buildFeatureItem('Resawing – break down large logs efficiently'),
-                            _buildFeatureItem('Debarking – clean logs for further processing'),
-                            _buildFeatureItem('Sawing – cut to your exact specifications'),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton(
-                                onPressed: () async {
-                                  await Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const TimberBookingScreen(),
-                                    ),
-                                  );
-                                  _load();
-                                },
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: JcTimberTheme.darkBrown,
-                                  foregroundColor: JcTimberTheme.cream,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: const Text('Send a Request'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
-
-                    const SizedBox(height: 20),
-
-                    // How it works
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.info_outline, size: 22, color: Colors.blue.shade700),
-                              const SizedBox(width: 8),
-                              Text(
-                                'How it works',
-                                style: JcTimberTheme.paragraphStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.blue.shade900,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '• Submit your service request with timber details.',
-                            style: JcTimberTheme.paragraphStyle(fontSize: 12, color: Colors.blue.shade800),
-                          ),
-                          Text(
-                            '• Our team reviews and confirms an available slot.',
-                            style: JcTimberTheme.paragraphStyle(fontSize: 12, color: Colors.blue.shade800),
-                          ),
-                          Text(
-                            '• Your wood is processed on the scheduled date.',
-                            style: JcTimberTheme.paragraphStyle(fontSize: 12, color: Colors.blue.shade800),
-                          ),
-                          Text(
-                            '• You pick up the finished timber from our yard.',
-                            style: JcTimberTheme.paragraphStyle(fontSize: 12, color: Colors.blue.shade800),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Working hours pill
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: JcTimberTheme.gray200),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.max,
-                          children: [
-                            Icon(Icons.access_time, size: 20, color: Colors.grey.shade700),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Working hours: Mon–Sat, 9:00 AM – 5:00 PM',
-                                style: JcTimberTheme.paragraphStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Bookings list
-                    Text(
-                      'My bookings',
-                      style: JcTimberTheme.headingStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_enquiries.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Center(
-                          child: Text(
-                            'No bookings yet. Start by sending your first timber request.',
-                            style: JcTimberTheme.paragraphStyle(
-                              fontSize: 14,
-                              color: JcTimberTheme.darkBrown70,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      )
-                    else
-                      ..._enquiries.map(
-                        (e) => _EnquiryCard(
-                          enquiry: e,
-                          onCancel: () async {
-                            final timber = TimberService(auth);
-                            await timber.cancelEnquiry(e.id);
-                            _load();
-                          },
-                        ),
-                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
                   ],
                 ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(AuthService auth) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+        );
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Good ${_greeting()},',
+                  style: JcTimberTheme.paragraphStyle(
+                    fontSize: 14,
+                    color: JcTimberTheme.darkBrown60,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  auth.user?.name ?? 'Guest',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: JcTimberTheme.headingStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: JcTimberTheme.accentRed.withOpacity(0.3), width: 2),
+            ),
+            child: CircleAvatar(
+              radius: 26,
+              backgroundColor: JcTimberTheme.darkBrown,
+              child: Text(
+                (() {
+                  final name = auth.user?.name.trim() ?? '';
+                  if (name.isEmpty) return 'JT';
+                  final parts = name.split(RegExp(r'\s+'));
+                  return parts.take(2).map((p) => p[0]).join().toUpperCase();
+                })(),
+                style: const TextStyle(
+                  color: JcTimberTheme.cream,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroBanner(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: JcTimberTheme.darkBrown,
+        borderRadius: BorderRadius.circular(24),
+        image: const DecorationImage(
+          image: AssetImage('assets/images/wood_texture_dark.png'), // Will fail gracefully if not exists, but provides logic hook
+          fit: BoxFit.cover,
+          opacity: 0.15,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: JcTimberTheme.darkBrown.withOpacity(0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Decorative background shapes
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -40,
+            bottom: -40,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: JcTimberTheme.accentRed.withOpacity(0.1),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: JcTimberTheme.accentRed,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'DISCOVER',
+                    style: JcTimberTheme.paragraphStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Premium Timber\n& Curated Design',
+                  style: JcTimberTheme.headingStyle(
+                    fontSize: 28,
+                    color: Colors.white,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Your one-stop destination for fine woodworking and exotic furniture.',
+                  style: JcTimberTheme.paragraphStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.8),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModuleCard({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -20,
+              bottom: -20,
+              child: Icon(
+                icon,
+                size: 140,
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: JcTimberTheme.paragraphStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: JcTimberTheme.paragraphStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: JcTimberTheme.gray200, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: JcTimberTheme.darkBrown.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildQuickActionItem(
+            context,
+            icon: Icons.shopping_cart_outlined,
+            label: 'My Cart',
+            color: JcTimberTheme.darkBrown,
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CartScreen())),
+          ),
+          Divider(color: JcTimberTheme.gray200, height: 1, indent: 24, endIndent: 24),
+          _buildQuickActionItem(
+            context,
+            icon: Icons.assignment_outlined,
+            label: 'My Enquiries',
+            color: JcTimberTheme.accentRed,
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MyEnquiriesScreen()),
+              );
+              _load();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: JcTimberTheme.paragraphStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: JcTimberTheme.darkBrown,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: JcTimberTheme.gray300),
+          ],
         ),
       ),
     );
@@ -622,150 +610,190 @@ class _EnquiryCard extends StatelessWidget {
     final canCancel = enquiry.status != 'COMPLETED' &&
         enquiry.status != 'CANCELLED' &&
         enquiry.status != 'IN_PROGRESS';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: JcTimberTheme.gray200),
         boxShadow: [
           BoxShadow(
-            color: JcTimberTheme.darkBrown.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: JcTimberTheme.darkBrown.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  enquiry.workType,
-                  style: JcTimberTheme.paragraphStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: JcTimberTheme.lightCream,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    _getWorkTypeIcon(enquiry.workType),
+                    color: JcTimberTheme.darkBrown,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        enquiry.workType,
+                        style: JcTimberTheme.paragraphStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${enquiry.requestedDate} at ${enquiry.requestedTime}',
+                        style: JcTimberTheme.paragraphStyle(
+                          fontSize: 14,
+                          color: JcTimberTheme.gray500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _statusColor(enquiry.status).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    enquiry.status.replaceAll('_', ' '),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _statusColor(enquiry.status),
-                      fontWeight: FontWeight.w500,
+                    color: _statusColor(enquiry.status).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _statusColor(enquiry.status).withOpacity(0.2),
                     ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: _statusColor(enquiry.status),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatStatus(enquiry.status),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _statusColor(enquiry.status),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text('Date: ${enquiry.requestedDate} ${enquiry.requestedTime}', style: JcTimberTheme.paragraphStyle(fontSize: 14)),
-            Text('Cubic feet: ${enquiry.cubicFeet.toStringAsFixed(1)}', style: JcTimberTheme.paragraphStyle(fontSize: 14)),
-            if (enquiry.estimatedCost != null)
-              Text('Est. cost: ₹${enquiry.estimatedCost!.toStringAsFixed(0)}', style: JcTimberTheme.paragraphStyle(fontSize: 14)),
-            if (canCancel) ...[
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: onCancel,
-                style: TextButton.styleFrom(foregroundColor: JcTimberTheme.accentRed),
-                child: const Text('Cancel'),
-              ),
-            ],
+            const SizedBox(height: 16),
+            Divider(color: JcTimberTheme.gray200, height: 1),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Volume',
+                      style: JcTimberTheme.paragraphStyle(
+                        fontSize: 12,
+                        color: JcTimberTheme.gray500,
+                      ),
+                    ),
+                    Text(
+                      '${enquiry.cubicFeet.toStringAsFixed(1)} cb ft',
+                      style: JcTimberTheme.paragraphStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                if (enquiry.estimatedCost != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Est. Cost',
+                        style: JcTimberTheme.paragraphStyle(
+                          fontSize: 12,
+                          color: JcTimberTheme.gray500,
+                        ),
+                      ),
+                      Text(
+                        '₹${enquiry.estimatedCost!.toStringAsFixed(0)}',
+                        style: JcTimberTheme.paragraphStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: JcTimberTheme.darkBrown,
+                        ),
+                      ),
+                    ],
+                  ),
+                if (canCancel)
+                  FilledButton.tonal(
+                    onPressed: onCancel,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: JcTimberTheme.errorBg,
+                      foregroundColor: JcTimberTheme.errorText,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
+  IconData _getWorkTypeIcon(String workType) {
+    final t = workType.toLowerCase();
+    if (t.contains('cut') || t.contains('saw')) return Icons.carpenter_rounded;
+    if (t.contains('plane') || t.contains('planing')) return Icons.format_paint_rounded;
+    return Icons.handyman_rounded;
+  }
+
+  String _formatStatus(String status) {
+    if (status == 'ENQUIRY_RECEIVED') return 'RECEIVED';
+    if (status == 'TIME_ACCEPTED') return 'ACCEPTED';
+    return status.replaceAll('_', ' ');
+  }
+
   Color _statusColor(String s) {
     switch (s) {
       case 'COMPLETED':
-        return Colors.green;
+        return Colors.green.shade600;
       case 'CANCELLED':
-        return Colors.grey;
+        return JcTimberTheme.gray500;
       case 'SCHEDULED':
       case 'TIME_ACCEPTED':
-        return Colors.blue;
+        return Colors.blue.shade600;
       case 'ENQUIRY_RECEIVED':
       case 'UNDER_REVIEW':
-        return Colors.orange;
+        return Colors.orange.shade700;
       default:
         return JcTimberTheme.accentRed;
     }
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: 150,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: JcTimberTheme.gray200),
-            boxShadow: [
-              BoxShadow(
-                color: JcTimberTheme.darkBrown.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: JcTimberTheme.accentRed.withOpacity(0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: JcTimberTheme.accentRed,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: JcTimberTheme.paragraphStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: JcTimberTheme.darkBrown,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

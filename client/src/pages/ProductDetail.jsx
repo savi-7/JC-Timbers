@@ -8,6 +8,7 @@ import Header from '../components/Header';
 import SimilarProducts from '../components/SimilarProducts';
 import ProductReviews from '../components/ProductReviews';
 import ReviewModal from '../components/ReviewModal';
+import { motion } from 'framer-motion';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -29,12 +30,12 @@ export default function ProductDetail() {
       try {
         setLoading(true);
         setError(null);
-        
+
         console.log(`Fetching product with ID: ${id} (attempt ${retryCount + 1})`);
         const response = await api.get(`/products/${id}`);
-        
+
         console.log('Product response:', response.data);
-        
+
         if (response.data && response.data.product) {
           setProduct(response.data.product);
         } else {
@@ -48,14 +49,14 @@ export default function ProductDetail() {
           data: err.response?.data,
           message: err.message
         });
-        
+
         // Retry logic for network errors
         if (retryCount < 2 && (err.code === 'NETWORK_ERROR' || err.message.includes('Network Error'))) {
           console.log(`Retrying in 1 second... (attempt ${retryCount + 1})`);
           setTimeout(() => fetchProduct(retryCount + 1), 1000);
           return;
         }
-        
+
         if (err.response?.status === 404) {
           setError('Product not found');
         } else if (err.response?.status === 500) {
@@ -92,7 +93,7 @@ export default function ProductDetail() {
       navigate("/login");
       return;
     }
-    
+
     try {
       await api.post('/cart', { productId: product._id, quantity: quantity });
       showSuccess(`Added ${quantity} ${product.name} to cart`);
@@ -119,7 +120,7 @@ export default function ProductDetail() {
       navigate("/login");
       return;
     }
-    
+
     try {
       await api.post('/cart', { productId: product._id, quantity: quantity });
       // Refresh cart count in header
@@ -146,7 +147,7 @@ export default function ProductDetail() {
       navigate("/login");
       return;
     }
-    
+
     try {
       await api.post(`/wishlist/${product._id}`);
       showSuccess(`Added ${product.name} to wishlist`);
@@ -158,10 +159,10 @@ export default function ProductDetail() {
   };
 
   const formatINR = (amount) => {
-    return new Intl.NumberFormat('en-IN', { 
-      style: 'currency', 
-      currency: 'INR', 
-      maximumFractionDigits: 0 
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
@@ -245,9 +246,14 @@ export default function ProductDetail() {
         </nav>
 
         {/* Product Details */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Left Section - Product Images */}
-          <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+          {/* Left Section - Product Images (Sticky Scroll on Desktop) */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="space-y-6 lg:sticky lg:top-32"
+          >
             {/* Main Product Image */}
             <div className="aspect-square rounded-2xl overflow-hidden shadow-lg">
               <img
@@ -267,11 +273,10 @@ export default function ProductDetail() {
                   <button
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                      selectedImageIndex === index 
-                        ? 'border-dark-brown ring-2 ring-dark-brown ring-opacity-20' 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${selectedImageIndex === index
+                      ? 'border-dark-brown ring-2 ring-dark-brown ring-opacity-20'
+                      : 'border-gray-200 hover:border-gray-300'
+                      }`}
                   >
                     <img
                       src={getImageUrl(image)}
@@ -285,10 +290,15 @@ export default function ProductDetail() {
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Right Section - Product Information */}
-          <div className="space-y-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+            className="space-y-10 lg:pb-32"
+          >
             {/* Product Header */}
             <div className="space-y-4">
               {/* Category Badge */}
@@ -305,16 +315,16 @@ export default function ProductDetail() {
               </div>
 
               {/* Product Title */}
-              <h1 className="text-3xl lg:text-4xl font-bold text-dark-brown leading-tight">
+              <h1 className="text-4xl lg:text-6xl font-heading font-extrabold text-dark-brown leading-[1.1] tracking-tight">
                 {product.name}
               </h1>
 
               {/* Price */}
-              <div className="flex items-baseline space-x-3">
-                <span className="text-3xl font-bold text-dark-brown">
+              <div className="flex items-baseline space-x-4 pt-4 border-t border-gray-200/60">
+                <span className="text-4xl lg:text-5xl font-bold text-accent-red">
                   {formatINR(product.price)}
                 </span>
-                <span className="text-lg text-gray-600">per {product.unit}</span>
+                <span className="text-xl text-gray-500 font-medium font-paragraph">per {product.unit}</span>
               </div>
             </div>
 
@@ -456,8 +466,10 @@ export default function ProductDetail() {
             </div>
 
             {/* Purchase Section */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <div className="space-y-6">
+            <div className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-red opacity-[0.03] blur-2xl rounded-full pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-40 h-40 bg-dark-brown opacity-[0.03] blur-3xl rounded-full pointer-events-none"></div>
+              <div className="relative space-y-8">
                 {/* Quantity Selector */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">Quantity</label>
@@ -492,9 +504,11 @@ export default function ProductDetail() {
                 <div className="space-y-3">
                   {/* Primary Actions - Side by Side */}
                   <div className="grid grid-cols-2 gap-3">
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={handleAddToCart}
-                      className="flex items-center justify-center gap-2 bg-dark-brown text-white py-4 px-4 rounded-lg font-semibold hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                      className="flex items-center justify-center gap-2 bg-dark-brown text-white py-4 px-4 rounded-lg font-semibold hover:bg-accent-red transition-colors duration-200 shadow-md hover:shadow-lg"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <circle cx="9" cy="21" r="1"></circle>
@@ -502,19 +516,23 @@ export default function ProductDetail() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                       </svg>
                       Add to Cart
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={handleBuyNow}
-                      className="flex items-center justify-center gap-2 bg-orange-500 text-white py-4 px-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                      className="flex items-center justify-center gap-2 bg-orange-500 text-white py-4 px-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors duration-200 shadow-md hover:shadow-lg"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                       Buy Now
-                    </button>
+                    </motion.button>
                   </div>
                   {/* Secondary Action */}
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={handleAddToWishlist}
                     className="w-full flex items-center justify-center gap-2 py-3 px-6 border-2 border-dark-brown text-dark-brown rounded-lg font-semibold hover:bg-dark-brown hover:text-white transition-colors duration-200"
                   >
@@ -522,21 +540,29 @@ export default function ProductDetail() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
                     Add to Wishlist
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Similar Products Section */}
         {product && (
-          <div className="max-w-7xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6 }}
+            className="max-w-7xl mx-auto px-6 mt-12"
+          >
             <SimilarProducts productId={product._id} maxItems={4} />
 
             {/* Customer Reviews Section */}
-            <ProductReviews productId={product._id} />
-          </div>
+            <div className="mt-12">
+              <ProductReviews productId={product._id} />
+            </div>
+          </motion.div>
         )}
       </main>
 

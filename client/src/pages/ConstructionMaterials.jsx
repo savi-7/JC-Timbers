@@ -7,6 +7,7 @@ import ProductCard from '../components/ProductCard';
 import { useNotification } from '../components/NotificationProvider';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { motion } from 'framer-motion';
 
 export default function ConstructionMaterials() {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export default function ConstructionMaterials() {
       navigate("/login");
       return;
     }
-    
+
     (async () => {
       try {
         await api.post('/cart', { productId: product._id, quantity: 1 });
@@ -69,7 +70,7 @@ export default function ConstructionMaterials() {
       navigate("/login");
       return;
     }
-    
+
     (async () => {
       try {
         await api.post('/cart', { productId: product._id, quantity: 1 });
@@ -125,7 +126,7 @@ export default function ConstructionMaterials() {
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue, bValue;
-      
+
       switch (sortBy) {
         case 'name':
           aValue = a.name.toLowerCase();
@@ -190,29 +191,49 @@ export default function ConstructionMaterials() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-4">
-        {/* Hero Section */}
-        <div className="bg-gradient-to-r from-cream to-light-cream py-2 lg:py-3 rounded-2xl mb-6 relative overflow-hidden">
-          {/* Decorative elements */}
-          <div className="absolute -top-4 -right-4 w-16 h-16 bg-accent-red rounded-full opacity-10"></div>
-          <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-dark-brown rounded-full opacity-5"></div>
-          
-          <div className="text-center relative z-10">
-            <h1 className="text-xl lg:text-3xl font-heading text-dark-brown leading-tight mb-2">
-              Construction Materials
-            </h1>
-            <p className="text-sm text-gray-700 font-paragraph leading-relaxed max-w-xl mx-auto mb-3">
-              Discover our curated collection of durable construction materials. 
-              Each product is selected for its strength, reliability, and suitability for building projects.
-            </p>
-          </div>
-        </div>
+        {/* Immersive Hero Section */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="bg-dark-brown text-cream py-16 lg:py-24 rounded-3xl mb-12 relative overflow-hidden shadow-2xl flex items-center justify-center text-center isolate"
+        >
+          {/* Static background blobs optimized for performance */}
+          <div
+            className="absolute -top-[50%] -right-[10%] w-[80%] h-[150%] rounded-full bg-accent-red blur-[100px] opacity-20 pointer-events-none -z-10"
+          />
+          <div
+            className="absolute -bottom-[50%] -left-[10%] w-[80%] h-[150%] rounded-[40%] bg-cream blur-[100px] opacity-10 pointer-events-none -z-10"
+          />
 
-        {/* Search and Filter Section */}
+          <div className="relative z-10 px-6 max-w-4xl mx-auto">
+            <motion.h1
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.8 }}
+              className="text-5xl lg:text-7xl font-heading font-bold text-white leading-[1.1] mb-6 tracking-tight"
+            >
+              Construction Materials
+            </motion.h1>
+            <motion.p
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }}
+              className="text-lg lg:text-xl text-cream/80 font-paragraph leading-relaxed max-w-2xl mx-auto mb-3"
+            >
+              High-quality building materials for all your construction needs.
+              From secure foundations to robust finishing touches, we've got you covered.
+            </motion.p>
+          </div>
+        </motion.div>
+
+        {/* Floating Search and Filter Section */}
         {!loading && !error && products.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-            <div className="flex flex-col lg:flex-row gap-3">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="sticky top-[80px] z-40 bg-white/80 backdrop-blur-xl shadow-lg border border-white/50 p-4 mb-12 rounded-2xl"
+          >
+            <div className="flex flex-col lg:flex-row gap-4 items-center">
               {/* Search Bar */}
-              <div className="flex-1">
+              <div className="w-full lg:flex-1">
                 <div className="relative">
                   <svg
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
@@ -284,7 +305,7 @@ export default function ConstructionMaterials() {
                 )}
               </p>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Error State */}
@@ -332,7 +353,9 @@ export default function ConstructionMaterials() {
                 </div>
 
                 {/* Products Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12"
+                >
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product._id}

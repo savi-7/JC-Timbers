@@ -7,6 +7,7 @@ import ProductCard from '../components/ProductCard';
 import { useNotification } from '../components/NotificationProvider';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { motion } from 'framer-motion';
 
 export default function Furniture() {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ export default function Furniture() {
       navigate("/login");
       return;
     }
-    
+
     (async () => {
       try {
         await api.post('/cart', { productId: product._id, quantity: 1 });
@@ -77,7 +78,7 @@ export default function Furniture() {
       navigate("/login");
       return;
     }
-    
+
     (async () => {
       try {
         await api.post('/cart', { productId: product._id, quantity: 1 });
@@ -189,7 +190,7 @@ export default function Furniture() {
         showError('Please select a valid image file');
         return;
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         showError('Image size must be less than 5MB');
@@ -289,7 +290,7 @@ export default function Furniture() {
 
       const results = response.data.data.results;
       setImageSearchResults(results);
-        
+
       console.log('Image search results received:', {
         totalResults: results.length,
         results: results.map(r => ({
@@ -300,14 +301,14 @@ export default function Furniture() {
           score: r.score?.toFixed(3)
         }))
       });
-      
+
       // Filter results by minimum similarity score (only high-confidence matches)
       // Higher threshold ensures only truly similar products are shown
       const MIN_SIMILARITY_SCORE = 0.70; // 70% similarity required for accurate matches
       const highConfidenceResults = results.filter(r => r.score >= MIN_SIMILARITY_SCORE);
-      
+
       console.log('High confidence results:', highConfidenceResults.length, 'out of', results.length);
-      
+
       // Create a map of products by ID for fast lookup (handle both string and ObjectId formats)
       const productsById = {};
       const productsByName = {};
@@ -317,32 +318,32 @@ export default function Furniture() {
         productsById[productId.toLowerCase()] = product; // Also store lowercase version
         productsByName[product.name.toLowerCase()] = product;
       });
-      
+
       console.log('Product lookup maps created:', {
         totalProducts: products.length,
         productsByIdKeys: Object.keys(productsById).length,
         productsByNameKeys: Object.keys(productsByName).length,
         sampleProductIds: products.slice(0, 3).map(p => p._id?.toString())
       });
-      
+
       // Try to match results with actual products
       const matchedProducts = [];
       const usedProductIds = new Set(); // Avoid duplicates
-      
+
       // Sort results by similarity score (highest first)
       const sortedResults = [...highConfidenceResults].sort((a, b) => b.score - a.score);
-      
+
       console.log('Attempting to match', sortedResults.length, 'results with products...');
-      
+
       for (const result of sortedResults) {
         let matched = null;
-        
+
         // Strategy 1: Direct product_id match (most reliable)
         if (result.product_id) {
           const productIdStr = String(result.product_id).trim();
           // Try exact match
           matched = productsById[productIdStr] || productsById[productIdStr.toLowerCase()];
-          
+
           if (matched && !usedProductIds.has(matched._id?.toString())) {
             usedProductIds.add(matched._id?.toString());
             matchedProducts.push({
@@ -356,12 +357,12 @@ export default function Furniture() {
             console.log(`⚠️ Product ID not found in database: ${productIdStr}`);
           }
         }
-        
+
         // Strategy 2: Product name match from metadata
         if (result.product_name && !matched) {
           const productNameLower = result.product_name.toLowerCase().trim();
           matched = productsByName[productNameLower];
-          
+
           if (matched && !usedProductIds.has(matched._id?.toString())) {
             usedProductIds.add(matched._id?.toString());
             matchedProducts.push({
@@ -375,30 +376,30 @@ export default function Furniture() {
             console.log(`⚠️ Product name not found: "${result.product_name}"`);
           }
         }
-        
+
         // Strategy 3: Match by filename/keywords (fallback)
         if (!matched) {
           const filename = result.filename || '';
           const filenameLower = filename.toLowerCase();
-          
+
           // Extract keywords from filename
           const keywords = filenameLower
             .replace(/\.[^/.]+$/, '') // Remove extension
             .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
             .split(/\s+/) // Split by spaces
             .filter(k => k.length > 2); // Filter out very short words
-          
+
           // Try to find matching product
           for (const product of products) {
             if (usedProductIds.has(product._id)) continue;
-            
+
             const productNameLower = product.name.toLowerCase();
-            
+
             // Check if any keyword from filename appears in product name
-            const keywordMatch = keywords.some(keyword => 
+            const keywordMatch = keywords.some(keyword =>
               productNameLower.includes(keyword) || keyword.includes(productNameLower.split(' ')[0])
             );
-            
+
             // Check for common furniture type matches
             const furnitureTypes = {
               'bed': ['bed', 'mattress', 'bunk'],
@@ -410,22 +411,22 @@ export default function Furniture() {
               'dining': ['dining', 'dinner'],
               'study': ['study', 'office', 'work']
             };
-            
+
             let typeMatch = false;
             for (const [, variations] of Object.entries(furnitureTypes)) {
-              if (keywords.some(k => variations.includes(k)) && 
-                  variations.some(v => productNameLower.includes(v))) {
+              if (keywords.some(k => variations.includes(k)) &&
+                variations.some(v => productNameLower.includes(v))) {
                 typeMatch = true;
                 break;
               }
             }
-            
+
             if (keywordMatch || typeMatch) {
               matched = product;
               break;
             }
           }
-          
+
           if (matched && !usedProductIds.has(matched._id?.toString())) {
             usedProductIds.add(matched._id?.toString());
             matchedProducts.push({
@@ -437,7 +438,7 @@ export default function Furniture() {
           }
         }
       }
-      
+
       // Sort matched products by similarity score (highest first)
       matchedProducts.sort((a, b) => b.similarityScore - a.similarityScore);
 
@@ -451,7 +452,7 @@ export default function Furniture() {
         score: p.similarityScore?.toFixed(3),
         matchMethod: p.searchResult?.matchMethod || 'filename'
       })));
-      
+
       if (matchedProducts.length === 0 && highConfidenceResults.length > 0) {
         console.warn('⚠️ No products matched despite having search results!');
         console.warn('Sample results that failed to match:', sortedResults.slice(0, 5).map(r => ({
@@ -502,7 +503,7 @@ export default function Furniture() {
           timeout: err?.config?.timeout
         }
       });
-      
+
       // Handle different error types
       if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
         showError('Image search timed out. The image might be too large or the service is slow. Please try again with a smaller image.');
@@ -533,10 +534,10 @@ export default function Furniture() {
       } else if (err?.response?.status === 413) {
         showError('Image file is too large. Maximum size is 5MB.');
       } else if (err?.response?.status === 500) {
-        const errorMsg = err?.response?.data?.message || 
-                        err?.response?.data?.error || 
-                        err?.response?.data?.detail ||
-                        'Server error during image search. Please try again.';
+        const errorMsg = err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.response?.data?.detail ||
+          'Server error during image search. Please try again.';
         showError(errorMsg);
         console.error('Server error details:', {
           message: err?.response?.data?.message,
@@ -547,14 +548,14 @@ export default function Furniture() {
         });
       } else {
         // For other errors, show a user-friendly message
-        const errorMsg = err?.response?.data?.message || 
-                        err?.response?.data?.error || 
-                        err?.message ||
-                        'Image search failed. Please try again.';
+        const errorMsg = err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          'Image search failed. Please try again.';
         showError(errorMsg);
         console.warn('Image search error:', errorMsg);
       }
-      
+
       setIsImageSearchMode(false);
       setImageSearchResults(null);
     } finally {
@@ -642,7 +643,7 @@ export default function Furniture() {
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue, bValue;
-      
+
       switch (sortBy) {
         case 'name':
           aValue = a.name.toLowerCase();
@@ -707,29 +708,49 @@ export default function Furniture() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-4">
-        {/* Hero Section */}
-        <div className="bg-gradient-to-r from-cream to-light-cream py-2 lg:py-3 rounded-2xl mb-6 relative overflow-hidden">
-          {/* Decorative elements */}
-          <div className="absolute -top-4 -right-4 w-16 h-16 bg-accent-red rounded-full opacity-10"></div>
-          <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-dark-brown rounded-full opacity-5"></div>
-          
-          <div className="text-center relative z-10">
-            <h1 className="text-xl lg:text-3xl font-heading text-dark-brown leading-tight mb-2">
-              Handcrafted Furniture
-            </h1>
-            <p className="text-sm text-gray-700 font-paragraph leading-relaxed max-w-xl mx-auto mb-3">
-              Discover our curated collection of handcrafted furniture pieces. 
-              Each piece is made from the finest materials with attention to detail and craftsmanship.
-            </p>
-          </div>
-        </div>
+        {/* Immersive Hero Section */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="bg-dark-brown text-cream py-16 lg:py-24 rounded-3xl mb-12 relative overflow-hidden shadow-2xl flex items-center justify-center text-center isolate"
+        >
+          {/* Static background blobs optimized for performance */}
+          <div
+            className="absolute -top-[50%] -right-[10%] w-[80%] h-[150%] rounded-full bg-accent-red blur-[100px] opacity-20 pointer-events-none -z-10"
+          />
+          <div
+            className="absolute -bottom-[50%] -left-[10%] w-[80%] h-[150%] rounded-[40%] bg-cream blur-[100px] opacity-10 pointer-events-none -z-10"
+          />
 
-        {/* Search and Filter Section */}
+          <div className="relative z-10 px-6 max-w-4xl mx-auto">
+            <motion.h1
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.8 }}
+              className="text-5xl lg:text-7xl font-heading font-bold text-white leading-[1.1] mb-6 tracking-tight"
+            >
+              Handcrafted Furniture
+            </motion.h1>
+            <motion.p
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }}
+              className="text-lg lg:text-xl text-cream/80 font-paragraph leading-relaxed max-w-2xl mx-auto"
+            >
+              Discover our curated collection of handcrafted masterworks.
+              Each piece is made from the finest materials with unparalleled attention to detail and craftsmanship.
+            </motion.p>
+          </div>
+        </motion.div>
+
+        {/* Floating Search and Filter Section */}
         {!loading && !error && products.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-            <div className="flex flex-col lg:flex-row gap-3">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="sticky top-[80px] z-40 bg-white/80 backdrop-blur-xl shadow-lg border border-white/50 p-4 mb-12 rounded-2xl"
+          >
+            <div className="flex flex-col lg:flex-row gap-4 items-center">
               {/* Search Bar */}
-              <div className="flex-1">
+              <div className="w-full lg:flex-1">
                 <div className="relative flex items-center">
                   <svg
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
@@ -754,9 +775,8 @@ export default function Furniture() {
                       }
                     }}
                     disabled={isImageSearchMode}
-                    className={`w-full pl-9 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 text-sm ${
-                      isImageSearchMode ? 'bg-gray-100 cursor-not-allowed' : ''
-                    }`}
+                    className={`w-full pl-9 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-brown focus:border-transparent transition-all duration-200 text-sm ${isImageSearchMode ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                   />
                   <button
                     type="button"
@@ -869,7 +889,7 @@ export default function Furniture() {
                 )}
               </p>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Error State */}
@@ -937,26 +957,24 @@ export default function Furniture() {
               <div className="flex gap-2 mb-4 border-b border-gray-200">
                 <button
                   onClick={() => handleModeSwitch('upload')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                    cameraMode === 'upload'
-                      ? 'text-accent-red border-b-2 border-accent-red'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${cameraMode === 'upload'
+                    ? 'text-accent-red border-b-2 border-accent-red'
+                    : 'text-gray-500 hover:text-gray-700'
+                    }`}
                 >
                   Upload
                 </button>
                 <button
                   onClick={() => handleModeSwitch('camera')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                    cameraMode === 'camera'
-                      ? 'text-accent-red border-b-2 border-accent-red'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${cameraMode === 'camera'
+                    ? 'text-accent-red border-b-2 border-accent-red'
+                    : 'text-gray-500 hover:text-gray-700'
+                    }`}
                 >
                   Camera
                 </button>
               </div>
-              
+
               {/* Upload Mode */}
               {cameraMode === 'upload' && (
                 <div className="mb-4">
@@ -1016,8 +1034,8 @@ export default function Furniture() {
                   </label>
                   {cameraError && (
                     <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-600">{cameraError}</p>
-                  </div>
+                      <p className="text-sm text-red-600">{cameraError}</p>
+                    </div>
                   )}
                   <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
                     <video
@@ -1096,7 +1114,7 @@ export default function Furniture() {
                   )}
                 </div>
               )}
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={() => {
@@ -1137,7 +1155,9 @@ export default function Furniture() {
                 </div>
 
                 {/* Products Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12"
+                >
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product._id}

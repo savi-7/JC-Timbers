@@ -5,7 +5,6 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import helmet from "helmet";
-import mongoSanitize from "express-mongo-sanitize";
 import rateLimit from "express-rate-limit";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -86,9 +85,6 @@ app.use(cors({
 }));
 // Parse JSON bodies - but don't parse multipart/form-data (multer handles that)
 app.use(express.json({ limit: '10mb' }));
-
-// NoSQL injection protection - sanitize request data for MongoDB
-app.use(mongoSanitize());
 
 // Ensure DB is connected before API requests (fixes Vercel serverless cold-start buffering timeout)
 app.use(async (req, res, next) => {
