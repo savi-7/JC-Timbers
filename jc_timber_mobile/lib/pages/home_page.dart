@@ -161,7 +161,6 @@ class _HomePageState extends State<HomePage> {
                                   builder: (_) => const MarketplaceScreen()),
                             ),
                           ),
-                          _buildQuickActionsCard(context),
                         ]),
                       ),
                     ),
@@ -401,8 +400,7 @@ class _HomePageState extends State<HomePage> {
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
-                      letterSpacing: 1.2,
-                    ),
+                    ).copyWith(letterSpacing: 1.2),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -411,8 +409,7 @@ class _HomePageState extends State<HomePage> {
                   style: JcTimberTheme.headingStyle(
                     fontSize: 28,
                     color: Colors.white,
-                    height: 1.1,
-                  ),
+                  ).copyWith(height: 1.1),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -420,8 +417,7 @@ class _HomePageState extends State<HomePage> {
                   style: JcTimberTheme.paragraphStyle(
                     fontSize: 14,
                     color: Colors.white.withOpacity(0.8),
-                    height: 1.4,
-                  ),
+                  ).copyWith(height: 1.4),
                 ),
               ],
             ),
@@ -512,88 +508,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildQuickActionsCard(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: JcTimberTheme.gray200, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: JcTimberTheme.darkBrown.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildQuickActionItem(
-            context,
-            icon: Icons.shopping_cart_outlined,
-            label: 'My Cart',
-            color: JcTimberTheme.darkBrown,
-            onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CartScreen())),
-          ),
-          Divider(color: JcTimberTheme.gray200, height: 1, indent: 24, endIndent: 24),
-          _buildQuickActionItem(
-            context,
-            icon: Icons.assignment_outlined,
-            label: 'My Enquiries',
-            color: JcTimberTheme.accentRed,
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MyEnquiriesScreen()),
-              );
-              _load();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: JcTimberTheme.paragraphStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: JcTimberTheme.darkBrown,
-                ),
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: JcTimberTheme.gray300),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _EnquiryCard extends StatelessWidget {

@@ -14,6 +14,7 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -23,37 +24,33 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
     }).format(amount);
   };
 
-  const getMainImage = () => {
-    if (product.images && product.images.length > 0) {
-      const firstImage = product.images[0];
-
-      // Check if it's the old Cloudinary format
-      if (firstImage.url) {
-        return firstImage.url;
-      }
-
-      // Check if it's the new MongoDB format with data
-      if (firstImage.data) {
-        // If data starts with 'data:', it's already a data URL
-        if (firstImage.data.startsWith('data:')) {
-          return firstImage.data;
-        }
-        // If data starts with 'http', it's a URL
-        if (firstImage.data.startsWith('http')) {
-          return firstImage.data;
-        }
-        // Otherwise, construct the data URL
-        return `data:${firstImage.contentType || 'image/jpeg'};base64,${firstImage.data}`;
-      }
+  const getImageUrl = (image) => {
+    const fallback = 'https://via.placeholder.com/400x300/f3f4f6/9ca3af?text=No+Image';
+    if (!image) return fallback;
+    if (image.url) return image.url;
+    if (image.data) {
+      if (image.data.startsWith('data:') || image.data.startsWith('http')) return image.data;
+      return `data:${image.contentType || 'image/jpeg'};base64,${image.data}`;
     }
+    return fallback;
+  };
 
-    // Return a placeholder image if no images exist
-    return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
+  const images = product.images && product.images.length > 0 ? product.images : [];
+  const hasMultipleImages = images.length > 1;
+
+  const nextImage = (e) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  const prevImage = (e) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   const handleCardClick = (e) => {
     // Don't navigate if clicking on the add to cart button
-    if (e.target.closest('button')) {
+    if (e.target.closest('button') && !e.target.dataset.interactive) {
       return;
     }
     navigate(`/product/${product._id}`);
@@ -118,15 +115,16 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
       viewport={{ once: true, margin: "100px" }}
       className="group relative bg-cream rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col h-[400px] cursor-pointer will-change-transform"
       onClick={handleCardClick}
+      data-interactive="true"
     >
-      {/* Product Image Full Bleed */}
-      <div className="absolute inset-0 z-0 bg-gray-100">
+      {/* Product Image Full Bleed & Carousel */}
+      <div className="absolute inset-0 z-0 bg-gray-100 overflow-hidden">
         {!imageLoaded && (
           <div className="absolute inset-0 bg-gray-200 animate-pulse"></div>
         )}
         <img
-          src={getMainImage()}
-          alt={product.name}
+          src={images.length > 0 ? getImageUrl(images[currentImageIndex]) : 'https://via.placeholder.com/400x400/f8fafc/e2e8f0?text=No+Image'}
+          alt={`${product.name} item ${currentImageIndex + 1}`}
           loading="lazy"
           decoding="async"
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out z-10 relative will-change-transform"
@@ -137,7 +135,45 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
           }}
         />
         {/* Subtle dark gradient overlay to ensure bottom glass stands out if image is light */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10 opacity-70 group-hover:opacity-90 transition-opacity duration-300 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 opacity-70 group-hover:opacity-90 transition-opacity duration-300 pointer-events-none z-10"></div>
+
+        {/* Carousel Navigation Arrows */}
+        {hasMultipleImages && (
+          <div className="absolute inset-0 flex items-center justify-between px-3 md:opacity-0 group-hover:opacity-100 opacity-100 transition-opacity duration-300 z-20 pointer-events-none">
+            <button
+              onClick={prevImage}
+              className="p-1.5 md:p-2.5 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white hover:text-dark-brown transition-colors shadow-sm pointer-events-auto"
+              aria-label="Previous image"
+              data-interactive="true"
+            >
+              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={nextImage}
+              className="p-1.5 md:p-2.5 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white hover:text-dark-brown transition-colors shadow-sm pointer-events-auto"
+              aria-label="Next image"
+              data-interactive="true"
+            >
+              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* Carousel DOT Indicators */}
+        {hasMultipleImages && (
+          <div className="absolute bottom-[80px] md:bottom-[70px] left-0 right-0 flex justify-center gap-1.5 z-20 md:opacity-0 group-hover:opacity-100 opacity-100 transition-opacity duration-300 pointer-events-none">
+            {images.map((_, idx) => (
+              <div
+                key={idx}
+                className={`h-1.5 rounded-full transition-all duration-300 ${currentImageIndex === idx ? 'w-4 bg-white shadow-sm' : 'w-1.5 bg-white/50 backdrop-blur-sm'}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Top Overlay: Badge & Wishlist */}
@@ -190,26 +226,43 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
 
           {/* Action Buttons: Hidden on default desktop, shown on hover (always shown on mobile since no hover) */}
           <div className="mt-4 grid grid-cols-2 gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
-            <button
-              onClick={handleAddToCartClick}
-              className="py-2.5 px-2 rounded-lg font-medium transition-all duration-200 bg-dark-brown text-white hover:bg-[#5b2a32] shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs w-full"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="9" cy="21" r="1"></circle>
-                <circle cx="20" cy="21" r="1"></circle>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-              </svg>
-              {t('products.addToCart')}
-            </button>
-            <button
-              onClick={handleBuyNowClick}
-              className="py-2.5 px-2 rounded-lg font-medium transition-all duration-200 bg-accent-red text-white hover:bg-red-700 shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs w-full"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              {t('products.buyNow')}
-            </button>
+            {product.productType === 'made-to-order' ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate('/furniture/request-quote', { state: { product } });
+                }}
+                className="col-span-2 py-2.5 px-2 rounded-lg font-medium transition-all duration-200 bg-dark-brown text-white hover:bg-[#5b2a32] shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs w-full"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Request Custom Quote
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={handleAddToCartClick}
+                  className="py-2.5 px-2 rounded-lg font-medium transition-all duration-200 bg-dark-brown text-white hover:bg-[#5b2a32] shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs w-full"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                  {t('products.addToCart')}
+                </button>
+                <button
+                  onClick={handleBuyNowClick}
+                  className="py-2.5 px-2 rounded-lg font-medium transition-all duration-200 bg-accent-red text-white hover:bg-red-700 shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs w-full"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {t('products.buyNow')}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -24,8 +24,8 @@ export default function AdminOrders() {
     try {
       setLoading(true);
       setError(null);
-      const url = statusFilter === 'all' 
-        ? '/admin/orders' 
+      const url = statusFilter === 'all'
+        ? '/admin/orders'
         : `/admin/orders?status=${statusFilter}`;
       const response = await api.get(url);
       setOrders(response.data || []);
@@ -41,16 +41,16 @@ export default function AdminOrders() {
     try {
       setUpdating(true);
       await api.put(`/admin/orders/${orderId}`, { status: newStatus });
-      
+
       // Update local state
-      setOrders(orders.map(order => 
+      setOrders(orders.map(order =>
         order._id === orderId ? { ...order, status: newStatus } : order
       ));
-      
+
       if (selectedOrder && selectedOrder._id === orderId) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
-      
+
       alert('Order status updated successfully');
     } catch (err) {
       console.error('Error updating order status:', err);
@@ -64,20 +64,20 @@ export default function AdminOrders() {
     try {
       setUpdating(true);
       const response = await api.put(`/admin/orders/${orderId}/mark-paid`);
-      
+
       // Update local state with the returned order
       const updatedOrder = response.data.order;
-      setOrders(orders.map(order => 
+      setOrders(orders.map(order =>
         order._id === orderId ? { ...order, paymentStatus: 'Paid' } : order
       ));
-      
+
       if (selectedOrder && selectedOrder._id === orderId) {
         setSelectedOrder({ ...selectedOrder, paymentStatus: 'Paid' });
       }
-      
+
       // Refresh orders to get updated revenue stats
       fetchOrders();
-      
+
       alert('COD payment marked as received successfully!');
     } catch (err) {
       console.error('Error marking COD as paid:', err);
@@ -88,10 +88,10 @@ export default function AdminOrders() {
   };
 
   const formatINR = (amount) => {
-    return new Intl.NumberFormat('en-IN', { 
-      style: 'currency', 
-      currency: 'INR', 
-      maximumFractionDigits: 0 
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
@@ -139,11 +139,11 @@ export default function AdminOrders() {
 
   // Filter and search orders
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     return matchesSearch;
   });
 
@@ -158,10 +158,10 @@ export default function AdminOrders() {
   return (
     <div className="min-h-screen bg-gray-50 flex overflow-hidden">
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        
+
         <div className="flex-1 overflow-y-auto p-6">
           {/* Page Header */}
           <div className="mb-6">
@@ -257,7 +257,7 @@ export default function AdminOrders() {
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No Orders Found</h3>
                 <p className="text-gray-600">
-                  {searchTerm || statusFilter !== 'all' 
+                  {searchTerm || statusFilter !== 'all'
                     ? 'Try adjusting your filters or search term'
                     : 'Orders will appear here once customers place them'}
                 </p>
@@ -398,6 +398,18 @@ export default function AdminOrders() {
                         {selectedOrder.paymentStatus}
                       </span>
                     </div>
+                    {selectedOrder.amountPaid !== undefined && (
+                      <div>
+                        <span className="text-gray-600">Amount Paid:</span>
+                        <span className="ml-2 font-medium text-green-700">{formatINR(selectedOrder.amountPaid)}</span>
+                      </div>
+                    )}
+                    {selectedOrder.remainingBalance !== undefined && selectedOrder.remainingBalance > 0 && (
+                      <div>
+                        <span className="text-gray-600">Remaining Balance:</span>
+                        <span className="ml-2 font-medium text-red-700">{formatINR(selectedOrder.remainingBalance)}</span>
+                      </div>
+                    )}
                     {selectedOrder.paymentMethod === 'COD' && selectedOrder.paymentStatus !== 'Paid' && (
                       <div className="mt-3">
                         <button

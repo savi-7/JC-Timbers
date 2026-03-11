@@ -15,7 +15,9 @@ export const createProduct = async (req, res) => {
       size,
       description,
       attributes,
-      featuredType
+      featuredType,
+      productType,
+      customizationOptions
     } = req.body;
 
     // Validate required fields
@@ -45,8 +47,8 @@ export const createProduct = async (req, res) => {
     let parsedAttributes = {};
     if (attributes) {
       try {
-        parsedAttributes = typeof attributes === 'string' 
-          ? JSON.parse(attributes) 
+        parsedAttributes = typeof attributes === 'string'
+          ? JSON.parse(attributes)
           : attributes;
       } catch (error) {
         return res.status(400).json({
@@ -55,19 +57,48 @@ export const createProduct = async (req, res) => {
       }
     }
 
+    // Parse customizationOptions if it's a string
+    let parsedCustomizationOptions = {};
+    if (customizationOptions) {
+      try {
+        parsedCustomizationOptions = typeof customizationOptions === 'string'
+          ? JSON.parse(customizationOptions)
+          : customizationOptions;
+      } catch (error) {
+        return res.status(400).json({
+          message: 'Invalid customizationOptions format'
+        });
+      }
+    }
+
+    // Parse imageColors if provided
+    let parsedImageColors = [];
+    if (req.body.imageColors) {
+      try {
+        parsedImageColors = typeof req.body.imageColors === 'string'
+          ? JSON.parse(req.body.imageColors)
+          : req.body.imageColors;
+      } catch (error) {
+        parsedImageColors = Array.isArray(req.body.imageColors) ? req.body.imageColors : [req.body.imageColors];
+      }
+    }
+
     // Process uploaded images: Cloudinary if configured, else base64 in MongoDB
     const images = [];
     let pineconeImages = []; // for ML embedding (needs data; we build from files when using Cloudinary)
     if (req.files && req.files.length > 0) {
       console.log(`Processing ${req.files.length} uploaded images (Cloudinary: ${isCloudinaryConfigured()})`);
-      for (const file of req.files) {
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        const imageColor = parsedImageColors[i] || 'base';
         console.log('File details:', {
           fieldname: file.fieldname,
           originalname: file.originalname,
           mimetype: file.mimetype,
           size: file.size,
           path: file.path,
-          filename: file.filename
+          filename: file.filename,
+          color: imageColor
         });
 
         if (isCloudinaryConfigured()) {
@@ -77,7 +108,8 @@ export const createProduct = async (req, res) => {
               url: cloudResult.url,
               publicId: cloudResult.publicId,
               contentType: file.mimetype,
-              filename: file.originalname
+              filename: file.originalname,
+              color: imageColor
             });
             console.log(`Image uploaded to Cloudinary: ${file.originalname} -> ${cloudResult.url}`);
             // ML/Pinecone still needs image data; provide base64 from file for embedding
@@ -99,7 +131,8 @@ export const createProduct = async (req, res) => {
             images.push({
               data: dataUrl,
               contentType: file.mimetype,
-              filename: file.originalname
+              filename: file.originalname,
+              color: imageColor
             });
             pineconeImages.push({ data: dataUrl, contentType: file.mimetype, filename: file.originalname });
             console.log(`Image converted (fallback): ${file.originalname}, size: ${base64Data.length} chars`);
@@ -111,9 +144,9 @@ export const createProduct = async (req, res) => {
     }
 
     // Validate image count
-    if (images.length > 5) {
+    if (images.length > 50) {
       return res.status(400).json({
-        message: 'Maximum 5 images allowed per product'
+        message: 'Maximum 50 images total allowed per product'
       });
     }
 
@@ -140,7 +173,9 @@ export const createProduct = async (req, res) => {
       description: description ? description.trim() : undefined,
       images: images,
       attributes: parsedAttributes,
-      featuredType: featuredType || 'none'
+      featuredType: featuredType || 'none',
+      productType: productType || 'ready-stock',
+      customizationOptions: parsedCustomizationOptions
     });
 
     console.log('Saving product to database...');
@@ -186,6 +221,8 @@ export const createProduct = async (req, res) => {
           url: img.url || (img.data ? img.data.substring(0, 50) + '...' : null)
         })),
         attributes: product.attributes,
+        productType: product.productType,
+        customizationOptions: product.customizationOptions,
         createdAt: product.createdAt
       }
     });
@@ -208,7 +245,8 @@ export const getAllProducts = async (req, res) => {
       search,
       sortBy = 'createdAt',
       sortOrder = 'desc',
-      featuredType
+      featuredType,
+      productType
     } = req.query;
 
     const query = { isActive: true };
@@ -221,6 +259,11 @@ export const getAllProducts = async (req, res) => {
     // Filter by featuredType
     if (featuredType && featuredType !== 'all') {
       query.featuredType = featuredType;
+    }
+
+    // Filter by productType
+    if (productType && productType !== 'all') {
+      query.productType = productType;
     }
 
     // Search by name
@@ -293,9 +336,9 @@ export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const product = await Product.findOne({ 
-      _id: id, 
-      isActive: true 
+    const product = await Product.findOne({
+      _id: id,
+      isActive: true
     }).select('-__v').lean();
 
     if (!product) {
@@ -326,7 +369,11 @@ export const getProductById = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = { ...req.body };
+
+    // Prevent accidental overwriting of images arrays from text field payloads
+    delete updateData.images;
+    delete updateData.imageColors;
 
     console.log('Update product request:', {
       productId: id,
@@ -337,13 +384,27 @@ export const updateProduct = async (req, res) => {
     // Parse attributes if provided
     if (updateData.attributes) {
       try {
-        updateData.attributes = typeof updateData.attributes === 'string' 
-          ? JSON.parse(updateData.attributes) 
+        updateData.attributes = typeof updateData.attributes === 'string'
+          ? JSON.parse(updateData.attributes)
           : updateData.attributes;
       } catch (error) {
         console.error('Error parsing attributes:', error);
         return res.status(400).json({
           message: 'Invalid attributes format'
+        });
+      }
+    }
+
+    // Parse customizationOptions if provided
+    if (updateData.customizationOptions) {
+      try {
+        updateData.customizationOptions = typeof updateData.customizationOptions === 'string'
+          ? JSON.parse(updateData.customizationOptions)
+          : updateData.customizationOptions;
+      } catch (error) {
+        console.error('Error parsing customizationOptions:', error);
+        return res.status(400).json({
+          message: 'Invalid customizationOptions format'
         });
       }
     }
@@ -356,20 +417,35 @@ export const updateProduct = async (req, res) => {
       updateData.quantity = parseInt(updateData.quantity);
     }
 
+    // Parse imageColors if provided
+    let parsedImageColors = [];
+    if (req.body.imageColors) {
+      try {
+        parsedImageColors = typeof req.body.imageColors === 'string'
+          ? JSON.parse(req.body.imageColors)
+          : req.body.imageColors;
+      } catch (error) {
+        parsedImageColors = Array.isArray(req.body.imageColors) ? req.body.imageColors : [req.body.imageColors];
+      }
+    }
+
     // Process uploaded images if any: Cloudinary if configured, else base64
     let pineconeImagesForUpdate = [];
     if (req.files && req.files.length > 0) {
       console.log(`Processing ${req.files.length} uploaded images for update (Cloudinary: ${isCloudinaryConfigured()})`);
       const images = [];
 
-      for (const file of req.files) {
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        const imageColor = parsedImageColors[i] || 'base';
         console.log('File details:', {
           fieldname: file.fieldname,
           originalname: file.originalname,
           mimetype: file.mimetype,
           size: file.size,
           path: file.path,
-          filename: file.filename
+          filename: file.filename,
+          color: imageColor
         });
 
         if (isCloudinaryConfigured()) {
@@ -379,7 +455,8 @@ export const updateProduct = async (req, res) => {
               url: cloudResult.url,
               publicId: cloudResult.publicId,
               contentType: file.mimetype,
-              filename: file.originalname
+              filename: file.originalname,
+              color: imageColor
             });
             console.log(`Image uploaded to Cloudinary: ${file.originalname} -> ${cloudResult.url}`);
             const base64Data = convertImageToBase64(file.path);
@@ -400,7 +477,8 @@ export const updateProduct = async (req, res) => {
             images.push({
               data: dataUrl,
               contentType: file.mimetype,
-              filename: file.originalname
+              filename: file.originalname,
+              color: imageColor
             });
             pineconeImagesForUpdate.push({ data: dataUrl, contentType: file.mimetype, filename: file.originalname });
             console.log(`Image converted: ${file.originalname}, size: ${base64Data.length} chars`);
@@ -438,7 +516,7 @@ export const updateProduct = async (req, res) => {
     }
 
     console.log('Product updated successfully:', product.name);
-    
+
     const imagesForPineconeUpdate = pineconeImagesForUpdate.length > 0
       ? pineconeImagesForUpdate
       : (product.images || []).filter(img => img.data).map(img => ({ data: img.data, filename: img.filename, contentType: img.contentType }));
@@ -456,14 +534,14 @@ export const updateProduct = async (req, res) => {
         console.warn(`Could not update product ${product._id} in image search:`, error.message);
       });
     }
-    
+
     res.json({
       message: 'Product updated successfully',
       product
     });
   } catch (error) {
     console.error('Error updating product:', error);
-    
+
     res.status(500).json({
       message: 'Failed to update product',
       error: error.message

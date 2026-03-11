@@ -2,6 +2,7 @@ import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
 import User from "../models/User.js";
+import Enquiry from "../models/Enquiry.js";
 import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from "../services/emailService.js";
 
 export const checkout = async (req, res) => {
@@ -36,15 +37,15 @@ export const checkout = async (req, res) => {
     // Prepare order items with proper base64 encoding
     const orderItems = cart.items.map(({ product, quantity }) => {
       let imageUrl = null;
-      
+
       if (product?.images?.[0]?.data && product?.images?.[0]?.contentType) {
         const imageData = product.images[0].data;
-        
+
         // Convert Buffer to string if needed
         const dataAsString = Buffer.isBuffer(imageData)
           ? imageData.toString('utf8')  // Convert to string first
           : imageData;
-        
+
         // Check if it's already a complete data URL
         if (typeof dataAsString === 'string' && dataAsString.startsWith('data:')) {
           imageUrl = dataAsString;
@@ -54,7 +55,7 @@ export const checkout = async (req, res) => {
           const base64Data = Buffer.isBuffer(imageData)
             ? imageData.toString('base64')
             : imageData;
-          
+
           imageUrl = `data:${product.images[0].contentType};base64,${base64Data}`;
           console.log(`checkout - Created new data URL for ${product.name}`);
         }
@@ -62,7 +63,7 @@ export const checkout = async (req, res) => {
       } else {
         console.log(`checkout - No image found for ${product.name}`);
       }
-      
+
       return {
         product: product._id,
         name: product.name,
@@ -91,14 +92,14 @@ export const checkout = async (req, res) => {
         { _id: item.product._id, quantity: { $gte: item.quantity } },
         { $inc: { quantity: -item.quantity } }
       );
-      
+
       stockUpdateResults.push({
         productId: item.product._id,
         productName: item.product.name,
         updated: result.modifiedCount > 0,
         requestedQty: item.quantity
       });
-      
+
       // Log stock update
       if (result.modifiedCount > 0) {
         console.log(`✅ Stock reduced for ${item.product.name}: -${item.quantity}`);
@@ -106,7 +107,7 @@ export const checkout = async (req, res) => {
         console.log(`⚠️  Failed to reduce stock for ${item.product.name} (may be out of stock)`);
       }
     }
-    
+
     // Log all stock updates
     console.log('\n📦 Stock Update Summary:');
     stockUpdateResults.forEach(result => {
@@ -143,11 +144,121 @@ export const checkout = async (req, res) => {
   }
 };
 
+export const createOrderFromEnquiry = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { enquiryId, address, paymentMethod } = req.body;
+
+    // Validate request
+    if (!enquiryId) return res.status(400).json({ message: "enquiryId is required" });
+    const requiredFields = ["street", "city", "state", "zip", "country"];
+    for (const f of requiredFields) {
+      if (!address?.[f]) return res.status(400).json({ message: `Address field ${f} is required` });
+    }
+
+    const enquiry = await Enquiry.findOne({ _id: enquiryId, user: userId }).populate('product');
+    if (!enquiry) return res.status(404).json({ message: "Enquiry not found" });
+
+    if (enquiry.status !== 'Accepted') {
+      return res.status(400).json({ message: "Enquiry must be Accepted before ordering" });
+    }
+
+    if (!enquiry.quote?.price) {
+      return res.status(400).json({ message: "Enquiry does not have a confirmed price quote" });
+    }
+
+    const totalAmount = enquiry.quote.price;
+
+    // Determine initial payment status and amount paid based on method
+    let paymentStatus = 'Pending';
+    let amountPaid = 0;
+
+    // In a real app with integration, we would create a payment intent.
+    // For now, we simulate the structure based on the schema options:
+    // ['COD', 'Online', '30% Advance', 'Full Payment']
+
+    if (paymentMethod === 'Full Payment' || paymentMethod === 'Online') {
+      paymentStatus = 'Paid';
+      amountPaid = totalAmount;
+    } else if (paymentMethod === '30% Advance') {
+      paymentStatus = 'Partially Paid';
+      amountPaid = totalAmount * 0.3;
+    } else if (paymentMethod === 'COD') {
+      paymentStatus = 'Pending';
+      amountPaid = 0;
+    }
+
+    const remainingBalance = totalAmount - amountPaid;
+
+    // Build order items from Enquiry
+    // If it's a made-to-order, we have product reference
+    // If it's custom, we use generic custom name and images
+    let orderItems = [];
+    if (enquiry.product) {
+      orderItems.push({
+        product: enquiry.product._id,
+        name: `Made-to-order: ${enquiry.product.name} (${enquiry.selectedOptions?.woodType || 'Custom'})`,
+        price: totalAmount,
+        quantity: enquiry.selectedOptions?.quantity || 1,
+        image: enquiry.product.images?.[0]?.url || enquiry.product.images?.[0]?.data || null
+      });
+    } else {
+      // Must refer to a dummy custom product in DB, or we bypass strictly req product ref if possible.
+      // Wait, Schema requires `product: ObjectId` in `orderItemSchema`.
+      // We need to bypass `required: true` or assign a generic "Custom Product" ObjectId.
+      // Alternatively, we create a one-off "Custom Product" listing for this user?
+      // No, let's keep it simple: it's better to find a generic "Custom Project" Product or we just create an dummy product here.
+      // Actually, creating a hidden generic product on the fly or finding one is easiest.
+      let genericProduct = await Product.findOne({ name: "Custom Project Base" });
+      if (!genericProduct) {
+        genericProduct = await Product.create({
+          name: "Custom Project Base",
+          category: "furniture",
+          price: 0,
+          isActive: false, // Don't show in catalog
+          productType: "made-to-order"
+        });
+      }
+
+      orderItems.push({
+        product: genericProduct._id,
+        name: `Custom Furniture Project: ${enquiry.contactName}`,
+        price: totalAmount,
+        quantity: 1,
+        image: enquiry.customImages?.[0]?.url || null
+      });
+    }
+
+    const order = await Order.create({
+      user: userId,
+      items: orderItems,
+      totalAmount,
+      address,
+      paymentMethod,
+      paymentStatus,
+      amountPaid,
+      remainingBalance,
+      status: "Pending" // initial production state
+    });
+
+    // Mark enquiry as converted
+    enquiry.status = 'Converted to Order';
+    enquiry.convertedOrderId = order._id;
+    await enquiry.save();
+
+    // Optional: send confirmation email...
+
+    return res.status(201).json(order);
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to create order from enquiry", error: err.message });
+  }
+};
+
 export const getMyOrders = async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;
     const orders = await Order.find({ user: userId }).sort({ createdAt: -1 });
-    
+
     // Log order details for debugging
     console.log(`getMyOrders - Found ${orders.length} orders for user ${userId}`);
     orders.forEach((order, index) => {
@@ -162,7 +273,7 @@ export const getMyOrders = async (req, res) => {
         }
       });
     });
-    
+
     return res.status(200).json(orders);
   } catch (err) {
     return res.status(500).json({ message: "Failed to fetch orders", error: err.message });
@@ -204,9 +315,9 @@ export const adminUpdateOrderStatus = async (req, res) => {
       { status },
       { new: true }
     ).populate({ path: "user", select: "email" });
-    
+
     if (!order) return res.status(404).json({ message: "Order not found" });
-    
+
     // Send status update email
     try {
       if (order.user && order.user.email) {
@@ -221,7 +332,7 @@ export const adminUpdateOrderStatus = async (req, res) => {
     } catch (emailError) {
       console.error('❌ Error sending status update email:', emailError.message);
     }
-    
+
     return res.status(200).json(order);
   } catch (err) {
     return res.status(500).json({ message: "Failed to update order status", error: err.message });
@@ -248,24 +359,24 @@ function normalizeStatus(value) {
 export const adminMarkCODPaid = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
-    
+
     // Check if it's a COD order
     if (order.paymentMethod !== 'COD') {
       return res.status(400).json({ message: "This is not a Cash on Delivery order" });
     }
-    
+
     // Update payment status to Paid
     order.paymentStatus = 'Paid';
     await order.save();
-    
+
     console.log(`✅ COD Order ${id} marked as PAID`);
-    
-    return res.status(200).json({ 
-      message: "Payment received and marked as paid", 
-      order 
+
+    return res.status(200).json({
+      message: "Payment received and marked as paid",
+      order
     });
   } catch (err) {
     return res.status(500).json({ message: "Failed to update payment status", error: err.message });
@@ -276,38 +387,38 @@ export const adminMarkCODPaid = async (req, res) => {
 export const getRevenueStats = async (req, res) => {
   try {
     // Get all paid orders (Online payments that are Paid, and COD orders marked as Paid)
-    const paidOrders = await Order.find({ 
+    const paidOrders = await Order.find({
       paymentStatus: 'Paid',
       status: { $ne: 'Cancelled' } // Exclude cancelled orders
     });
-    
+
     // Calculate total revenue
     const totalRevenue = paidOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-    
+
     // Calculate revenue by payment method
     const onlineRevenue = paidOrders
       .filter(order => order.paymentMethod === 'Online')
       .reduce((sum, order) => sum + order.totalAmount, 0);
-    
+
     const codRevenue = paidOrders
       .filter(order => order.paymentMethod === 'COD')
       .reduce((sum, order) => sum + order.totalAmount, 0);
-    
+
     // Get pending COD payments (COD orders not yet paid)
     const pendingCODOrders = await Order.find({
       paymentMethod: 'COD',
       paymentStatus: { $ne: 'Paid' },
       status: { $nin: ['Cancelled'] }
     });
-    
+
     const pendingCODRevenue = pendingCODOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-    
+
     // Count orders
     const totalPaidOrders = paidOrders.length;
     const onlineOrders = paidOrders.filter(order => order.paymentMethod === 'Online').length;
     const codOrders = paidOrders.filter(order => order.paymentMethod === 'COD').length;
     const pendingCODOrdersCount = pendingCODOrders.length;
-    
+
     console.log('Revenue Stats:', {
       totalRevenue,
       onlineRevenue,
@@ -318,7 +429,7 @@ export const getRevenueStats = async (req, res) => {
       codOrders,
       pendingCODOrdersCount
     });
-    
+
     return res.status(200).json({
       totalRevenue,
       onlineRevenue,

@@ -47,7 +47,7 @@ const upload = multer({
 });
 
 // Middleware for handling multiple image uploads
-export const uploadImages = upload.array('images', 5);
+export const uploadImages = upload.array('images', 50);
 
 // Middleware for handling single image upload (for image search)
 export const uploadSingleImage = upload.single('image');
@@ -59,13 +59,13 @@ export const handleUploadError = (error, req, res, next) => {
   if (!error) {
     return next();
   }
-  
+
   console.error('Upload error:', error);
-  
+
   if (error instanceof multer.MulterError) {
     console.error('Multer error code:', error.code);
     console.error('Multer error message:', error.message);
-    
+
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         message: 'File size too large. Maximum 5MB per image.',
@@ -109,14 +109,14 @@ export const handleUploadError = (error, req, res, next) => {
       });
     }
   }
-  
+
   if (error.message === 'Only image files are allowed') {
     return res.status(400).json({
       message: 'Only image files are allowed',
       error: error.message
     });
   }
-  
+
   // Log any other errors
   console.error('Unknown upload error:', error);
   next(error);

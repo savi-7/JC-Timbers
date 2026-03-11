@@ -502,33 +502,47 @@ export default function ProductDetail() {
 
                 {/* Action Buttons */}
                 <div className="space-y-3">
-                  {/* Primary Actions - Side by Side */}
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Primary Actions */}
+                  {product.productType === 'made-to-order' ? (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={handleAddToCart}
-                      className="flex items-center justify-center gap-2 bg-dark-brown text-white py-4 px-4 rounded-lg font-semibold hover:bg-accent-red transition-colors duration-200 shadow-md hover:shadow-lg"
+                      onClick={() => navigate('/furniture/request-quote', { state: { product } })}
+                      className="w-full flex items-center justify-center gap-2 bg-dark-brown text-white py-4 px-4 rounded-lg font-semibold hover:bg-accent-red transition-colors duration-200 shadow-md hover:shadow-lg"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="9" cy="21" r="1"></circle>
-                        <circle cx="20" cy="21" r="1"></circle>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
-                      Add to Cart
+                      Request Custom Quote
                     </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleBuyNow}
-                      className="flex items-center justify-center gap-2 bg-orange-500 text-white py-4 px-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors duration-200 shadow-md hover:shadow-lg"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Buy Now
-                    </motion.button>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleAddToCart}
+                        className="flex items-center justify-center gap-2 bg-dark-brown text-white py-4 px-4 rounded-lg font-semibold hover:bg-accent-red transition-colors duration-200 shadow-md hover:shadow-lg"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="9" cy="21" r="1"></circle>
+                          <circle cx="20" cy="21" r="1"></circle>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        Add to Cart
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleBuyNow}
+                        className="flex items-center justify-center gap-2 bg-orange-500 text-white py-4 px-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors duration-200 shadow-md hover:shadow-lg"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Buy Now
+                      </motion.button>
+                    </div>
+                  )}
                   {/* Secondary Action */}
                   <motion.button
                     whileHover={{ scale: 1.01 }}

@@ -53,11 +53,25 @@ const productSchema = new mongoose.Schema({
     filename: {
       type: String,
       required: true
+    },
+    color: {
+      type: String,
+      trim: true
     }
   }],
   attributes: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  productType: {
+    type: String,
+    enum: ["ready-stock", "made-to-order"],
+    default: "ready-stock"
+  },
+  customizationOptions: {
+    woodTypes: [{ type: String, trim: true }],
+    estimatedProductionTime: { type: String, trim: true },
+    basePrice: { type: Number, min: 0 }
   },
   isActive: {
     type: Boolean,
@@ -84,9 +98,9 @@ const productSchema = new mongoose.Schema({
 });
 
 // Validate max 5 images and each image has either data (legacy) or url (Cloudinary)
-productSchema.pre('save', function(next) {
-  if (this.images && this.images.length > 5) {
-    return next(new Error('Maximum 5 images allowed per product'));
+productSchema.pre('save', function (next) {
+  if (this.images && this.images.length > 50) {
+    return next(new Error('Maximum 50 images allowed per product across all color variants'));
   }
   if (this.images && this.images.length > 0) {
     const invalid = this.images.some(img => !img.data && !img.url);

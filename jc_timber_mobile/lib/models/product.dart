@@ -19,6 +19,8 @@ class Product {
   final String? color;
   final String? brand;
   final String? weight;
+  final String? productType;
+  final Map<String, dynamic>? customizationOptions;
 
   const Product({
     required this.id,
@@ -39,6 +41,8 @@ class Product {
     this.color,
     this.brand,
     this.weight,
+    this.productType,
+    this.customizationOptions,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -64,6 +68,8 @@ class Product {
       color: json['color'] as String?,
       brand: json['brand'] as String?,
       weight: json['weight'] as String?,
+      productType: json['productType'] as String?,
+      customizationOptions: json['customizationOptions'] as Map<String, dynamic>?,
     );
   }
 
@@ -87,6 +93,8 @@ class Product {
       'color': color,
       'brand': brand,
       'weight': weight,
+      'productType': productType,
+      'customizationOptions': customizationOptions,
     };
   }
 

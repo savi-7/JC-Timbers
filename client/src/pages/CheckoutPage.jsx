@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../contexts/CartContext';
 import api from '../api/axios';
@@ -35,58 +35,74 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
 
+  const location = useLocation();
+  const isEnquiryCheckout = location.state?.isEnquiry;
+  const enquiryData = location.state?.enquiryData;
+
   useEffect(() => {
     console.log('CheckoutPage - useEffect triggered, authLoading:', authLoading, 'isAuthenticated:', isAuthenticated);
-    
+
     // Wait for auth to finish loading
     if (authLoading) {
       console.log('CheckoutPage - Auth still loading, waiting...');
       return;
     }
-    
+
     // Now check authentication
     if (!isAuthenticated) {
       console.log('CheckoutPage - Not authenticated, redirecting to login');
       navigate('/login');
       return;
     }
-    
+
+    if (isEnquiryCheckout && enquiryData) {
+      setCartItems([{
+        name: `Custom Order: ${enquiryData.productName || 'Furniture'}`,
+        price: enquiryData.total,
+        quantity: 1,
+        subtotal: enquiryData.total,
+        isCustom: true
+      }]);
+      setLoading(false);
+      return;
+    }
+
     console.log('CheckoutPage - Authenticated, fetching cart...');
     fetchCart();
-  }, [authLoading, isAuthenticated, navigate]);
+  }, [authLoading, isAuthenticated, navigate, isEnquiryCheckout, enquiryData]);
 
   const fetchCart = async () => {
     try {
       console.log('CheckoutPage - fetchCart started');
       setLoading(true);
-      
+
       // Get selected items from localStorage
       const selectedItemsStr = localStorage.getItem('checkoutSelectedItems');
       const selectedItems = selectedItemsStr ? JSON.parse(selectedItemsStr) : [];
       console.log('CheckoutPage - Selected items from cart:', selectedItems);
-      
+
       const response = await api.get('/cart');
       console.log('CheckoutPage - Cart response:', response.data);
       let items = response.data.items || [];
       console.log('CheckoutPage - Total cart items:', items.length);
-      
+
       // Filter to only selected items
       if (selectedItems.length > 0) {
         items = items.filter(item => selectedItems.includes(item.productId));
         console.log('CheckoutPage - Filtered to selected items:', items.length);
       }
-      
+
       if (items.length === 0) {
         console.log('CheckoutPage - No items selected for checkout, redirecting to /cart');
         showError('Please select items from your cart to checkout');
         navigate('/cart');
         return;
       }
-      
+
       console.log('CheckoutPage - Setting cart items:', items);
       setCartItems(items);
       console.log('CheckoutPage - Cart items set successfully');
-      
+
       // Clear selected items from localStorage after loading
       localStorage.removeItem('checkoutSelectedItems');
     } catch (error) {
@@ -104,9 +120,11 @@ export default function CheckoutPage() {
   const shipping = subtotal >= 1000 ? 0 : 50;
   const total = subtotal + shipping;
 
+  const paymentAmount = paymentMethod === '30% Advance' ? Math.round(total * 0.3) : total;
+
   // Check if address is complete
-  const isAddressComplete = address.name && address.phone && address.pincode && address.state && 
-                           address.addressLine && address.flatHouseCompany && address.city;
+  const isAddressComplete = address.name && address.phone && address.pincode && address.state &&
+    address.addressLine && address.flatHouseCompany && address.city;
 
   // Load Razorpay script
   const loadRazorpayScript = () => {
@@ -133,8 +151,11 @@ export default function CheckoutPage() {
       }
 
       // Create Razorpay order
-      const orderResponse = await api.post('/payment/razorpay', {
-        amount: total,
+      const endpoint = isEnquiryCheckout ? '/orders/enquiry-checkout' : '/payment/razorpay';
+      const orderResponse = await api.post(endpoint, {
+        amount: paymentAmount, // May be 30% or 100%
+        paymentMethod: paymentMethod === 'razorpay' ? 'Online' : paymentMethod,
+        enquiryId: isEnquiryCheckout ? enquiryData.id : undefined,
         address: {
           name: address.name,
           phone: address.phone,
@@ -162,10 +183,12 @@ export default function CheckoutPage() {
         handler: async function (response) {
           try {
             // Verify payment
-            const verifyResponse = await api.post('/payment/verify', {
+            const verifyEndpoint = isEnquiryCheckout ? '/payment/verify-enquiry' : '/payment/verify';
+            const verifyResponse = await api.post(verifyEndpoint, {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
+              orderId: orderId, // The local order ID
               address: {
                 name: address.name,
                 phone: address.phone,
@@ -182,11 +205,11 @@ export default function CheckoutPage() {
             if (verifyResponse.data.success) {
               showSuccess('Payment successful! Your order has been placed.');
               refreshCartCount();
-              navigate('/order-success', { 
-                state: { 
+              navigate('/order-success', {
+                state: {
                   orderId: verifyResponse.data.order._id,
                   totalAmount: verifyResponse.data.order.totalAmount
-                } 
+                }
               });
             }
           } catch (error) {
@@ -207,7 +230,7 @@ export default function CheckoutPage() {
           color: '#5A3E36'
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setPlacing(false);
           }
         }
@@ -227,7 +250,10 @@ export default function CheckoutPage() {
     try {
       setPlacing(true);
 
-      const response = await api.post('/payment/cod', {
+      const endpoint = isEnquiryCheckout ? '/orders/enquiry-checkout' : '/payment/cod';
+      const response = await api.post(endpoint, {
+        paymentMethod: 'COD',
+        enquiryId: isEnquiryCheckout ? enquiryData.id : undefined,
         address: {
           name: address.name,
           phone: address.phone,
@@ -244,11 +270,11 @@ export default function CheckoutPage() {
       if (response.data.success) {
         showSuccess('Order placed successfully!');
         refreshCartCount();
-        navigate('/order-success', { 
-          state: { 
+        navigate('/order-success', {
+          state: {
             orderId: response.data.order._id,
             totalAmount: response.data.order.totalAmount
-          } 
+          }
         });
       }
     } catch (error) {
@@ -275,7 +301,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (paymentMethod === 'razorpay') {
+    if (paymentMethod === 'razorpay' || paymentMethod === '30% Advance' || paymentMethod === 'Full Payment') {
       handleRazorpayPayment();
     } else if (paymentMethod === 'cod') {
       handleCODOrder();
@@ -313,8 +339,8 @@ export default function CheckoutPage() {
           {/* Left Column - Address & Payment */}
           <div className="lg:col-span-2 space-y-6">
             {/* Step 1: Address */}
-            <AddressSection 
-              address={address} 
+            <AddressSection
+              address={address}
               setAddress={setAddress}
               onComplete={() => {
                 // Address saved successfully
@@ -322,7 +348,7 @@ export default function CheckoutPage() {
             />
 
             {/* Step 2: Payment Method */}
-            <PaymentSection 
+            <PaymentSection
               paymentMethod={paymentMethod}
               setPaymentMethod={setPaymentMethod}
               disabled={!isAddressComplete}
@@ -331,7 +357,7 @@ export default function CheckoutPage() {
 
           {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
-            <OrderSummarySection 
+            <OrderSummarySection
               cartItems={cartItems}
               subtotal={subtotal}
               shipping={shipping}

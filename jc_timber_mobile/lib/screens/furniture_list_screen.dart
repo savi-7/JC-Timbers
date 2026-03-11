@@ -145,184 +145,84 @@ class _FurnitureListScreenState extends State<FurnitureListScreen> {
 
     return Scaffold(
       backgroundColor: JcTimberTheme.cream,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Furniture'),
-        backgroundColor: JcTimberTheme.darkBrown,
-        foregroundColor: JcTimberTheme.cream,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: JcTimberTheme.darkBrown,
         actions: [
-          IconButton(
-            tooltip: 'Wishlist',
-            icon: const Icon(Icons.favorite_border),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WishlistScreen()),
-              );
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              tooltip: 'Wishlist',
+              icon: Icon(Icons.favorite_border, color: JcTimberTheme.darkBrown),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WishlistScreen()),
+                );
+              },
+            ),
           ),
-          IconButton(
-            tooltip: 'Cart',
-            icon: const Icon(Icons.shopping_cart_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CartScreen()),
-              );
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              tooltip: 'Cart',
+              icon: Icon(Icons.shopping_cart_outlined, color: JcTimberTheme.darkBrown),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CartScreen()),
+                );
+              },
+            ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null && _products.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: JcTimberTheme.darkBrown.withOpacity(0.06),
-                                blurRadius: 16,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.chair_alt_outlined,
-                                size: 72,
-                                color: Colors.brown.shade300,
-                              ),
-                              const SizedBox(height: 20),
-                              Text(
-                                'No Furniture Available',
-                                style: JcTimberTheme.headingStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                _error!,
-                                style: JcTimberTheme.paragraphStyle(
-                                  fontSize: 14,
-                                  color: JcTimberTheme.darkBrown70,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null && _products.isEmpty
+              ? _buildErrorEmptyState()
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  color: JcTimberTheme.accentRed,
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _buildHeaderSection(),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        sliver: SliverToBoxAdapter(
+                          child: Text(
+                            filtered.isEmpty
+                                ? 'No results found'
+                                : '${filtered.length} ${filtered.length == 1 ? 'item' : 'items'} available',
+                            style: JcTimberTheme.paragraphStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: JcTimberTheme.gray500,
+                            ),
                           ),
                         ),
                       ),
-                    )
-                  : Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: JcTimberTheme.darkBrown.withOpacity(0.04),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Handcrafted Furniture',
-                                      style: JcTimberTheme.headingStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Explore premium tables, chairs, beds and more – curated from the same catalog as the website.',
-                                      style: JcTimberTheme.paragraphStyle(
-                                        fontSize: 13,
-                                        color: JcTimberTheme.darkBrown70,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    TextField(
-                                      decoration: InputDecoration(
-                                        prefixIcon: const Icon(Icons.search),
-                                        hintText: 'Search furniture...',
-                                        fillColor: Colors.white,
-                                        filled: true,
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                          borderSide: BorderSide(
-                                            color: JcTimberTheme.gray200,
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                          borderSide: BorderSide(
-                                            color: JcTimberTheme.gray200,
-                                          ),
-                                        ),
-                                      ),
-                                      onChanged: (v) {
-                                        setState(() {
-                                          _search = v.trim();
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+                        sliver: SliverGrid(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 24,
+                            childAspectRatio: 0.60,
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
-                            children: [
-                              Text(
-                                filtered.isEmpty
-                                    ? 'No results'
-                                    : '${filtered.length} ${filtered.length == 1 ? 'item' : 'items'}',
-                                style: JcTimberTheme.paragraphStyle(
-                                  fontSize: 13,
-                                  color: JcTimberTheme.darkBrown70,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: GridView.builder(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                              childAspectRatio: 0.50,
-                            ),
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) {
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
                               final p = filtered[index];
                               return _FurnitureCard(
                                 product: p,
@@ -331,11 +231,142 @@ class _FurnitureListScreenState extends State<FurnitureListScreen> {
                                 onToggleWishlist: () => _toggleWishlist(p),
                               );
                             },
+                            childCount: filtered.length,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildErrorEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: JcTimberTheme.darkBrown.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: JcTimberTheme.lightCream,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.chair_alt_outlined,
+                  size: 64,
+                  color: JcTimberTheme.darkBrown20,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'No Furniture Available',
+                style: JcTimberTheme.headingStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: JcTimberTheme.paragraphStyle(
+                  fontSize: 15,
+                  color: JcTimberTheme.gray500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: JcTimberTheme.darkBrown,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: JcTimberTheme.darkBrown.withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 60, 24, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Curated Collection',
+            style: JcTimberTheme.paragraphStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: JcTimberTheme.accentRed,
+            ).copyWith(letterSpacing: 2.0),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Modern Furniture\nFor Elegant Homes',
+            style: JcTimberTheme.headingStyle(
+              fontSize: 32,
+              color: Colors.white,
+            ).copyWith(height: 1.15),
+          ),
+          const SizedBox(height: 24),
+          _buildSearchBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: TextField(
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.search_rounded, color: Colors.white70),
+          hintText: 'Search furniture...',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+          border: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          filled: false,
+        ),
+        onChanged: (v) {
+          setState(() {
+            _search = v.trim();
+          });
+        },
       ),
     );
   }
@@ -357,7 +388,8 @@ class _FurnitureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = product.primaryImageUrl;
-    return InkWell(
+    
+    return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -365,127 +397,136 @@ class _FurnitureCard extends StatelessWidget {
           ),
         );
       },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: JcTimberTheme.gray200),
-          boxShadow: [
-            BoxShadow(
-              color: JcTimberTheme.darkBrown.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-            BoxShadow(
-              color: JcTimberTheme.darkBrown.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image Container
+          Expanded(
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                AspectRatio(
-                  aspectRatio: 1,
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: JcTimberTheme.gray200, width: 0.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: JcTimberTheme.darkBrown.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
                   child: ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(20)),
-                    child: Container(
-                      color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(24),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
                       child: imageUrl == null
                           ? Icon(
                               Icons.chair_outlined,
                               size: 48,
-                              color: Colors.brown.shade300,
+                              color: Colors.brown.shade200,
                             )
                           : Image.network(
                               imageUrl,
-                              fit: BoxFit.cover,
+                              fit: BoxFit.contain, // Show entire piece of furniture without cropping
                               errorBuilder: (_, __, ___) => Icon(
                                 Icons.chair_outlined,
                                 size: 48,
-                                color: Colors.brown.shade300,
+                                color: Colors.brown.shade200,
                               ),
                             ),
                     ),
                   ),
                 ),
+                // Wishlist Badge
                 Positioned(
                   top: 10,
                   right: 10,
-                  child: Material(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(20),
-                    child: InkWell(
-                      onTap: onToggleWishlist,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Icon(
-                          isWishlisted ? Icons.favorite : Icons.favorite_border,
-                          size: 20,
-                          color: isWishlisted ? Colors.red : Colors.redAccent,
-                        ),
+                  child: GestureDetector(
+                    onTap: onToggleWishlist,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isWishlisted ? Icons.favorite : Icons.favorite_border,
+                        size: 20,
+                        color: isWishlisted ? Colors.red : JcTimberTheme.gray500,
+                      ),
+                    ),
+                  ),
+                ),
+                // Floating Add to Cart Button
+                Positioned(
+                  bottom: -12,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: onAddToCart,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: JcTimberTheme.darkBrown,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: JcTimberTheme.darkBrown.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.add_shopping_cart_rounded,
+                        size: 18,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: JcTimberTheme.paragraphStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+          ),
+          const SizedBox(height: 16),
+          // Product Info
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: JcTimberTheme.paragraphStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ).copyWith(height: 1.3),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '₹${product.price.toStringAsFixed(0)}',
+                  style: JcTimberTheme.paragraphStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: JcTimberTheme.accentRed,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₹${product.price.toStringAsFixed(0)}',
-                    style: JcTimberTheme.paragraphStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: JcTimberTheme.accentRed,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: onAddToCart,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        minimumSize: const Size(0, 32),
-                        side: BorderSide(
-                          color: JcTimberTheme.darkBrown.withOpacity(0.7),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Add to cart',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

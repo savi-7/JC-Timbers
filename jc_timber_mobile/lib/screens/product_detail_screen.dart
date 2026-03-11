@@ -10,6 +10,7 @@ import '../theme/jc_timber_theme.dart';
 import '../services/pending_actions_storage.dart';
 import 'cart_screen.dart';
 import 'login_screen.dart';
+import 'request_quote_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -33,20 +34,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   String? _error;
   int _selectedImageIndex = 0;
   int _quantity = 1;
-  bool _showSpecifications = false;
   bool _isWishlisted = false;
   bool _addingToCart = false;
-  bool _buyingNow = false;
   bool _updatingWishlist = false;
+
+  late PageController _imagePageController;
 
   @override
   void initState() {
     super.initState();
+    _imagePageController = PageController();
     final auth = context.read<AuthService>();
     _productService = ProductService(auth);
     _cartService = CartService(auth);
     _wishlistService = WishlistService(auth);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _imagePageController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -119,7 +127,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         SnackBar(
           content: Text(
             result.success
-                ? 'Added ${_quantity} ${_product!.name} to cart'
+                ? 'Added $_quantity ${_product!.name} to cart'
                 : (result.errorMessage ?? 'Failed to add to cart'),
           ),
           backgroundColor: result.success ? Colors.green : Colors.red,
@@ -129,52 +137,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       if (mounted) {
         setState(() {
           _addingToCart = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _buyNow() async {
-    if (_product == null || _buyingNow) return;
-    final auth = context.read<AuthService>();
-    if (!auth.isLoggedIn) {
-      await PendingActionsStorage.setPendingCartItem(
-        productId: _product!.id,
-        productName: _product!.name,
-        quantity: _quantity,
-      );
-      await PendingActionsStorage.setLoginRedirect('checkout');
-      if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-      return;
-    }
-    setState(() {
-      _buyingNow = true;
-    });
-    try {
-      final result = await _cartService.addToCart(
-        productId: _product!.id,
-        quantity: _quantity,
-      );
-      if (!mounted) return;
-      if (!result.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.errorMessage ?? 'Failed to add to cart'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const CartScreen()),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _buyingNow = false;
         });
       }
     }
@@ -239,426 +201,345 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return Scaffold(
+        backgroundColor: JcTimberTheme.cream,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null || _product == null) {
+      return Scaffold(
+        backgroundColor: JcTimberTheme.cream,
+        appBar: AppBar(
+          backgroundColor: JcTimberTheme.darkBrown,
+          foregroundColor: JcTimberTheme.cream,
+          title: const Text('Product Details'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
+                const SizedBox(height: 16),
+                Text(
+                  _error ?? 'Product not found',
+                  style: JcTimberTheme.headingStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: JcTimberTheme.darkBrown,
+                    foregroundColor: JcTimberTheme.cream,
+                  ),
+                  child: const Text('Go Back'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: JcTimberTheme.cream,
-      appBar: AppBar(
-        title: const Text('Product Details'),
-        backgroundColor: JcTimberTheme.darkBrown,
-        foregroundColor: JcTimberTheme.cream,
-        actions: [
-          if (_product != null)
-            IconButton(
-              icon: Icon(
-                _isWishlisted ? Icons.favorite : Icons.favorite_border,
-                color: _isWishlisted ? Colors.red : JcTimberTheme.cream,
+      body: CustomScrollView(
+        slivers: [
+          // Immersive Image Gallery Header
+          SliverAppBar(
+            expandedHeight: 450,
+            pinned: true,
+            backgroundColor: JcTimberTheme.darkBrown,
+            foregroundColor: JcTimberTheme.cream,
+            elevation: 0,
+            actions: [
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    _isWishlisted ? Icons.favorite : Icons.favorite_border,
+                    color: _isWishlisted ? Colors.redAccent : Colors.white,
+                  ),
+                  onPressed: _updatingWishlist ? null : _toggleWishlist,
+                ),
               ),
-              onPressed: _toggleWishlist,
+              Container(
+                margin: const EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const CartScreen()),
+                    );
+                  },
+                ),
+              ),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: _buildImageGallery(),
             ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CartScreen()),
-              );
-            },
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null || _product == null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Colors.red.shade300,
+
+          // Content Body
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: BoxDecoration(
+                color: JcTimberTheme.cream,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(32),
+                  topRight: Radius.circular(32),
+                ),
+              ),
+              transform: Matrix4.translationValues(0, -32, 0), // Pull up slightly over the image
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 100), // extra bottom padding for persistent bar
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Badges
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: JcTimberTheme.darkBrown.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _error ?? 'Product not found',
-                            style: JcTimberTheme.headingStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
+                          child: Text(
+                            _product!.category.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: JcTimberTheme.darkBrown,
+                              letterSpacing: 1.0,
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: JcTimberTheme.darkBrown,
-                              foregroundColor: JcTimberTheme.cream,
+                        ),
+                        if (_product!.featuredType != null && _product!.featuredType != 'none')
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: JcTimberTheme.accentRed,
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text('Go Back'),
+                            child: Text(
+                              _product!.featuredType == 'best'
+                                  ? 'BEST SELLER'
+                                  : _product!.featuredType == 'new'
+                                      ? 'NEW ARRIVAL'
+                                      : 'DISCOUNTED',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Image Gallery
-                          _buildImageGallery(),
-                          const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-                          // Product Info
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    // Title
+                    Text(
+                      _product!.name,
+                      style: JcTimberTheme.headingStyle(
+                        fontSize: 28,
+                        color: JcTimberTheme.darkBrown,
+                      ).copyWith(height: 1.2),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Price & Rating Row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '₹${_product!.price.toStringAsFixed(0)}',
+                          style: JcTimberTheme.headingStyle(
+                            fontSize: 32,
+                            color: JcTimberTheme.accentRed,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            'per ${_product!.unit}',
+                            style: JcTimberTheme.paragraphStyle(
+                              fontSize: 14,
+                              color: JcTimberTheme.gray500,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        if (_product!.rating > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.amber.shade200),
+                            ),
+                            child: Row(
                               children: [
-                                // Category Badges
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.shade100,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        _product!.category.toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.blue.shade800,
-                                        ),
-                                      ),
-                                    ),
-                                    if (_product!.subcategory != null)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                      ),
-                                    if (_product!.featuredType != null &&
-                                        _product!.featuredType != 'none')
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: JcTimberTheme.accentRed,
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          _product!.featuredType == 'best'
-                                              ? 'BEST SELLER'
-                                              : _product!.featuredType == 'new'
-                                                  ? 'NEW ARRIVAL'
-                                                  : 'DISCOUNTED',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Product Name
+                                const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
+                                const SizedBox(width: 4),
                                 Text(
-                                  _product!.name,
-                                  style: JcTimberTheme.headingStyle(
-                                    fontSize: 24,
+                                  _product!.rating.toStringAsFixed(1),
+                                  style: JcTimberTheme.paragraphStyle(
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w700,
+                                    color: Colors.amber.shade900,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
-
-                                // Price
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                                  textBaseline: TextBaseline.alphabetic,
-                                  children: [
-                                    Text(
-                                      '₹${_product!.price.toStringAsFixed(0)}',
-                                      style: JcTimberTheme.headingStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w700,
-                                        color: JcTimberTheme.accentRed,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'per ${_product!.unit}',
-                                      style: JcTimberTheme.paragraphStyle(
-                                        fontSize: 14,
-                                        color: JcTimberTheme.darkBrown70,
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  ' (${_product!.reviewCount})',
+                                  style: JcTimberTheme.paragraphStyle(
+                                    fontSize: 12,
+                                    color: Colors.amber.shade900.withOpacity(0.7),
+                                  ),
                                 ),
-                                const SizedBox(height: 20),
-
-                                // Rating (if available)
-                                if (_product!.rating > 0)
-                                  Row(
-                                    children: [
-                                      ...List.generate(5, (index) {
-                                        return Icon(
-                                          index < _product!.rating.round()
-                                              ? Icons.star
-                                              : Icons.star_border,
-                                          size: 20,
-                                          color: Colors.amber,
-                                        );
-                                      }),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${_product!.rating.toStringAsFixed(1)} (${_product!.reviewCount} ${_product!.reviewCount == 1 ? 'review' : 'reviews'})',
-                                        style: JcTimberTheme.paragraphStyle(
-                                          fontSize: 13,
-                                          color: JcTimberTheme.darkBrown70,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(height: 24),
-
-                                // Description
-                                if (_product!.description != null &&
-                                    _product!.description!.isNotEmpty) ...[
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: JcTimberTheme.darkBrown.withOpacity(0.04),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Description',
-                                          style: JcTimberTheme.headingStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          _product!.description!,
-                                          style: JcTimberTheme.paragraphStyle(
-                                            fontSize: 14,
-                                            color: JcTimberTheme.darkBrown70,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                ],
-
-                                // Specifications
-                                _buildSpecifications(),
-                                const SizedBox(height: 24),
-
-                                // Purchase Section
-                                _buildPurchaseSection(),
-                                const SizedBox(height: 32),
                               ],
                             ),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 32),
+
+                    // Description
+                    if (_product!.description != null && _product!.description!.isNotEmpty) ...[
+                      Text(
+                        'Description',
+                        style: JcTimberTheme.headingStyle(
+                          fontSize: 20,
+                          color: JcTimberTheme.darkBrown,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _product!.description!,
+                        style: JcTimberTheme.paragraphStyle(
+                          fontSize: 15,
+                          color: JcTimberTheme.darkBrown70,
+                        ).copyWith(height: 1.6),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+
+                    // Specifications
+                    _buildSpecifications(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+      // Sticky Bottom Bar
+      bottomNavigationBar: _buildStickyBottomBar(),
     );
   }
 
   Widget _buildImageGallery() {
     if (_product == null || _product!.images.isEmpty) {
       return Container(
-        height: 300,
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-        ),
+        color: Colors.white,
         child: Center(
           child: Icon(
             Icons.chair_outlined,
-            size: 64,
-            color: Colors.brown.shade300,
+            size: 80,
+            color: Colors.brown.shade200,
           ),
         ),
       );
     }
 
-    final selectedImage = _product!.images[_selectedImageIndex];
-    final imageUrl = _product!.getImageUrl(selectedImage);
-
-    return Column(
-      children: [
-        // Main Image
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Container(
-            height: 360,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: JcTimberTheme.darkBrown.withOpacity(0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: imageUrl == null
-                  ? Icon(
-                      Icons.chair_outlined,
-                      size: 64,
-                      color: Colors.brown.shade300,
-                    )
-                  : Image.network(
-                      imageUrl,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.chair_outlined,
-                        size: 64,
-                        color: Colors.brown.shade300,
+    return Container(
+      color: Colors.white,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _imagePageController,
+            itemCount: _product!.images.length,
+            onPageChanged: (index) {
+              setState(() {
+                _selectedImageIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              final imageUrl = _product!.getImageUrl(_product!.images[index]);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 60, top: 40),
+                child: imageUrl == null
+                    ? Icon(Icons.chair_outlined, size: 80, color: Colors.brown.shade200)
+                    : Image.network(
+                        imageUrl,
+                        fit: BoxFit.contain, // maintain entire furniture view
                       ),
-                    ),
-            ),
+              );
+            },
           ),
-        ),
-
-        // Thumbnails
-        if (_product!.images.length > 1) ...[
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 84,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: _product!.images.length,
-              itemBuilder: (context, index) {
-                final thumb = _product!.images[index];
-                final thumbUrl = _product!.getImageUrl(thumb);
-                final isSelected = index == _selectedImageIndex;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedImageIndex = index;
-                    });
-                  },
-                  child: Container(
-                    width: 84,
-                    height: 84,
-                    margin: const EdgeInsets.only(right: 14),
+          
+          if (_product!.images.length > 1)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  _product!.images.length,
+                  (index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: _selectedImageIndex == index ? 24 : 8,
+                    height: 8,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected
-                            ? JcTimberTheme.darkBrown
-                            : JcTimberTheme.gray200,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: JcTimberTheme.darkBrown.withOpacity(0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: thumbUrl == null
-                          ? Container(
-                              color: Colors.grey.shade200,
-                              child: Icon(
-                                Icons.image_outlined,
-                                size: 32,
-                                color: Colors.grey.shade400,
-                              ),
-                            )
-                          : Image.network(
-                              thumbUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.grey.shade200,
-                                child: Icon(
-                                  Icons.image_outlined,
-                                  size: 32,
-                                  color: Colors.grey.shade400,
-                                ),
-                              ),
-                            ),
+                      color: _selectedImageIndex == index
+                          ? JcTimberTheme.darkBrown
+                          : JcTimberTheme.darkBrown.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
         ],
-      ],
+      ),
     );
   }
 
   Widget _buildSpecifications() {
     final specs = <MapEntry<String, String>>[];
-    if (_product!.size != null) {
-      specs.add(MapEntry('Size', _product!.size!));
-    }
-    if (_product!.unit.isNotEmpty) {
-      specs.add(MapEntry('Unit', _product!.unit));
-    }
-    if (_product!.material != null) {
-      specs.add(MapEntry('Material', _product!.material!));
-    }
-    if (_product!.color != null) {
-      specs.add(MapEntry('Color', _product!.color!));
-    }
-    if (_product!.brand != null) {
-      specs.add(MapEntry('Brand', _product!.brand!));
-    }
-    if (_product!.weight != null) {
-      specs.add(MapEntry('Weight', _product!.weight!));
-    }
-    if (_product!.quantity > 0) {
-      specs.add(MapEntry('Stock Available', '${_product!.quantity} units'));
-    }
+    if (_product!.size != null) specs.add(MapEntry('Dimensions', _product!.size!));
+    if (_product!.material != null) specs.add(MapEntry('Material', _product!.material!));
+    if (_product!.color != null) specs.add(MapEntry('Color', _product!.color!));
+    if (_product!.brand != null) specs.add(MapEntry('Brand', _product!.brand!));
+    if (_product!.weight != null) specs.add(MapEntry('Weight', _product!.weight!));
+    if (_product!.quantity > 0) specs.add(MapEntry('Availability', '${_product!.quantity} in stock'));
+
     if (_product!.attributes.isNotEmpty) {
       _product!.attributes.forEach((key, value) {
         specs.add(MapEntry(
-          key.replaceAllMapped(
-            RegExp(r'([A-Z])'),
-            (match) => ' ${match.group(1)}',
-          ).trim(),
+          key.replaceAllMapped(RegExp(r'([A-Z])'), (match) => ' ${match.group(1)}').trim(),
           value.toString(),
         ));
       });
@@ -666,275 +547,189 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     if (specs.isEmpty) return const SizedBox.shrink();
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            title: Text(
+              'Specifications Details',
+              style: JcTimberTheme.headingStyle(
+                fontSize: 20,
+                color: JcTimberTheme.darkBrown,
+              ),
+            ),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(top: 16),
+            initiallyExpanded: true,
+            iconColor: JcTimberTheme.darkBrown,
+            collapsedIconColor: JcTimberTheme.darkBrown70,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: JcTimberTheme.gray200),
+                ),
+                child: ListView.separated(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.all(0),
+                  itemCount: specs.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    color: JcTimberTheme.gray200,
+                  ),
+                  itemBuilder: (context, index) {
+                    final spec = specs[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              spec.key,
+                              style: JcTimberTheme.paragraphStyle(
+                                fontSize: 14,
+                                color: JcTimberTheme.gray500,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              spec.value,
+                              style: JcTimberTheme.paragraphStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: JcTimberTheme.darkBrown,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStickyBottomBar() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: JcTimberTheme.darkBrown.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: JcTimberTheme.darkBrown.withOpacity(0.08),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: () {
-              setState(() {
-                _showSpecifications = !_showSpecifications;
-              });
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: SafeArea(
+        child: _product?.productType == 'made-to-order'
+            ? Row(
                 children: [
-                  Text(
-                    'Specifications',
-                    style: JcTimberTheme.headingStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RequestQuoteScreen(product: _product!),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.request_quote_outlined, color: Colors.white),
+                      label: const Text(
+                        'REQUEST CUSTOM QUOTE',
+                        style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.0),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: JcTimberTheme.darkBrown,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                      ),
                     ),
                   ),
-                  Icon(
-                    _showSpecifications
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: JcTimberTheme.darkBrown,
+                ],
+              )
+            : Row(
+                children: [
+            // Quantity Selector
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: JcTimberTheme.gray200),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.remove, color: _quantity > 1 ? JcTimberTheme.darkBrown : JcTimberTheme.gray500),
+                    onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                  ),
+                  SizedBox(
+                    width: 32,
+                    child: Text(
+                      '$_quantity',
+                      textAlign: TextAlign.center,
+                      style: JcTimberTheme.paragraphStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add, color: JcTimberTheme.darkBrown),
+                    onPressed: () => setState(() => _quantity++),
                   ),
                 ],
               ),
             ),
-          ),
-          if (_showSpecifications) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: specs.map((spec) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          spec.key,
-                          style: JcTimberTheme.paragraphStyle(
-                            fontSize: 13,
-                            color: JcTimberTheme.darkBrown70,
-                          ),
-                        ),
-                        Text(
-                          spec.value,
-                          style: JcTimberTheme.paragraphStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+            const SizedBox(width: 16),
+            
+            // Add to Cart Button
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _addingToCart ? null : _addToCart,
+                icon: _addingToCart
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.shopping_bag_outlined, color: Colors.white),
+                label: Text(
+                  _addingToCart ? 'ADDING...' : 'ADD TO CART',
+                  style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.0),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: JcTimberTheme.darkBrown,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPurchaseSection() {
-    final total = _product!.price * _quantity;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: JcTimberTheme.gray200),
-        boxShadow: [
-          BoxShadow(
-            color: JcTimberTheme.darkBrown.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Quantity Selector
-          Text(
-            'Quantity',
-            style: JcTimberTheme.paragraphStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              IconButton(
-                onPressed: _quantity > 1
-                    ? () {
-                        setState(() {
-                          _quantity--;
-                        });
-                      }
-                    : null,
-                icon: const Icon(Icons.remove_circle_outline),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.grey.shade100,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text(
-                '$_quantity',
-                style: JcTimberTheme.headingStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 16),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _quantity++;
-                  });
-                },
-                icon: const Icon(Icons.add_circle_outline),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.grey.shade100,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Total Price
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total',
-                  style: JcTimberTheme.paragraphStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  '₹${total.toStringAsFixed(0)}',
-                  style: JcTimberTheme.headingStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: JcTimberTheme.accentRed,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _addingToCart ? null : _addToCart,
-                  icon: _addingToCart
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.shopping_cart_outlined),
-                  label: Text(_addingToCart ? 'Adding...' : 'Add to Cart'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: BorderSide(
-                      color: JcTimberTheme.darkBrown.withOpacity(0.7),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _buyingNow ? null : _buyNow,
-                  icon: _buyingNow
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.flash_on),
-                  label: Text(_buyingNow ? 'Processing...' : 'Buy Now'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.shade600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _updatingWishlist ? null : _toggleWishlist,
-              icon: _updatingWishlist
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(
-                      _isWishlisted ? Icons.favorite : Icons.favorite_border,
-                      color: _isWishlisted ? Colors.red : JcTimberTheme.darkBrown,
-                    ),
-              label: Text(
-                _updatingWishlist
-                    ? 'Updating...'
-                    : (_isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                side: BorderSide(
-                  color: _isWishlisted
-                      ? Colors.red
-                      : JcTimberTheme.darkBrown.withOpacity(0.7),
-                ),
-                foregroundColor: _isWishlisted
-                    ? Colors.red
-                    : JcTimberTheme.darkBrown,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

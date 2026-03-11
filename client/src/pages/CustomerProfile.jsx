@@ -174,6 +174,30 @@ export default function CustomerProfile() {
                   View Wishlist
                 </button>
               </div>
+
+              {/* My Enquiries */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-dark-brown">My Custom Requests</h3>
+                    <p className="text-sm text-gray-600">Track custom furniture quotes</p>
+                  </div>
+                </div>
+                <p className="text-gray-600 mb-4">
+                  View your made-to-order requests, check quotes from admin, and proceed to checkout.
+                </p>
+                <button
+                  onClick={() => navigate('/my-enquiries')}
+                  className="w-full bg-dark-brown text-white py-3 px-4 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200"
+                >
+                  View Custom Requests
+                </button>
+              </div>
             </div>
           </>
         )}

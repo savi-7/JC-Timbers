@@ -1,17 +1,19 @@
 import express from "express";
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
-import { 
-  checkout, 
-  getMyOrders, 
-  adminListOrders, 
+import {
+  checkout,
+  getMyOrders,
+  adminListOrders,
   adminUpdateOrderStatus,
   adminMarkCODPaid,
-  getRevenueStats
+  getRevenueStats,
+  createOrderFromEnquiry
 } from "../controllers/orderController.js";
 
 const router = express.Router();
 
 router.post("/checkout", authenticateToken, checkout);
+router.post("/orders/enquiry-checkout", authenticateToken, createOrderFromEnquiry);
 router.get("/orders/me", authenticateToken, getMyOrders);
 
 // Admin Order Management

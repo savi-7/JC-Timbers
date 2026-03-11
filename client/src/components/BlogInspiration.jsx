@@ -72,79 +72,62 @@ export default function BlogInspiration() {
   }
 
   return (
-    <section className="bg-cream py-24 overflow-hidden">
+    <section className="bg-cream py-16 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6"
+          className="text-center mb-10"
         >
-          <div>
-            <h2 className="text-5xl lg:text-6xl font-heading text-dark-brown mb-4 tracking-tight">Journal</h2>
-            <p className="text-dark-brown/70 font-paragraph text-xl max-w-lg">Insights, guides, and inspiration for your next architectural masterpiece.</p>
-          </div>
-          <button className="hidden md:inline-flex items-center gap-2 text-accent-red font-bold uppercase tracking-widest text-sm group">
-            View All Articles
-            <svg className="w-5 h-5 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </button>
+          <h2 className="text-4xl font-heading text-dark-brown mb-2">From the Blog</h2>
+          <p className="text-dark-brown/80 font-paragraph text-lg">Guides, tips, and inspiration for your next project</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {posts.map((p, index) => (
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.15 } }
+          }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+        >
+          {posts.map(p => (
             <motion.div
               key={p.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "50px" }}
-              transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
-              className="group relative h-[450px] md:h-[500px] rounded-3xl overflow-hidden cursor-pointer"
+              variants={{
+                hidden: { opacity: 0, y: 30 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+              }}
+              whileHover={{ y: -5, transition: { duration: 0.2 } }}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300"
             >
-              {/* Image Background */}
-              <div className="absolute inset-0 bg-dark-brown">
-                {p.imageUrl ? (
+              {p.imageUrl ? (
+                <div className="overflow-hidden h-48">
                   <img
                     src={p.imageUrl}
                     alt={p.title}
-                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 opacity-60 group-hover:opacity-80"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                ) : (
-                  <div className="w-full h-full bg-dark-brown flex items-center justify-center opacity-50">
-                    <span className="text-6xl text-cream opacity-50">{p.title.charAt(0)}</span>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-dark-brown via-dark-brown/40 to-transparent pointer-events-none" />
-              </div>
-
-              {/* Content Overlay */}
-              <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                <span className="text-accent-red font-bold text-xs uppercase tracking-[0.2em] mb-4">Woodworking</span>
-                <h3 className="text-3xl text-cream font-heading mb-4 leading-tight group-hover:-translate-y-2 transition-transform duration-500 ease-out">
-                  {p.title}
-                </h3>
-                <div className="overflow-hidden h-0 group-hover:h-20 transition-all duration-500 ease-out">
-                  <p className="text-cream/80 font-paragraph text-sm md:text-base line-clamp-2">
-                    {p.excerpt}
-                  </p>
-                  <span className="inline-block mt-3 text-cream font-bold text-sm uppercase tracking-wider border-b border-accent-red pb-1">Read Article</span>
+                </div>
+              ) : (
+                <div className="h-48 w-full bg-cream" />
+              )}
+              <div className="p-6 flex flex-col flex-1">
+                <h3 className="text-2xl text-dark-brown font-heading mb-3 line-clamp-2">{p.title}</h3>
+                <p className="text-dark-brown/70 font-paragraph text-sm mb-6 flex-1 line-clamp-3">{p.excerpt}</p>
+                <div className="mt-auto">
+                  <button className="bg-accent-red hover:bg-dark-brown text-white px-5 py-2.5 rounded-lg font-paragraph text-sm transition-colors duration-200">
+                    {p.cta || 'Read More'}
+                  </button>
                 </div>
               </div>
             </motion.div>
           ))}
-        </div>
-
-        {/* Mobile View All Button */}
-        <div className="mt-10 text-center md:hidden">
-          <button className="inline-flex items-center gap-2 text-accent-red font-bold uppercase tracking-widest text-sm group">
-            View All Articles
-            <svg className="w-5 h-5 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </button>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

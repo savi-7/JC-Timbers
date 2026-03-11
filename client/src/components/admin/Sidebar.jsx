@@ -19,12 +19,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
     <>
       {/* Mobile backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/20 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         ></div>
       )}
-      
+
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-white border-r border-gray-200 flex-shrink-0 transition-all duration-300 overflow-hidden lg:w-64 fixed lg:relative z-50 lg:z-auto h-full`}>
         <div className="p-6 border-b border-gray-200">
@@ -40,7 +40,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
             </div>
           </div>
         </div>
-        
+
         <nav className="p-4 space-y-1">
           {/* Dashboard Overview */}
           <div className="space-y-1">
@@ -60,7 +60,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
             <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
               Management
             </div>
-            <button 
+            <button
               onClick={() => navigate('/admin/customer-segments')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -69,7 +69,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Customer Segments</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/admin/vendors')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -78,7 +78,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Vendors</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/admin/stock')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -87,16 +87,16 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Stock</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/admin/products')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
               <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                
+
               </svg>
               <span className="truncate">Products</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/admin/users')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -105,7 +105,16 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Users</span>
             </button>
-            <button 
+            <button
+              onClick={() => navigate('/admin/enquiries')}
+              className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
+            >
+              <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              <span className="truncate">Custom Enquiries</span>
+            </button>
+            <button
               onClick={() => navigate('/admin/orders')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -114,7 +123,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Orders</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/admin/wood-quality')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -123,7 +132,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Wood Quality (ML)</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/admin/service-schedule')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -132,7 +141,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Service Schedule</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/admin/service-enquiries')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -148,7 +157,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
             <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
               Service Module
             </div>
-            <button 
+            <button
               onClick={() => navigate('/admin/timber-cutting-enquiry')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -164,7 +173,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
             <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
               Tools
             </div>
-            <button 
+            <button
               onClick={() => navigate('/admin/timber-calculator')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
@@ -187,7 +196,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Settings</span>
             </button>
-            <button 
+            <button
               onClick={onLogoutClick}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors duration-150"
             >
@@ -199,7 +208,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           </div>
         </nav>
       </div>
-      
+
       {/* Logout Confirmation Modal */}
       <LogoutConfirmation
         isOpen={showLogoutConfirm}

@@ -74,67 +74,80 @@ export default function ProductShowcase() {
     setChecking(false);
   };
 
-  // Custom Bento-Box Category Card
-  const CategoryCard = ({ title, description, category, image, index }) => {
+  // Category card component - using the same layout as product cards
+  const CategoryCard = ({ title, description, category, image }) => {
     const [imageError, setImageError] = useState(false);
 
     const getCategoryRoute = (category) => {
       switch (category) {
-        case 'timber': return '/timber-products';
-        case 'furniture': return '/furniture';
-        case 'construction': return '/construction-materials';
-        default: return '/timber-products';
+        case 'timber':
+          return '/timber-products';
+        case 'furniture':
+          return '/furniture';
+        case 'construction':
+          return '/construction-materials';
+        default:
+          return '/timber-products';
       }
     };
 
-    // Bento box sizing logic
-    const gridClass = index === 0
-      ? 'lg:col-span-2 lg:row-span-2 min-h-[400px] lg:min-h-[600px]'
-      : 'lg:col-span-1 lg:row-span-1 min-h-[300px] lg:min-h-[290px]';
+    const handleCategoryClick = () => {
+      navigate(getCategoryRoute(category));
+    };
+
+    const getCategoryIcon = () => {
+      switch (category) {
+        case 'timber':
+          return '🪵';
+        case 'furniture':
+          return '🪑';
+        case 'construction':
+          return '🏗️';
+        default:
+          return '🪵';
+      }
+    };
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "50px" }}
-        transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
-        className={`relative bg-dark-brown rounded-3xl overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500 will-change-transform ${gridClass}`}
-        onClick={() => navigate(getCategoryRoute(category))}
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ duration: 0.5 }}
+        className="product-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-lg transition-all duration-300 cursor-pointer"
+        onClick={handleCategoryClick}
       >
-        {/* Full Bleed Image */}
-        <div className="absolute inset-0 bg-dark-brown">
+        <div className="image-container">
           {!imageError ? (
             <img
               src={image}
               alt={title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out opacity-80 group-hover:opacity-100"
+              className="product-image"
               onError={() => setImageError(true)}
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full flex flex-col justify-center items-center opacity-30">
-              <span className="text-6xl text-cream">{title.charAt(0)}</span>
+            <div className="w-full h-full bg-gradient-to-br from-dark-brown/20 via-accent-red/20 to-dark-brown/10 flex items-center justify-center">
+              <div className="text-6xl opacity-60">{getCategoryIcon()}</div>
             </div>
           )}
-          {/* Subtle overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none transition-opacity duration-500 group-hover:opacity-70"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </div>
-
-        {/* Glassmorphic Content Panel */}
-        <div className="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 md:p-8 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-\[0.22,1,0.36,1\]">
-            <h3 className="text-2xl md:text-3xl font-heading text-cream font-bold mb-2 group-hover:text-white transition-colors">
-              {title}
-            </h3>
-            <p className="text-cream/80 font-paragraph text-sm md:text-base line-clamp-2 max-w-md group-hover:text-cream transition-colors">
-              {description}
-            </p>
-            <div className="mt-6 flex items-center text-accent-red font-medium group-hover:text-white transition-colors duration-300">
-              <span className="mr-2 uppercase tracking-widest text-xs font-bold">Explore</span>
-              <svg className="w-4 h-4 group-hover:translate-x-2 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </div>
+        <div className="card-content p-6">
+          <div className="space-y-3">
+            <h3 className="text-lg font-paragraph text-dark-brown font-medium line-clamp-2">{title}</h3>
+            <p className="text-sm text-dark-brown/70 font-paragraph line-clamp-2">{description}</p>
+          </div>
+          <div className="flex gap-2 pt-4 mt-auto">
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent card click
+                handleCategoryClick();
+              }}
+              className="flex-1 bg-accent-red hover:bg-dark-brown text-white px-4 py-3 rounded-lg text-sm font-paragraph transition-colors duration-200 font-medium"
+            >
+              Explore {title}
+            </button>
           </div>
         </div>
       </motion.div>
@@ -164,8 +177,8 @@ export default function ProductShowcase() {
   ];
 
   return (
-    <section className="py-24 bg-cream">
-      <div className="max-w-7xl mx-auto px-6">
+    <section className="py-16 bg-white">
+      <div className="max-w-6xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -173,22 +186,21 @@ export default function ProductShowcase() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-5xl lg:text-6xl font-heading text-dark-brown mb-6 tracking-tight">Curated Collections</h2>
-          <p className="text-xl text-dark-brown/80 font-paragraph max-w-2xl mx-auto">
-            Discover our premium selection of timber products, furniture, and construction materials, crafted for excellence.
+          <h2 className="text-4xl font-heading text-dark-brown mb-4">Shop by Category</h2>
+          <p className="text-lg text-dark-brown/80 font-paragraph max-w-2xl mx-auto">
+            Discover our premium collection of timber products, furniture, and construction materials
           </p>
         </motion.div>
 
-        {/* Bento Box Category Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          {categories.map((category, index) => (
+        {/* Category Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          {categories.map((category) => (
             <CategoryCard
               key={category.category}
               title={category.title}
               description={category.description}
               category={category.category}
               image={category.image}
-              index={index}
             />
           ))}
         </div>
