@@ -51,6 +51,7 @@ import AdminCustomerSegments from "./pages/AdminCustomerSegments";
 import AdminServiceSchedule from "./pages/AdminServiceSchedule";
 import AdminServiceEnquiries from "./pages/AdminServiceEnquiries";
 import AdminTimberCuttingEnquiry from "./pages/AdminTimberCuttingEnquiry";
+import AdminMachineryMonitoring from "./pages/AdminMachineryMonitoring";
 import ServiceEnquiry from "./pages/ServiceEnquiry";
 import MyServiceEnquiries from "./pages/MyServiceEnquiries";
 import TimberProcessingForm from "./pages/TimberProcessingForm";
@@ -162,6 +163,14 @@ export default function App() {
             element={
               <ProtectedRoute role="admin">
                 <AdminWoodQuality />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/machinery-monitoring"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminMachineryMonitoring />
               </ProtectedRoute>
             }
           />
