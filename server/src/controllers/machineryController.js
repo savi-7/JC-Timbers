@@ -1,4 +1,5 @@
 import Machine from "../models/Machine.js";
+import { io } from "../server.js";
 
 const DEFAULT_TEMP = Number(process.env.MACHINERY_DEFAULT_TEMP_THRESHOLD) || 40;
 const DEFAULT_VIBRATION = Number(process.env.MACHINERY_DEFAULT_VIBRATION_THRESHOLD) || 1500;
@@ -50,7 +51,7 @@ export const webhook = async (req, res) => {
       );
 
       if (doc) {
-        updatedMachines.push({
+        const payload = {
           machineId: doc.machineId,
           name: doc.name,
           tempThreshold: doc.tempThreshold,
@@ -58,7 +59,15 @@ export const webhook = async (req, res) => {
           lastTemperature: doc.lastTemperature,
           lastVibration: doc.lastVibration,
           lastReadingAt: doc.lastReadingAt
-        });
+        };
+
+        updatedMachines.push(payload);
+
+        // Emit real-time update over Socket.IO (global + per-machine room)
+        if (io) {
+          io.emit("machine_update", payload);
+          io.to(`machine:${doc.machineId}`).emit("machine_update", payload);
+        }
       }
     }
 
