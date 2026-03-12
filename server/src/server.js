@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 dotenv.config(); // Load .env BEFORE any other imports that use process.env
 
 import express from "express";
-import http from "http";
 import cors from "cors";
 import path from "path";
 import helmet from "helmet";
@@ -37,39 +36,9 @@ import { getAvailableSlots } from "./controllers/serviceScheduleController.js";
 import { getProductImage } from "./controllers/imageController.js";
 import { getBaseUrl } from "./utils/getBaseUrl.js";
 
-// Lazily require socket.io only when running in a Node environment.
-// This avoids issues in environments where dev dependencies may differ.
-let io;
-if (!process.env.VERCEL) {
-  // Use dynamic import so bundlers don't break on serverless
-  const { Server } = await import("socket.io");
-  const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
-  const allowedOrigins = new Set([
-    CLIENT_ORIGIN,
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-  ]);
-  io = new Server({
-    cors: {
-      origin: (origin, callback) => {
-        if (!origin || allowedOrigins.has(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || /^https?:\/\/([a-z0-9-]+\.)*vercel\.app(:\d+)?$/.test(origin)) {
-          return callback(null, true);
-        }
-        return callback(null, false);
-      },
-      methods: ["GET", "POST"]
-    }
-  });
-}
-
-export { io };
-
 connectDB();
 
 const app = express();
-const server = http.createServer(app);
 
 // Backend requirements: Return JSON | JWT auth (see routes/middleware) | Full image URLs (see getBaseUrl, product/marketplace responses)
 
@@ -177,22 +146,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Socket.IO connection handling (only when io is available)
-if (io) {
-  io.attach(server);
-  io.on("connection", (socket) => {
-    socket.on("subscribe-machine", (machineId) => {
-      if (machineId) {
-        socket.join(`machine:${machineId}`);
-      }
-    });
-  });
-}
-
 // Server Start (skip on Vercel - app is exported as serverless handler)
 const PORT = Number(process.env.PORT) || 5001;
 if (!process.env.VERCEL) {
-  server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
 export default app;

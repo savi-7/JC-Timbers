@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { io as createSocket } from "socket.io-client";
 import api from "../api/axios";
-import { API_BASE } from "../config";
 import Sidebar from "../components/admin/Sidebar";
 import Header from "../components/admin/Header";
+
+const POLL_INTERVAL_MS = 2000;
 
 function isOverThreshold(m) {
   if (m == null) return false;
@@ -34,30 +34,9 @@ export default function AdminMachineryMonitoring() {
   }, []);
 
   useEffect(() => {
-    // Initial load to show existing machines
     fetchMachines();
-
-    // Derive socket base (strip trailing /api)
-    const socketBase = API_BASE.replace(/\/api$/, "");
-    const socket = createSocket(socketBase, {
-      transports: ["websocket", "polling"]
-    });
-
-    socket.on("machine_update", (update) => {
-      setMachines((prev) => {
-        const existing = prev.find((m) => m.machineId === update.machineId);
-        if (existing) {
-          return prev.map((m) =>
-            m.machineId === update.machineId ? { ...m, ...update } : m
-          );
-        }
-        return [...prev, update];
-      });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    const interval = setInterval(fetchMachines, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, [fetchMachines]);
 
   const openEdit = (machine) => {
