@@ -3,7 +3,7 @@ import api from "../api/axios";
 import Sidebar from "../components/admin/Sidebar";
 import Header from "../components/admin/Header";
 
-const POLL_INTERVAL_MS = 10000;
+const POLL_INTERVAL_MS = 2000;
 
 function isOverThreshold(m) {
   if (m == null) return false;
