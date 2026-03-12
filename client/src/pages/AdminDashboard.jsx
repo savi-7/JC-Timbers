@@ -118,6 +118,7 @@ export default function AdminDashboard() {
         showRevenueModal={showRevenueModal}
         setShowRevenueModal={setShowRevenueModal}
         detailedData={detailedData}
+        onRevenueReset={() => fetchDetailedData('revenue')}
       />
       
       {/* Toast Notifications */}

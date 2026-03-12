@@ -3,6 +3,7 @@ import Product from "../models/Product.js";
 import Order from "../models/Order.js";
 import User from "../models/User.js";
 import Enquiry from "../models/Enquiry.js";
+import Settings from "../models/Settings.js";
 import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from "../services/emailService.js";
 
 export const checkout = async (req, res) => {
@@ -383,13 +384,18 @@ export const adminMarkCODPaid = async (req, res) => {
   }
 };
 
-// ADMIN: Get revenue statistics
+// ADMIN: Get revenue statistics (only orders on or after revenueResetAt, if set)
 export const getRevenueStats = async (req, res) => {
   try {
+    const settings = await Settings.findOne().lean();
+    const revenueResetAt = settings?.revenueResetAt || null;
+    const dateFilter = revenueResetAt ? { createdAt: { $gte: new Date(revenueResetAt) } } : {};
+
     // Get all paid orders (Online payments that are Paid, and COD orders marked as Paid)
     const paidOrders = await Order.find({
       paymentStatus: 'Paid',
-      status: { $ne: 'Cancelled' } // Exclude cancelled orders
+      status: { $ne: 'Cancelled' }, // Exclude cancelled orders
+      ...dateFilter
     });
 
     // Calculate total revenue
@@ -408,7 +414,8 @@ export const getRevenueStats = async (req, res) => {
     const pendingCODOrders = await Order.find({
       paymentMethod: 'COD',
       paymentStatus: { $ne: 'Paid' },
-      status: { $nin: ['Cancelled'] }
+      status: { $nin: ['Cancelled'] },
+      ...dateFilter
     });
 
     const pendingCODRevenue = pendingCODOrders.reduce((sum, order) => sum + order.totalAmount, 0);
@@ -443,6 +450,26 @@ export const getRevenueStats = async (req, res) => {
   } catch (err) {
     console.error('Error fetching revenue stats:', err);
     return res.status(500).json({ message: "Failed to fetch revenue statistics", error: err.message });
+  }
+};
+
+// ADMIN: Reset revenue (only orders placed after this moment will count toward revenue)
+export const resetRevenueStats = async (req, res) => {
+  try {
+    const now = new Date();
+    await Settings.findOneAndUpdate(
+      {},
+      { $set: { revenueResetAt: now } },
+      { upsert: true, new: true }
+    );
+    console.log('Revenue reset at:', now.toISOString());
+    return res.status(200).json({
+      message: "Revenue has been reset. Only orders placed from now will count toward revenue.",
+      revenueResetAt: now
+    });
+  } catch (err) {
+    console.error('Error resetting revenue:', err);
+    return res.status(500).json({ message: "Failed to reset revenue", error: err.message });
   }
 };
 

@@ -7,6 +7,7 @@ import {
   adminUpdateOrderStatus,
   adminMarkCODPaid,
   getRevenueStats,
+  resetRevenueStats,
   createOrderFromEnquiry
 } from "../controllers/orderController.js";
 
@@ -23,6 +24,7 @@ router.put("/admin/orders/:id/mark-paid", authenticateToken, requireAdmin, admin
 
 // Admin Revenue Statistics
 router.get("/admin/revenue-stats", authenticateToken, requireAdmin, getRevenueStats);
+router.post("/admin/revenue-reset", authenticateToken, requireAdmin, resetRevenueStats);
 
 export default router;
 

@@ -47,7 +47,6 @@ import SellerLocation from "./pages/SellerLocation";
 import { NotificationProvider } from "./components/NotificationProvider";
 import { CartProvider } from "./contexts/CartContext";
 import AdminWoodQuality from "./pages/AdminWoodQuality";
-import AdminCustomerSegments from "./pages/AdminCustomerSegments";
 import AdminServiceSchedule from "./pages/AdminServiceSchedule";
 import AdminServiceEnquiries from "./pages/AdminServiceEnquiries";
 import AdminTimberCuttingEnquiry from "./pages/AdminTimberCuttingEnquiry";
@@ -203,14 +202,6 @@ export default function App() {
             element={
               <ProtectedRoute role="admin">
                 <AdminTimberCuttingEnquiry />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/customer-segments"
-            element={
-              <ProtectedRoute role="admin">
-                <AdminCustomerSegments />
               </ProtectedRoute>
             }
           />

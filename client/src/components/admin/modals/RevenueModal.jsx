@@ -1,9 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
+import api from '../../../api/axios';
 
-export default function RevenueModal({ showRevenueModal, setShowRevenueModal, detailedData }) {
+export default function RevenueModal({ showRevenueModal, setShowRevenueModal, detailedData, onRevenueReset }) {
+  const [resetting, setResetting] = useState(false);
   if (!showRevenueModal) return null;
 
   const revenue = detailedData.revenue || {};
+
+  const handleResetRevenue = async () => {
+    if (!window.confirm('Reset all revenue to zero? Only orders placed from now will count toward revenue. This cannot be undone.')) return;
+    try {
+      setResetting(true);
+      await api.post('/admin/revenue-reset');
+      if (typeof onRevenueReset === 'function') onRevenueReset();
+    } catch (err) {
+      console.error('Revenue reset failed:', err);
+      alert(err.response?.data?.message || 'Failed to reset revenue.');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <>
@@ -186,7 +202,15 @@ export default function RevenueModal({ showRevenueModal, setShowRevenueModal, de
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
+            <button
+              type="button"
+              onClick={handleResetRevenue}
+              disabled={resetting}
+              className="px-4 py-2 text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              {resetting ? 'Resetting…' : 'Reset revenue to zero'}
+            </button>
             <button
               onClick={() => setShowRevenueModal(false)}
               className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"

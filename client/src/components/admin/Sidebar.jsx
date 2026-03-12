@@ -1,9 +1,11 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LogoutConfirmation, useLogoutConfirmation } from './LogoutConfirmation';
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isDashboard = location.pathname === '/admin/dashboard';
   const { showLogoutConfirm, showConfirmation, handleConfirm, handleCancel } = useLogoutConfirmation();
 
   const handleLogout = () => {
@@ -47,7 +49,10 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
             <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
               Overview
             </div>
-            <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-900 rounded-md hover:bg-gray-100 transition-colors duration-150 bg-gray-100">
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors duration-150 ${isDashboard ? 'text-gray-900 bg-gray-100' : 'text-gray-700'}`}
+            >
               <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
               </svg>
@@ -60,15 +65,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
             <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
               Management
             </div>
-            <button
-              onClick={() => navigate('/admin/customer-segments')}
-              className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
-            >
-              <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h4l3 10 4-18 3 8h4" />
-              </svg>
-              <span className="truncate">Customer Segments</span>
-            </button>
             <button
               onClick={() => navigate('/admin/vendors')}
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
@@ -92,7 +88,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
               <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
               <span className="truncate">Products</span>
             </button>

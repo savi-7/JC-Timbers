@@ -1,7 +1,7 @@
 import Machine from "../models/Machine.js";
 
-const DEFAULT_TEMP = Number(process.env.MACHINERY_DEFAULT_TEMP_THRESHOLD) || 80;
-const DEFAULT_VIBRATION = Number(process.env.MACHINERY_DEFAULT_VIBRATION_THRESHOLD) || 10;
+const DEFAULT_TEMP = Number(process.env.MACHINERY_DEFAULT_TEMP_THRESHOLD) || 40;
+const DEFAULT_VIBRATION = Number(process.env.MACHINERY_DEFAULT_VIBRATION_THRESHOLD) || 1500;
 
 // function validateWebhookAuth(req) {
 //   const secret = process.env.IOT_WEBHOOK_SECRET;
@@ -24,6 +24,9 @@ export const webhook = async (req, res) => {
     if (!readings.length) {
       return res.status(400).json({ message: "Missing machineId/temperature/vibration or readings array" });
     }
+
+    const updatedMachines = [];
+
     for (const r of readings) {
       const machineId = r.machineId;
       if (!machineId) continue;
@@ -32,7 +35,8 @@ export const webhook = async (req, res) => {
       const setFields = { lastReadingAt: new Date() };
       if (Number.isFinite(temperature)) setFields.lastTemperature = temperature;
       if (Number.isFinite(vibration)) setFields.lastVibration = vibration;
-      await Machine.findOneAndUpdate(
+
+      const doc = await Machine.findOneAndUpdate(
         { machineId: String(machineId).trim() },
         {
           $set: setFields,
@@ -44,8 +48,21 @@ export const webhook = async (req, res) => {
         },
         { upsert: true, new: true }
       );
+
+      if (doc) {
+        updatedMachines.push({
+          machineId: doc.machineId,
+          name: doc.name,
+          tempThreshold: doc.tempThreshold,
+          vibrationThreshold: doc.vibrationThreshold,
+          lastTemperature: doc.lastTemperature,
+          lastVibration: doc.lastVibration,
+          lastReadingAt: doc.lastReadingAt
+        });
+      }
     }
-    return res.status(200).json({ ok: true });
+
+    return res.status(200).json({ ok: true, machines: updatedMachines });
   } catch (err) {
     console.error("Machinery webhook error:", err);
     return res.status(500).json({ message: err.message || "Internal server error" });
@@ -59,6 +76,44 @@ export const listMachines = async (_req, res) => {
   } catch (err) {
     console.error("List machines error:", err);
     res.status(500).json({ message: err.message || "Internal server error" });
+  }
+};
+
+export const getMachineThreshold = async (req, res) => {
+  try {
+    const { machineId } = req.params;
+    if (!machineId) {
+      return res.status(400).json({ message: "machineId is required" });
+    }
+
+    const doc = await Machine.findOneAndUpdate(
+      { machineId: String(machineId).trim() },
+      {
+        $setOnInsert: {
+          name: String(machineId).trim(),
+          tempThreshold: DEFAULT_TEMP,
+          vibrationThreshold: DEFAULT_VIBRATION
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    if (!doc) {
+      return res.status(500).json({ message: "Failed to create or load machine" });
+    }
+
+    return res.json({
+      machineId: doc.machineId,
+      name: doc.name,
+      tempThreshold: doc.tempThreshold,
+      vibrationThreshold: doc.vibrationThreshold,
+      lastTemperature: doc.lastTemperature,
+      lastVibration: doc.lastVibration,
+      lastReadingAt: doc.lastReadingAt
+    });
+  } catch (err) {
+    console.error("Get machine threshold error:", err);
+    return res.status(500).json({ message: err.message || "Internal server error" });
   }
 };
 
