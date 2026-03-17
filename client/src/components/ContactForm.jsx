@@ -4,7 +4,6 @@ import api from '../api/axios';
 
 export default function ContactForm() {
   const { showSuccess, showError } = useNotification();
-  const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -46,7 +45,6 @@ export default function ContactForm() {
         subject: '',
         message: ''
       });
-      setShowForm(false);
     } catch (error) {
       console.error('Error submitting contact form:', error);
       showError(error.response?.data?.message || 'Failed to send message. Please try again.');
@@ -56,137 +54,148 @@ export default function ContactForm() {
   };
 
   return (
-    <section id="contact-form" className="bg-cream py-16 lg:py-24">
-      <div className="max-w-4xl mx-auto px-6">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-7xl md:text-8xl font-heading text-dark-brown mb-6" style={{ fontWeight: 100 }}>
-            Get in Touch
+    <section id="contact-form" className="bg-cream py-32 relative overflow-hidden">
+      <div className="absolute inset-0 bg-white/50" />
+      <div className="max-w-7xl mx-auto px-6 relative z-10 flex flex-col lg:flex-row gap-20">
+        
+        {/* Left Side: Editorial Header */}
+        <div className="lg:w-1/3 space-y-8">
+          <h2 className="text-6xl md:text-8xl font-heading text-dark-brown leading-none tracking-tighter">
+            Get in<br/>
+            <span className="italic text-accent-red font-light">touch</span>
           </h2>
-          <div className="max-w-2xl mx-auto">
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="text-xl font-semibold text-dark-brown mb-4 hover:text-accent-red transition-colors duration-200 cursor-pointer"
-            >
-              Drop Us a Message
-            </button>
-            <p className="text-gray-700 font-paragraph leading-relaxed">
-              Have a question or feedback? We'd love to hear from you. Click above to fill out the form, 
-              and we'll get back to you as soon as possible.
-            </p>
+          <p className="text-xl font-paragraph text-dark-brown/60 leading-relaxed max-w-sm">
+            Have a project in mind or just want to say hello? We'd love to hear from you.
+          </p>
+          <div className="pt-8 space-y-6">
+            <div className="font-paragraph text-dark-brown">
+              <span className="block text-xs font-bold text-dark-brown/50 uppercase tracking-widest mb-1">Email</span>
+              <a href="mailto:hello@jctimbers.com" className="text-xl hover:text-accent-red transition-colors duration-300">hello@jctimbers.com</a>
+            </div>
+            <div className="font-paragraph text-dark-brown">
+              <span className="block text-xs font-bold text-dark-brown/50 uppercase tracking-widest mb-1">Phone</span>
+              <a href="tel:+919876543210" className="text-xl hover:text-accent-red transition-colors duration-300">+91 98765 43210</a>
+            </div>
           </div>
         </div>
 
-        {/* Contact Form - Only shows when showForm is true */}
-        {showForm && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 lg:p-12">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name and Email Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-dark-brown focus:outline-none transition-colors duration-200 bg-transparent"
-                    placeholder="Your full name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-dark-brown focus:outline-none transition-colors duration-200 bg-transparent"
-                    placeholder="your.email@example.com"
-                  />
-                </div>
+        {/* Right Side: Ultra Minimalist Form */}
+        <div className="lg:w-2/3">
+          <form onSubmit={handleSubmit} className="space-y-12">
+            
+            {/* Row 1 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div className="relative group">
+                <input
+                  type="text"
+                  name="name"
+                  id="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  className="peer w-full bg-transparent border-b border-dark-brown/20 focus:border-accent-red py-4 text-2xl font-heading text-dark-brown outline-none transition-colors duration-300 placeholder-transparent"
+                  placeholder="Name"
+                />
+                <label htmlFor="name" className="absolute left-0 top-4 text-dark-brown/40 font-heading text-2xl transition-all duration-300 peer-focus:-top-6 peer-focus:text-xs peer-focus:text-accent-red peer-valid:-top-6 peer-valid:text-xs peer-valid:text-dark-brown/40 pointer-events-none uppercase tracking-widest">
+                  Name
+                </label>
               </div>
 
-              {/* Phone Row */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone *
+              <div className="relative group">
+                <input
+                  type="email"
+                  name="email"
+                  id="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className="peer w-full bg-transparent border-b border-dark-brown/20 focus:border-accent-red py-4 text-2xl font-heading text-dark-brown outline-none transition-colors duration-300 placeholder-transparent"
+                  placeholder="Email"
+                />
+                <label htmlFor="email" className="absolute left-0 top-4 text-dark-brown/40 font-heading text-2xl transition-all duration-300 peer-focus:-top-6 peer-focus:text-xs peer-focus:text-accent-red peer-valid:-top-6 peer-valid:text-xs peer-valid:text-dark-brown/40 pointer-events-none uppercase tracking-widest">
+                  Email
                 </label>
-                <div className="flex items-center">
-                  <div className="flex items-center border-b-2 border-gray-300 focus-within:border-dark-brown transition-colors duration-200">
-                    <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <select className="bg-transparent border-none outline-none text-gray-700 pr-2">
-                      <option value="+91">🇮🇳 +91</option>
-                      <option value="+1">🇺🇸 +1</option>
-                      <option value="+44">🇬🇧 +44</option>
-                      <option value="+61">🇦🇺 +61</option>
-                    </select>
-                  </div>
+              </div>
+            </div>
+
+            {/* Row 2 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div className="relative group flex items-end">
+                <div className="border-b border-dark-brown/20 focus-within:border-accent-red transition-colors duration-300 pb-4 pr-4">
+                   <select className="bg-transparent border-none outline-none text-dark-brown/60 font-heading text-xl cursor-pointer">
+                     <option value="+91">IN (+91)</option>
+                     <option value="+1">US (+1)</option>
+                     <option value="+44">UK (+44)</option>
+                   </select>
+                </div>
+                <div className="relative flex-1">
                   <input
                     type="tel"
                     name="phone"
+                    id="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
                     required
-                    className="flex-1 px-4 py-3 border-b-2 border-gray-300 focus:border-dark-brown focus:outline-none transition-colors duration-200 bg-transparent ml-2"
-                    placeholder="Phone number"
+                    className="peer w-full bg-transparent border-b border-dark-brown/20 focus:border-accent-red py-4 text-2xl font-heading text-dark-brown outline-none transition-colors duration-300 placeholder-transparent"
+                    placeholder="Phone"
                   />
+                  <label htmlFor="phone" className="absolute left-0 top-4 text-dark-brown/40 font-heading text-2xl transition-all duration-300 peer-focus:-top-6 peer-focus:text-xs peer-focus:text-accent-red peer-valid:-top-6 peer-valid:text-xs peer-valid:text-dark-brown/40 pointer-events-none uppercase tracking-widest">
+                    Phone
+                  </label>
                 </div>
               </div>
 
-              {/* Subject Row */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject *
-                </label>
+              <div className="relative group">
                 <input
                   type="text"
                   name="subject"
+                  id="subject"
                   value={formData.subject}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-dark-brown focus:outline-none transition-colors duration-200 bg-transparent"
-                  placeholder="What's this about?"
+                  className="peer w-full bg-transparent border-b border-dark-brown/20 focus:border-accent-red py-4 text-2xl font-heading text-dark-brown outline-none transition-colors duration-300 placeholder-transparent"
+                  placeholder="Subject"
                 />
-              </div>
-
-              {/* Message Row */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Message *
+                <label htmlFor="subject" className="absolute left-0 top-4 text-dark-brown/40 font-heading text-2xl transition-all duration-300 peer-focus:-top-6 peer-focus:text-xs peer-focus:text-accent-red peer-valid:-top-6 peer-valid:text-xs peer-valid:text-dark-brown/40 pointer-events-none uppercase tracking-widest">
+                  Subject
                 </label>
-                <textarea
-                  name="message"
-                  value={formData.message}
-                  onChange={handleInputChange}
-                  required
-                  rows={5}
-                  className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-dark-brown focus:outline-none transition-colors duration-200 bg-transparent resize-none"
-                  placeholder="Tell us more about your inquiry..."
-                />
               </div>
+            </div>
 
-              {/* Submit Button */}
-              <div className="pt-6">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-dark-brown text-white py-4 px-8 rounded-lg font-semibold hover:bg-accent-red transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
-                >
-                  {loading ? 'Sending...' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+            {/* Row 3 Message */}
+            <div className="relative group pt-6">
+              <textarea
+                name="message"
+                id="message"
+                value={formData.message}
+                onChange={handleInputChange}
+                required
+                rows={4}
+                className="peer w-full bg-transparent border-b border-dark-brown/20 focus:border-accent-red py-4 text-2xl font-heading text-dark-brown outline-none transition-colors duration-300 placeholder-transparent resize-none"
+                placeholder="Message"
+              />
+              <label htmlFor="message" className="absolute left-0 top-10 text-dark-brown/40 font-heading text-2xl transition-all duration-300 peer-focus:top-0 peer-focus:text-xs peer-focus:text-accent-red peer-valid:top-0 peer-valid:text-xs peer-valid:text-dark-brown/40 pointer-events-none uppercase tracking-widest">
+                Your Message
+              </label>
+            </div>
+
+            {/* Submit */}
+            <div className="pt-8 md:text-right">
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative inline-flex items-center justify-center gap-4 bg-transparent text-dark-brown hover:text-accent-red py-4 font-paragraph text-xl tracking-widest uppercase transition-colors duration-500 disabled:opacity-50"
+              >
+                <span className="relative z-10">{loading ? 'Sending...' : 'Send Message'}</span>
+                {!loading && (
+                  <span className="w-12 h-[1px] bg-dark-brown group-hover:bg-accent-red group-hover:w-16 transition-all duration-300" />
+                )}
+              </button>
+            </div>
+
+          </form>
+        </div>
+
       </div>
     </section>
   );

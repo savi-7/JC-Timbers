@@ -220,6 +220,18 @@ const response = await axios.post(
 console.log('Similar products:', response.data.data.results);
 ```
 
+### Reindex existing furniture products
+
+If you uploaded the **same product image** from your site and it doesn’t appear in results, those products may not be in the image search index (e.g. they were seeded or added before indexing). Reindex all furniture products (using stored base64 or by fetching image URLs):
+
+```bash
+# Admin JWT required
+POST /api/products/reindex-image-search
+Authorization: Bearer <admin_jwt>
+```
+
+Response: `{ "message": "Reindexed N furniture products for image search", "reindexed": N, "total": M }`. Then try image search again.
+
 ## Troubleshooting
 
 ### FastAPI Service Not Starting
@@ -242,6 +254,11 @@ console.log('Similar products:', response.data.data.results);
 2. Check disk space (model is ~500MB)
 3. Verify sentence-transformers version
 4. Check logs for specific error messages
+
+### Same product image not showing in results
+
+1. **Reindex products**: Many furniture items are only indexed when created/updated via admin. Run `POST /api/products/reindex-image-search` (as admin) to index all current furniture products (see “Reindex existing furniture products” above).
+2. **Similarity threshold**: The service returns matches with similarity ≥ 0.58. If your catalog is small or images differ a lot (e.g. crop/quality), try reindexing and using a clear product photo.
 
 ### Pinecone Connection Errors
 

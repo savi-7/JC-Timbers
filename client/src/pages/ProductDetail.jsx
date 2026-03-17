@@ -8,6 +8,7 @@ import Header from '../components/Header';
 import SimilarProducts from '../components/SimilarProducts';
 import ProductReviews from '../components/ProductReviews';
 import ReviewModal from '../components/ReviewModal';
+import ShareModal from '../components/ShareModal';
 import { motion } from 'framer-motion';
 
 export default function ProductDetail() {
@@ -23,6 +24,7 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [showSpecifications, setShowSpecifications] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Fetch product details
   useEffect(() => {
@@ -186,6 +188,15 @@ export default function ProductDetail() {
     return fallback;
   };
 
+  // Gallery images: exclude cover (cover is shown on listing only). If no isCover set, treat first as cover.
+  const allImages = product?.images && product.images.length > 0 ? product.images : [];
+  const coverIndex = allImages.findIndex((img) => img.isCover);
+  const effectiveCoverIndex = coverIndex >= 0 ? coverIndex : 0;
+  const detailImages = allImages.length <= 1
+    ? allImages
+    : allImages.filter((_, i) => i !== effectiveCoverIndex);
+  const galleryImages = detailImages.length > 0 ? detailImages : allImages;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -247,35 +258,103 @@ export default function ProductDetail() {
 
         {/* Product Details */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-          {/* Left Section - Product Images (Sticky Scroll on Desktop) */}
+          {/* Left Section - Product Images (reference layout: main image + overlays + thumbnail strip) */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="space-y-6 lg:sticky lg:top-32"
+            className="space-y-0 lg:sticky lg:top-32"
           >
-            {/* Main Product Image */}
-            <div className="aspect-square rounded-2xl overflow-hidden shadow-lg">
+            {/* Main Product Image with overlay controls - object-contain so full product is visible */}
+            <div className="relative aspect-square rounded-2xl overflow-hidden shadow-lg bg-gray-100 group flex items-center justify-center">
               <img
-                src={getImageUrl(product.images[selectedImageIndex] || product.images[0])}
+                src={getImageUrl(galleryImages[selectedImageIndex] || galleryImages[0])}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {
                   e.target.src = 'https://via.placeholder.com/400x400/f3f4f6/9ca3af?text=No+Image';
                 }}
               />
+
+              {/* Top-left: Featured badge (New Arrivals / Best Seller / etc.) */}
+              {product.featuredType && product.featuredType !== 'none' && (
+                <div className="absolute top-4 left-4 z-10">
+                  <span className="inline-flex px-3 py-1.5 text-sm font-semibold rounded-lg bg-orange-500 text-white shadow-md">
+                    {product.featuredType === 'best' ? 'Best Seller' : product.featuredType === 'new' ? 'New Arrivals' : 'Discounted'}
+                  </span>
+                </div>
+              )}
+
+              {/* Left/Right navigation arrows */}
+              {galleryImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImageIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1))}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-lg bg-white/95 shadow-md flex items-center justify-center text-gray-800 hover:bg-white hover:scale-105 transition-all duration-200"
+                    aria-label="Previous image"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImageIndex((prev) => (prev === galleryImages.length - 1 ? 0 : prev + 1))}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-lg bg-white/95 shadow-md flex items-center justify-center text-gray-800 hover:bg-white hover:scale-105 transition-all duration-200"
+                    aria-label="Next image"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </>
+              )}
+
+              {/* Bottom-left: View Similar Items + Wishlist */}
+              <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('similar-products')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/95 shadow-md text-gray-800 font-medium text-sm hover:bg-white hover:shadow-lg transition-all duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
+                  </svg>
+                  View Similar Items
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddToWishlist}
+                  className="w-10 h-10 rounded-lg bg-white/95 shadow-md flex items-center justify-center text-gray-700 hover:bg-white hover:text-accent-red transition-all duration-200 border border-gray-200"
+                  title="Add to wishlist"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Bottom-right: Zoom hint */}
+              <p className="absolute bottom-4 right-4 z-10 text-xs text-gray-500/90 bg-white/70 backdrop-blur-sm px-2 py-1 rounded">
+                Roll over image to zoom in
+              </p>
             </div>
 
-            {/* Thumbnail Images */}
-            {product.images && product.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-3">
-                {product.images.map((image, index) => (
+            {/* Separator line between main image and thumbnail strip */}
+            <div className="border-b border-gray-200 my-4" />
+
+            {/* Thumbnail strip - horizontal scrollable gallery */}
+            {galleryImages.length > 0 && (
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1">
+                {galleryImages.map((image, index) => (
                   <button
                     key={index}
+                    type="button"
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${selectedImageIndex === index
-                      ? 'border-dark-brown ring-2 ring-dark-brown ring-opacity-20'
-                      : 'border-gray-200 hover:border-gray-300'
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${selectedImageIndex === index
+                      ? 'border-dark-brown ring-2 ring-dark-brown ring-opacity-30'
+                      : 'border-gray-200 hover:border-gray-400'
                       }`}
                   >
                     <img
@@ -283,7 +362,7 @@ export default function ProductDetail() {
                       alt={`${product.name} ${index + 1}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/100x100/f3f4f6/9ca3af?text=No+Image';
+                        e.target.src = 'https://via.placeholder.com/80x80/f3f4f6/9ca3af?text=No+Image';
                       }}
                     />
                   </button>
@@ -543,18 +622,31 @@ export default function ProductDetail() {
                       </motion.button>
                     </div>
                   )}
-                  {/* Secondary Action */}
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={handleAddToWishlist}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-6 border-2 border-dark-brown text-dark-brown rounded-lg font-semibold hover:bg-dark-brown hover:text-white transition-colors duration-200"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    Add to Wishlist
-                  </motion.button>
+                  {/* Secondary Actions: Wishlist + Share */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={handleAddToWishlist}
+                      className="flex items-center justify-center gap-2 py-3 px-6 border-2 border-dark-brown text-dark-brown rounded-lg font-semibold hover:bg-dark-brown hover:text-white transition-colors duration-200"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                      Wishlist
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => setShowShareModal(true)}
+                      className="flex items-center justify-center gap-2 py-3 px-6 border-2 border-gray-400 text-gray-700 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      Share
+                    </motion.button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -564,11 +656,12 @@ export default function ProductDetail() {
         {/* Similar Products Section */}
         {product && (
           <motion.div
+            id="similar-products"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6 }}
-            className="max-w-7xl mx-auto px-6 mt-12"
+            className="max-w-7xl mx-auto px-6 mt-12 scroll-mt-24"
           >
             <SimilarProducts productId={product._id} maxItems={4} />
 
@@ -592,6 +685,14 @@ export default function ProductDetail() {
           }}
         />
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        shareUrl={product ? `${window.location.origin}/product/${product._id}` : ''}
+        shareTitle={product?.name || ''}
+      />
     </div>
   );
 }

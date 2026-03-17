@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import Header from "../components/Header";
 import Hero from "../components/Hero";
 import AboutUsSection from "../components/AboutUsSection";
@@ -7,30 +8,37 @@ import Testimonials from "../components/Testimonials";
 import BlogInspiration from "../components/BlogInspiration";
 import FAQ from "../components/FAQ";
 import Footer from "../components/Footer";
+import EntranceLoader from "../components/EntranceLoader";
 import { useAuth } from "../hooks/useAuth";
 import { Navigate } from "react-router-dom";
 
 export default function HomePage() {
-const { role } = useAuth();
+  const { role } = useAuth();
+  const [loadingComplete, setLoadingComplete] = useState(false);
 
-if (role === 'admin') {
-  return <Navigate to="/admin/dashboard" />;
-}
+  if (role === 'admin') {
+    return <Navigate to="/admin/dashboard" />;
+  }
 
-if (role === 'customer') {
-  return <Navigate to="/customer-home" />;
-}
+  if (role === 'customer') {
+    return <Navigate to="/customer-home" />;
+  }
+
   return (
-    <div className="bg-cream min-h-screen">
-      <Header />
-      <Hero />
-      <ProductShowcase />
-      <WhyChooseUs />
-      <Testimonials />
-      <BlogInspiration />
-      <AboutUsSection />
-      <FAQ />
-      <Footer />
-    </div>
+    <>
+      <EntranceLoader onLoadingComplete={() => setLoadingComplete(true)} />
+      
+      <div className={`bg-cream min-h-screen overflow-x-clip transition-opacity duration-1000 ${loadingComplete ? 'opacity-100' : 'opacity-0 h-screen overflow-hidden'}`}>
+        <Header />
+        <Hero />
+        <ProductShowcase />
+        <AboutUsSection />
+        <WhyChooseUs />
+        <Testimonials />
+        <BlogInspiration />
+        <FAQ />
+        <Footer />
+      </div>
+    </>
   );
 }

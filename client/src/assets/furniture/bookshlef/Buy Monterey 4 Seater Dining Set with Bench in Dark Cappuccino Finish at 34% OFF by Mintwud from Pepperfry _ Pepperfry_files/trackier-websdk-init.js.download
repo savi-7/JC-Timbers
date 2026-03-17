@@ -1,0 +1,8 @@
+(function (window, document, uri) {
+    var s = document.createElement('script');
+    s.onload = function () {
+        window.TrackierWebSDK.init();
+    };
+    s.src = uri;
+    document.body.appendChild(s);
+}(window, document, 'https://static-cdn.trackier.com/js/trackier-web-sdk.js'))

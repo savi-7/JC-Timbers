@@ -3,6 +3,48 @@ import crypto from 'crypto';
 import Order from '../models/Order.js';
 import Cart from '../models/Cart.js';
 import Product from '../models/Product.js';
+import AfterSaleRequest from '../models/AfterSaleRequest.js';
+import Address from '../models/Address.js';
+
+/** Save address used at checkout to user's Address collection so it appears on /addresses */
+async function saveCheckoutAddressToAddresses(userId, address) {
+  if (!address || !address.name || !address.phone) return;
+  const fullName = address.name;
+  const mobileNumber = String(address.phone).replace(/\D/g, '').slice(-10);
+  const pincode = String(address.zip || address.pincode || '').trim().slice(0, 6);
+  const state = (address.state || '').trim();
+  const addressLine = (address.addressLine || address.address || '').trim();
+  const flatHouseCompany = (address.flatHouseCompany || '').trim() || '—';
+  const city = (address.city || '').trim();
+  if (!pincode || pincode.length !== 6 || !state || !addressLine || !city) return;
+
+  const existing = await Address.findOne({
+    userId,
+    mobileNumber,
+    pincode,
+    address: addressLine,
+    flatHouseCompany
+  });
+  if (existing) return;
+
+  try {
+    await Address.create({
+      userId,
+      fullName,
+      mobileNumber,
+      pincode,
+      state,
+      address: addressLine,
+      flatHouseCompany,
+      city,
+      landmark: (address.landmark || '').trim(),
+      addressType: address.addressType || 'Home',
+      isDefault: false
+    });
+  } catch (err) {
+    console.error('saveCheckoutAddressToAddresses:', err.message);
+  }
+}
 
 // Lazy initialization of Razorpay instance
 const getRazorpayInstance = () => {
@@ -84,6 +126,63 @@ export const createRazorpayOrder = async (req, res) => {
     res.status(500).json({ 
       message: 'Failed to create payment order',
       error: error.message 
+    });
+  }
+};
+
+// Create Razorpay order for After-Sale Service (no cart dependency)
+export const createAfterSalePaymentOrder = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { requestId } = req.body;
+
+    if (!requestId) {
+      return res.status(400).json({ message: 'requestId is required' });
+    }
+
+    const asr = await AfterSaleRequest.findById(requestId);
+    if (!asr) {
+      return res.status(404).json({ message: 'After-sale request not found' });
+    }
+
+    if (asr.customerId.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'You are not allowed to pay for this request' });
+    }
+
+    const quotedAmount = asr.invoice?.quotedAmount || 0;
+    if (!quotedAmount || quotedAmount <= 0) {
+      return res.status(400).json({ message: 'No valid quote set for this request' });
+    }
+
+    const razorpay = getRazorpayInstance();
+
+    const shortUserId = userId.toString().slice(-8);
+    const timestamp = Date.now().toString().slice(-10);
+
+    const options = {
+      amount: Math.round(quotedAmount * 100),
+      currency: 'INR',
+      receipt: `asr_${shortUserId}_${timestamp}`,
+      notes: {
+        userId: userId.toString(),
+        afterSaleRequestId: asr._id.toString()
+      }
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    res.status(200).json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID
+    });
+  } catch (error) {
+    console.error('Razorpay after-sale order error:', error);
+    res.status(500).json({
+      message: 'Failed to create after-sale payment order',
+      error: error.message
     });
   }
 };
@@ -186,6 +285,8 @@ export const verifyRazorpayPayment = async (req, res) => {
       razorpayPaymentId: razorpay_payment_id,
       status: 'Processing'
     });
+
+    await saveCheckoutAddressToAddresses(userId, address);
 
     // Decrement stock with verification
     const stockUpdateResults = [];
@@ -333,6 +434,8 @@ export const createCODOrder = async (req, res) => {
       paymentStatus: 'Pending',
       status: 'Processing'
     });
+
+    await saveCheckoutAddressToAddresses(userId, address);
 
     // Decrement stock
     for (const item of cart.items) {

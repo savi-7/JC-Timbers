@@ -3,8 +3,44 @@ import api from '../api/axios';
 import { useNotification } from './NotificationProvider';
 import { getLocationFromPincode, validatePincode } from '../utils/pincodeLookup';
 
+// Map Address model (from /addresses API) to checkout format
+function addressToCheckout(addr) {
+  if (!addr) return null;
+  return {
+    name: addr.fullName || addr.name || '',
+    phone: addr.mobileNumber || addr.phone || '',
+    pincode: addr.pincode || addr.zip || '',
+    state: addr.state || '',
+    addressLine: addr.address || addr.addressLine || '',
+    flatHouseCompany: addr.flatHouseCompany || '',
+    city: addr.city || '',
+    landmark: addr.landmark || '',
+    addressType: addr.addressType || 'Home',
+    _id: addr._id
+  };
+}
+
+// Map checkout form to Address API payload
+function checkoutToAddressPayload(form) {
+  return {
+    fullName: form.name,
+    mobileNumber: form.phone,
+    pincode: form.pincode,
+    state: form.state,
+    address: form.addressLine,
+    flatHouseCompany: form.flatHouseCompany,
+    city: form.city,
+    landmark: form.landmark || '',
+    addressType: form.addressType || 'Home',
+    isDefault: false
+  };
+}
+
 export default function AddressSection({ address, setAddress, onComplete }) {
   const { showSuccess, showError } = useNotification();
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -20,27 +56,39 @@ export default function AddressSection({ address, setAddress, onComplete }) {
   });
 
   useEffect(() => {
-    fetchUserProfile();
+    fetchAddressesAndProfile();
   }, []);
 
-  const fetchUserProfile = async () => {
+  const fetchAddressesAndProfile = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/auth/profile');
-      if (response.data.success && response.data.user.address) {
-        // Parse address if it's a JSON string
+      const [addrRes, profileRes] = await Promise.all([
+        api.get('/addresses'),
+        api.get('/auth/profile').catch(() => ({ data: {} }))
+      ]);
+
+      const addresses = addrRes.data?.addresses || [];
+      setSavedAddresses(addresses);
+
+      if (addresses.length > 0) {
+        const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
+        const checkoutAddr = addressToCheckout(defaultAddr);
+        setSelectedAddressId(defaultAddr._id);
+        setAddress(checkoutAddr);
+        setFormData(checkoutAddr);
+        setShowAddForm(false);
+        setIsEditing(false);
+      } else if (profileRes.data?.success && profileRes.data?.user?.address) {
         let addressData;
         try {
-          addressData = typeof response.data.user.address === 'string' 
-            ? JSON.parse(response.data.user.address) 
-            : response.data.user.address;
+          const raw = profileRes.data.user.address;
+          addressData = typeof raw === 'string' ? JSON.parse(raw) : raw;
         } catch {
           addressData = {};
         }
-        
         const userAddress = {
-          name: addressData.name || response.data.user.name || '',
-          phone: addressData.phone || response.data.user.phone || '',
+          name: addressData.name || profileRes.data.user.name || '',
+          phone: addressData.phone || profileRes.data.user.phone || '',
           pincode: addressData.pincode || addressData.zip || '',
           state: addressData.state || '',
           addressLine: addressData.addressLine || addressData.address || '',
@@ -49,21 +97,21 @@ export default function AddressSection({ address, setAddress, onComplete }) {
           landmark: addressData.landmark || '',
           addressType: addressData.addressType || 'Home'
         };
-        
         setFormData(userAddress);
         setAddress(userAddress);
-        
-        // If user has valid address, mark as complete
         if (userAddress.addressLine && userAddress.flatHouseCompany && userAddress.city && userAddress.state && userAddress.pincode) {
           setIsEditing(false);
         } else {
+          setShowAddForm(true);
           setIsEditing(true);
         }
       } else {
+        setShowAddForm(true);
         setIsEditing(true);
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error fetching addresses/profile:', error);
+      setShowAddForm(true);
       setIsEditing(true);
     } finally {
       setLoading(false);
@@ -72,12 +120,11 @@ export default function AddressSection({ address, setAddress, onComplete }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    
-    // Auto-fill location details when pincode is entered
+    const next = { ...formData, [name]: value };
+    setFormData(next);
+    if (showAddForm || savedAddresses.length === 0) {
+      setAddress(next);
+    }
     if (name === 'pincode' && validatePincode(value)) {
       handlePincodeLookup(value);
     }
@@ -119,41 +166,51 @@ export default function AddressSection({ address, setAddress, onComplete }) {
     }
   };
 
+  const handleSelectAddress = (addr) => {
+    const checkoutAddr = addressToCheckout(addr);
+    setSelectedAddressId(addr._id);
+    setAddress(checkoutAddr);
+    setFormData(checkoutAddr);
+    setShowAddForm(false);
+    setIsEditing(false);
+    onComplete && onComplete();
+  };
+
   const handleSave = async () => {
-    // Validate all required fields
-    if (!formData.name || !formData.phone || !formData.pincode || !formData.state || 
+    if (!formData.name || !formData.phone || !formData.pincode || !formData.state ||
         !formData.addressLine || !formData.flatHouseCompany || !formData.city) {
       showError('Please fill in all required fields');
       return;
     }
-
-    // Full name validation
     if (formData.name.trim().length < 3) {
       showError('Full name must be at least 3 characters');
       return;
     }
-
-    // Phone validation
-    if (!/^\d{10}$/.test(formData.phone)) {
+    if (!/^\d{10}$/.test(String(formData.phone).replace(/\D/g, ''))) {
       showError('Mobile number must be exactly 10 digits');
       return;
     }
-
-    // Pincode validation
-    if (!/^\d{6}$/.test(formData.pincode)) {
+    if (!/^\d{6}$/.test(String(formData.pincode))) {
       showError('Pincode must be exactly 6 digits');
       return;
     }
 
     try {
-      const response = await api.post('/auth/update-address', {
-        address: JSON.stringify(formData)
-      });
-      
+      const payload = checkoutToAddressPayload(formData);
+      const response = await api.post('/addresses', payload);
       if (response.data.success) {
-        showSuccess('Address saved successfully');
+        showSuccess('Address saved. It will appear on your Addresses page too.');
         setAddress(formData);
         setIsEditing(false);
+        setShowAddForm(false);
+        await fetchAddressesAndProfile();
+        const newAddr = response.data.address;
+        if (newAddr) {
+          setSelectedAddressId(newAddr._id);
+          setAddress(addressToCheckout(newAddr));
+        } else {
+          setAddress(formData);
+        }
         onComplete && onComplete();
       }
     } catch (error) {
@@ -172,6 +229,9 @@ export default function AddressSection({ address, setAddress, onComplete }) {
     );
   }
 
+  const showAddressList = savedAddresses.length > 0 && !showAddForm;
+  const showForm = showAddForm || savedAddresses.length === 0;
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
@@ -181,37 +241,62 @@ export default function AddressSection({ address, setAddress, onComplete }) {
           </div>
           <h2 className="text-xl font-bold text-dark-brown">Delivery Address</h2>
         </div>
-        {!isEditing && address.addressLine && (
+        {showAddressList && (
           <button
-            onClick={() => setIsEditing(true)}
+            onClick={() => setShowAddForm(true)}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
-            Change
+            Add new address
           </button>
         )}
       </div>
 
-      {!isEditing && address.addressLine ? (
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-gray-900">{address.name}</p>
-              <span className="px-2 py-1 text-xs font-medium text-white bg-dark-brown rounded">
-                {address.addressType || 'Home'}
-              </span>
-            </div>
-            <p className="text-gray-700">{address.flatHouseCompany}</p>
-            <p className="text-gray-700">{address.addressLine}</p>
-            {address.landmark && (
-              <p className="text-gray-600 text-sm">Landmark: {address.landmark}</p>
-            )}
-            <p className="text-gray-700">
-              {address.city}, {address.state} - {address.pincode || address.zip}
-            </p>
-            <p className="text-gray-700 font-medium">Mobile: {address.phone}</p>
-          </div>
+      {showAddressList && (
+        <div className="space-y-4 mb-6">
+          {savedAddresses.map((addr) => {
+            const isSelected = selectedAddressId === addr._id;
+            const checkoutAddr = addressToCheckout(addr);
+            return (
+              <div
+                key={addr._id}
+                className={`rounded-lg border-2 p-4 transition-colors ${
+                  isSelected ? 'border-dark-brown bg-amber-50/50' : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-900">{addr.fullName}</p>
+                      <span className="px-2 py-0.5 text-xs font-medium text-white bg-dark-brown rounded">
+                        {addr.addressType || 'Home'}
+                      </span>
+                      {addr.isDefault && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">Default</span>
+                      )}
+                    </div>
+                    <p className="text-gray-700">{addr.flatHouseCompany}, {addr.address}</p>
+                    <p className="text-gray-700">{addr.city}, {addr.state} - {addr.pincode}</p>
+                    <p className="text-gray-600 text-sm">Mobile: {addr.mobileNumber}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAddress(addr)}
+                    className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+                      isSelected
+                        ? 'bg-dark-brown text-white cursor-default'
+                        : 'bg-dark-brown/10 text-dark-brown hover:bg-dark-brown hover:text-white'
+                    }`}
+                  >
+                    {isSelected ? 'Selected' : 'Deliver here'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      ) : (
+      )}
+
+      {showForm ? (
         <div className="space-y-4">
           {/* Row 1: Full Name and Mobile Number */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -402,11 +487,13 @@ export default function AddressSection({ address, setAddress, onComplete }) {
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4">
-            {!loading && address.addressLine && (
+            {savedAddresses.length > 0 && (
               <button
+                type="button"
                 onClick={() => {
-                  setFormData(address);
-                  setIsEditing(false);
+                  setShowAddForm(false);
+                  const defaultAddr = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
+                  handleSelectAddress(defaultAddr);
                 }}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
               >
@@ -414,6 +501,7 @@ export default function AddressSection({ address, setAddress, onComplete }) {
               </button>
             )}
             <button
+              type="button"
               onClick={handleSave}
               className="px-6 py-2 bg-dark-brown text-white rounded-lg hover:bg-accent-red font-medium transition-colors"
             >
@@ -421,7 +509,7 @@ export default function AddressSection({ address, setAddress, onComplete }) {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

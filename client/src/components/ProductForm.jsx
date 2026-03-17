@@ -60,7 +60,9 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
       woodTypes: '',
       estimatedProductionTime: '',
       basePrice: ''
-    }
+    },
+    warrantyIncluded: false,
+    warrantyMonths: 0
   });
 
   // Image state
@@ -68,6 +70,7 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
   const [existingImages, setExistingImages] = useState([]);
   const [imagesToRemove, setImagesToRemove] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [coverIndex, setCoverIndex] = useState(0);
 
   // Validation state
   const [validationErrors, setValidationErrors] = useState({});
@@ -225,9 +228,14 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
           woodTypes: product.customizationOptions?.woodTypes?.join(', ') || '',
           estimatedProductionTime: product.customizationOptions?.estimatedProductionTime || '',
           basePrice: product.customizationOptions?.basePrice || ''
-        }
+        },
+        warrantyIncluded: product.warrantyIncluded || false,
+        warrantyMonths: product.warrantyMonths || 0
       });
       setExistingImages(product.images || []);
+      const imgs = product.images || [];
+      const coverI = imgs.findIndex((img) => img.isCover);
+      setCoverIndex(coverI >= 0 ? coverI : 0);
     } else {
       setFormData({
         name: '',
@@ -245,7 +253,9 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
           woodTypes: '',
           estimatedProductionTime: '',
           basePrice: ''
-        }
+        },
+        warrantyIncluded: false,
+        warrantyMonths: 0
       });
     }
   }, [product, isEdit, defaultCategory]);
@@ -774,6 +784,14 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
         estimatedProductionTime: formData.customizationOptions.estimatedProductionTime,
       };
       submitData.append('customizationOptions', JSON.stringify(customOpts));
+      // Warranty only for Furniture and Construction; Timber products always no warranty
+      if (defaultCategory === 'timber') {
+        submitData.append('warrantyIncluded', 'false');
+        submitData.append('warrantyMonths', '0');
+      } else {
+        submitData.append('warrantyIncluded', formData.warrantyIncluded ? 'true' : 'false');
+        submitData.append('warrantyMonths', formData.warrantyIncluded ? String(Math.min(120, Math.max(1, parseInt(formData.warrantyMonths, 10) || 0))) : '0');
+      }
 
       // Add new images securely (supports both old File array state and new obj array state)
       selectedFiles.forEach(item => {
@@ -782,6 +800,12 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
         submitData.append('images', fileObj);
         submitData.append('imageColors', colorVal);
       });
+
+      // Cover image index: when we have new files it's index in selectedFiles; otherwise index in existing (for update)
+      const effectiveCoverIndex = selectedFiles.length > 0
+        ? Math.min(coverIndex, selectedFiles.length - 1)
+        : Math.min(coverIndex, Math.max(0, existingImages.length - imagesToRemove.length - 1));
+      submitData.append('coverIndex', String(effectiveCoverIndex));
 
       console.log('Submitting product data:', {
         isEdit,
@@ -1589,6 +1613,119 @@ export default function ProductForm({ product, defaultCategory, onClose, onSucce
                 })()}
               </div>
             </div>
+
+            {/* Cover image: which image is shown on the product listing (e.g. /furniture). Detail page shows the rest. */}
+            {(() => {
+              const existingNotRemoved = existingImages.filter((img) => !imagesToRemove.includes(img.public_id || img.filename));
+              const listToUse = selectedFiles.length > 0 ? selectedFiles : existingNotRemoved;
+              const listLength = listToUse.length;
+              if (listLength === 0) return null;
+              const maxCover = listLength - 1;
+              const safeCover = Math.min(Math.max(0, coverIndex), maxCover);
+              return (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Cover image (listing)</h4>
+                  <p className="text-xs text-gray-500 mb-3">This image is shown on the category listing (e.g. Furniture page). The product detail page shows the other images.</p>
+                  <div className="flex flex-wrap gap-3">
+                    {selectedFiles.length > 0 ? (
+                      selectedFiles.map((item, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={URL.createObjectURL(item.file)}
+                            alt={`Preview ${index + 1}`}
+                            className={`w-20 h-20 object-cover rounded-lg border-2 ${safeCover === index ? 'border-green-600 ring-2 ring-green-400' : 'border-gray-200'}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setCoverIndex(index)}
+                            className={`mt-1 w-full text-xs py-1 rounded ${safeCover === index ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                          >
+                            {safeCover === index ? '✓ Cover' : 'Set as cover'}
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      existingNotRemoved.map((image, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={(() => {
+                              if (image.url) return image.url;
+                              if (image.data) {
+                                if (image.data.startsWith('data:')) return image.data;
+                                return `data:${image.contentType || 'image/jpeg'};base64,${image.data}`;
+                              }
+                              return 'https://via.placeholder.com/80x80/f3f4f6/9ca3af?text=No+Image';
+                            })()}
+                            alt={`Image ${index + 1}`}
+                            className={`w-20 h-20 object-cover rounded-lg border-2 ${safeCover === index ? 'border-green-600 ring-2 ring-green-400' : 'border-gray-200'}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setCoverIndex(index)}
+                            className={`mt-1 w-full text-xs py-1 rounded ${safeCover === index ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                          >
+                            {safeCover === index ? '✓ Cover' : 'Set as cover'}
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Warranty Settings - only for Furniture and Construction Materials, not Timber */}
+            {(defaultCategory === 'furniture' || defaultCategory === 'construction') && (
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Warranty Settings</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="warrantyIncluded"
+                      checked={!!formData.warrantyIncluded}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormData(prev => ({
+                          ...prev,
+                          warrantyIncluded: checked,
+                          warrantyMonths: checked ? (prev.warrantyMonths >= 1 ? prev.warrantyMonths : 1) : 0
+                        }));
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="warrantyIncluded" className="ml-2 block text-sm text-gray-700">
+                      Includes Warranty
+                    </label>
+                  </div>
+                  {formData.warrantyIncluded && (
+                    <div>
+                      <label htmlFor="warrantyMonths" className="block text-sm font-medium text-gray-700">
+                        Warranty Duration (months)
+                      </label>
+                      <input
+                        type="number"
+                        id="warrantyMonths"
+                        min={1}
+                        max={120}
+                        value={formData.warrantyMonths || ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                          setFormData(prev => ({
+                            ...prev,
+                            warrantyMonths: isNaN(val) ? 0 : Math.min(120, Math.max(1, val))
+                          }));
+                        }}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Number of months of warranty from the date of purchase.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Form Actions */}
             <div className="flex space-x-3 pt-4">

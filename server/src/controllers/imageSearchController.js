@@ -156,20 +156,21 @@ export const searchByImage = async (req, res) => {
       });
     } catch (formDataError) {
       console.error('Error creating form data or reading file:', formDataError);
-      // Clean up uploaded file
-      try {
-        if (req.file && req.file.path) {
+      // Clean up uploaded file only if it still exists
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        try {
           fs.unlinkSync(req.file.path);
+          console.log('Cleaned up temp file:', req.file.path);
+        } catch (cleanupError) {
+          console.error('Error deleting temp file:', cleanupError);
         }
-      } catch (cleanupError) {
-        console.error('Error deleting temp file:', cleanupError);
       }
       throw formDataError; // Re-throw to be caught by outer catch
     }
 
   } catch (error) {
-    // Clean up uploaded file on error
-    if (req.file && req.file.path) {
+    // Clean up uploaded file on error only if it still exists (avoid ENOENT if already deleted)
+    if (req.file?.path && fs.existsSync(req.file.path)) {
       try {
         fs.unlinkSync(req.file.path);
         console.log('Cleaned up temp file after error:', req.file.path);

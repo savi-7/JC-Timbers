@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { API_BASE } from '../config';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function FAQ() {
-  const [openItems, setOpenItems] = useState(new Set());
-  const [openCategories, setOpenCategories] = useState(new Set());
+  const [openIndex, setOpenIndex] = useState(null);
   const [faqData, setFaqData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -86,23 +86,7 @@ export default function FAQ() {
   ];
 
   const toggleItem = (index) => {
-    const newOpenItems = new Set(openItems);
-    if (newOpenItems.has(index)) {
-      newOpenItems.delete(index);
-    } else {
-      newOpenItems.add(index);
-    }
-    setOpenItems(newOpenItems);
-  };
-
-  const toggleCategory = (categoryIndex) => {
-    const newOpenCategories = new Set(openCategories);
-    if (newOpenCategories.has(categoryIndex)) {
-      newOpenCategories.delete(categoryIndex);
-    } else {
-      newOpenCategories.add(categoryIndex);
-    }
-    setOpenCategories(newOpenCategories);
+    setOpenIndex(openIndex === index ? null : index);
   };
 
   if (loading) {
@@ -118,11 +102,15 @@ export default function FAQ() {
     );
   }
 
+  // Flatten FAQs for minimalist list (ignore categories for V2 design)
+  const allFaqs = faqData.flatMap(category => category.questions);
+
   return (
-    <section className="py-24 bg-cream">
-      <div className="max-w-5xl mx-auto px-8">
+    <section className="py-32 bg-white relative">
+      <div className="max-w-7xl mx-auto px-6">
+        
         {/* Header Section */}
-        <div className="text-center mb-12">
+        <div className="mb-24 text-center">
           <h1 className="text-7xl md:text-8xl font-heading text-dark-brown mb-4" style={{ fontWeight: 100 }}>
             FAQs
           </h1>
@@ -134,78 +122,56 @@ export default function FAQ() {
           </p>
         </div>
 
-        {/* FAQ Accordion */}
-        <div className="space-y-6">
-          {faqData.map((category, categoryIndex) => {
-            const isCategoryOpen = openCategories.has(categoryIndex);
+        {/* Ultra Minimalist FAQ List */}
+        <div className="border-t border-dark-brown/20 cursor-default">
+          {allFaqs.slice(0, 4).map((item, index) => {
+            const isOpen = openIndex === index;
             
             return (
-              <div key={categoryIndex} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                {/* Category Header - Clickable */}
+              <div key={index} className="border-b border-dark-brown/20">
                 <button
-                  onClick={() => toggleCategory(categoryIndex)}
-                  className="w-full text-left p-6 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                  onClick={() => toggleItem(index)}
+                  className="w-full text-left py-10 flex items-center justify-between group focus:outline-none"
                 >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-heading text-dark-brown">{category.category}</h3>
-                    <svg
-                      className={`w-6 h-6 text-dark-brown transition-transform duration-200 flex-shrink-0 ${
-                        isCategoryOpen ? 'rotate-180' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                  <span className={`text-3xl md:text-4xl font-heading pr-8 flex-1 transition-colors duration-500 ${isOpen ? 'text-accent-red' : 'text-dark-brown group-hover:text-dark-brown/70'}`}>
+                    {item.question}
+                  </span>
+                  <div className="relative w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                    <motion.div 
+                      animate={{ rotate: isOpen ? 180 : 0, opacity: isOpen ? 0 : 1 }}
+                      transition={{ duration: 0.4 }}
+                      className="absolute w-full h-[2px] bg-dark-brown"
+                    />
+                    <motion.div 
+                      animate={{ rotate: isOpen ? 0 : 90 }}
+                      transition={{ duration: 0.4 }}
+                      className="absolute w-full h-[2px] bg-dark-brown"
+                    />
                   </div>
                 </button>
                 
-                {/* Questions - Only visible when category is open */}
-                {isCategoryOpen && (
-                  <div className="px-6 pb-6">
-                    <div className="space-y-4">
-                      {category.questions.map((item, itemIndex) => {
-                        const globalIndex = `${categoryIndex}-${itemIndex}`;
-                        const isOpen = openItems.has(globalIndex);
-                        
-                        return (
-                          <div key={itemIndex} className="border-b border-gray-100 last:border-b-0 pb-4 last:pb-0">
-                            <button
-                              onClick={() => toggleItem(globalIndex)}
-                              className="w-full text-left flex items-center justify-between py-3 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors duration-200"
-                            >
-                              <span className="font-paragraph text-dark-brown font-medium pr-4">
-                                {item.question}
-                              </span>
-                              <svg
-                                className={`w-5 h-5 text-dark-brown transition-transform duration-200 flex-shrink-0 ${
-                                  isOpen ? 'rotate-180' : ''
-                                }`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                            {isOpen && (
-                              <div className="px-2 -mx-2 pb-3">
-                                <p className="text-dark-brown/80 font-paragraph leading-relaxed">
-                                  {item.answer}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pb-12 pt-2 md:w-2/3">
+                        <p className="text-dark-brown/80 font-paragraph text-xl md:text-2xl leading-relaxed">
+                          {item.answer}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
         </div>
+
       </div>
     </section>
   );

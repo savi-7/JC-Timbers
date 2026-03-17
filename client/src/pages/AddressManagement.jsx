@@ -208,9 +208,10 @@ export default function AddressManagement() {
         pincode: '',
         state: '',
         address: '',
+        flatHouseCompany: '',
         city: '',
         landmark: '',
-        addressType: 'home',
+        addressType: 'Home',
         isDefault: false
       });
       setErrors({});
@@ -271,9 +272,10 @@ export default function AddressManagement() {
       pincode: '',
       state: '',
       address: '',
+      flatHouseCompany: '',
       city: '',
       landmark: '',
-      addressType: 'home',
+      addressType: 'Home',
       isDefault: false
     });
     setErrors({});

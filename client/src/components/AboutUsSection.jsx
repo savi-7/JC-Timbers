@@ -1,67 +1,95 @@
+import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 export default function AboutUsSection() {
   const navigate = useNavigate();
+  const containerRef = useRef(null);
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+
+  // Independent parallax speeds for different elements
+  const y1 = useTransform(scrollYProgress, [0, 1], [100, -100]);
+  const y2 = useTransform(scrollYProgress, [0, 1], [250, -250]);
+  const y3 = useTransform(scrollYProgress, [0, 1], [-50, 50]);
+  const opacity = useTransform(scrollYProgress, [0.2, 0.5, 0.8], [0, 1, 0]);
 
   return (
-    <section id="about-us" className="py-24 bg-cream">
-      <div className="max-w-7xl mx-auto px-6">
-        {/* About Us Layout */}
-        <div className="grid md:grid-cols-2 gap-12 items-start">
-          {/* Left Column - Living Room Image and CTA */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8 }}
-            className="space-y-6"
+    <section 
+      ref={containerRef}
+      id="about-us" 
+      className="relative min-h-[150vh] bg-cream py-32 overflow-hidden flex items-center"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(205,33,34,0.03)_0%,transparent_50%)]" />
+
+      <div className="max-w-7xl mx-auto px-6 w-full relative z-10 h-full flex items-center">
+        
+        {/* Asymmetric Image Collage */}
+        <div className="absolute inset-0 pointer-events-none hidden md:block">
+          {/* Main Large Image */}
+          <motion.div 
+            style={{ y: y1 }}
+            className="absolute top-[10%] right-[5%] w-[40vw] max-w-[500px] aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl"
           >
-            <div className="relative group overflow-hidden rounded-lg shadow-2xl">
-              <img
-                src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-                alt="Cozy living room with rustic furniture"
-                className="w-full h-[450px] object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
-            </div>
-            <div className="space-y-4">
-              <p className="text-dark-brown text-lg leading-relaxed font-paragraph">
-              </p>
-            </div>
+            <img
+              src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+              alt="Timber workshop"
+              className="w-full h-full object-cover"
+            />
           </motion.div>
 
-          {/* Right Column - About Us Text */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="space-y-8 flex flex-col justify-center"
+          {/* Secondary Floating Image */}
+          <motion.div 
+            style={{ y: y2 }}
+            className="absolute top-[40%] left-[5%] w-[25vw] max-w-[300px] aspect-square rounded-full overflow-hidden shadow-xl border-8 border-cream"
           >
-            {/* About Us Header */}
-            <div className="text-center md:text-left">
-              <h2 className="text-6xl md:text-7xl font-heading text-dark-brown leading-tight mb-4 hidden md:block">
-                <span className="text-7xl md:text-8xl">A</span>bout <span className="text-7xl md:text-8xl">U</span>s
-              </h2>
-              <h2 className="text-5xl font-heading text-dark-brown leading-tight mb-4 md:hidden">
-                About Us
-              </h2>
-              <p className="text-accent-red font-medium tracking-wide uppercase text-sm font-paragraph mb-6">Our Story</p>
-              <p className="text-dark-brown text-lg leading-relaxed font-paragraph mb-8">
-                JC Timbers is a family-owned business dedicated to delivering the finest timber and furniture products in India. With over 20 years of experience, we blend traditional craftsmanship with modern design, ensuring every piece is both beautiful and durable. Our commitment to sustainability means we source our materials responsibly, supporting local communities and the environment. From custom furniture to construction timber, we take pride in our attention to detail and customer satisfaction. Join us on our journey to create spaces that inspire and endure.
-              </p>
-              <div className="flex justify-center md:justify-start">
-                <button
-                  className="bg-accent-red hover:bg-dark-brown text-white px-8 py-3 rounded-lg font-paragraph transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg"
-                  onClick={() => navigate('/about')}
-                >
-                  Learn More
-                </button>
-              </div>
-            </div>
+            <img
+              src="https://images.unsplash.com/photo-1622372736562-b9e71ec646e2?q=80&w=600&auto=format&fit=crop"
+              alt="Wood grain detail"
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+
+          {/* Tertiary Small Accent Image */}
+          <motion.div 
+            style={{ y: y3 }}
+            className="absolute bottom-[10%] right-[30%] w-[20vw] max-w-[250px] aspect-video rounded-2xl overflow-hidden shadow-lg"
+          >
+            <img
+              src="https://images.unsplash.com/photo-1538688423619-a80d85a7536e?q=80&w=600&auto=format&fit=crop"
+              alt="Craftsmanship tools"
+              className="w-full h-full object-cover"
+            />
           </motion.div>
         </div>
+
+        {/* Central Bold Typography */}
+        <motion.div 
+          style={{ opacity }}
+          className="relative z-20 w-full max-w-2xl mx-auto text-center md:text-left md:ml-[10%] bg-cream/80 backdrop-blur-md p-10 rounded-[3rem] border border-white shadow-2xl"
+        >
+          <div className="space-y-8">
+            <h2 className="text-5xl md:text-6xl font-heading text-dark-brown leading-[0.85] tracking-tighter">
+              BEYOND<br/>
+              <span className="text-accent-red italic">WOOD</span>
+            </h2>
+            
+            <p className="text-lg md:text-xl text-dark-brown/80 font-paragraph leading-relaxed">
+              For over two decades, JC Timbers has redefined the intersection of nature and architecture. We don't just supply timber; we cultivate enduring foundations.
+            </p>
+
+            <button
+              onClick={() => navigate('/about')}
+              className="group relative inline-flex items-center justify-center gap-4 bg-dark-brown text-white py-4 px-10 rounded-full font-paragraph text-lg overflow-hidden hover:bg-accent-red transition-colors duration-500"
+            >
+              <span className="relative z-10">Discover Our Legacy</span>
+            </button>
+          </div>
+        </motion.div>
+
       </div>
     </section>
   );

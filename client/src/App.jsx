@@ -51,6 +51,11 @@ import AdminServiceSchedule from "./pages/AdminServiceSchedule";
 import AdminServiceEnquiries from "./pages/AdminServiceEnquiries";
 import AdminTimberCuttingEnquiry from "./pages/AdminTimberCuttingEnquiry";
 import AdminMachineryMonitoring from "./pages/AdminMachineryMonitoring";
+import AdminAfterSaleRequests from "./pages/AdminAfterSaleRequests";
+import AdminAfterSaleRequestDetail from "./pages/AdminAfterSaleRequestDetail";
+import AfterSaleRequestPage from "./pages/AfterSaleRequestPage";
+import MyAfterSaleRequests from "./pages/MyAfterSaleRequests";
+import AfterSaleRequestDetail from "./pages/AfterSaleRequestDetail";
 import ServiceEnquiry from "./pages/ServiceEnquiry";
 import MyServiceEnquiries from "./pages/MyServiceEnquiries";
 import TimberProcessingForm from "./pages/TimberProcessingForm";
@@ -58,6 +63,8 @@ import AdminEnquiries from "./pages/AdminEnquiries";
 import MyFurnitureEnquiries from "./pages/MyFurnitureEnquiries";
 import RequestQuote from "./pages/RequestQuote";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminContentManagement from "./pages/AdminContentManagement";
+import WoodpeckerChatbot from "./components/WoodpeckerChatbot";
 
 export default function App() {
   return (
@@ -190,10 +197,34 @@ export default function App() {
             }
           />
           <Route
+            path="/admin/after-sale"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminAfterSaleRequests />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/after-sale/:id"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminAfterSaleRequestDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/enquiries"
             element={
               <ProtectedRoute role="admin">
                 <AdminEnquiries />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/content"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminContentManagement />
               </ProtectedRoute>
             }
           />
@@ -386,6 +417,30 @@ export default function App() {
             }
           />
           <Route
+            path="/after-sale/new"
+            element={
+              <ProtectedRoute role="customer">
+                <AfterSaleRequestPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-after-sale-requests"
+            element={
+              <ProtectedRoute role="customer">
+                <MyAfterSaleRequests />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/after-sale/:id"
+            element={
+              <ProtectedRoute role="customer">
+                <AfterSaleRequestDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/customer-profile"
             element={<CustomerProfile />}
           />
@@ -441,6 +496,8 @@ export default function App() {
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        {/* Global Chatbot Component */}
+        <WoodpeckerChatbot />
       </CartProvider>
     </NotificationProvider>
   );

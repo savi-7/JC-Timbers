@@ -277,7 +277,14 @@ export default function ProductCatalog({ category, categoryInfo }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-gray-900">{product.name}</span>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            product.warrantyIncluded ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {product.warrantyIncluded ? `${product.warrantyMonths || 0} month warranty` : 'No warranty'}
+                          </span>
+                        </div>
                         <div className="text-sm text-gray-500">{product.description?.substring(0, 50)}...</div>
                       </div>
                     </td>

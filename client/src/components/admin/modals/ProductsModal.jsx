@@ -91,7 +91,14 @@ export default function ProductsModal({ showProductsModal, setShowProductsModal,
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <h4 className="font-medium text-gray-900 text-lg">{product.name}</h4>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-medium text-gray-900 text-lg">{product.name}</h4>
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                product.warrantyIncluded ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {product.warrantyIncluded ? `${product.warrantyMonths || 0} month warranty` : 'No warranty'}
+                              </span>
+                            </div>
                             <p className="text-sm text-gray-600 mt-1 line-clamp-2">{product.description}</p>
                             
                             <div className="flex items-center space-x-4 mt-3">

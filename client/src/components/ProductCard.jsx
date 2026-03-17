@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
 import { useNotification } from '../components/NotificationProvider';
+import ShareModal from './ShareModal';
 
 const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, variants }) => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -36,16 +38,21 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
   };
 
   const images = product.images && product.images.length > 0 ? product.images : [];
-  const hasMultipleImages = images.length > 1;
+  // On listing, show only the cover image (first with isCover, else first image)
+  const coverImage = images.length > 0
+    ? (images.find((img) => img.isCover) || images[0])
+    : null;
+  const displayImages = coverImage ? [coverImage] : [];
+  const hasMultipleImages = displayImages.length > 1;
 
   const nextImage = (e) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    setCurrentImageIndex((prev) => (prev === displayImages.length - 1 ? 0 : prev + 1));
   };
 
   const prevImage = (e) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    setCurrentImageIndex((prev) => (prev === 0 ? displayImages.length - 1 : prev - 1));
   };
 
   const handleCardClick = (e) => {
@@ -110,9 +117,9 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      whileInView={{ opacity: 1, scale: 1, transition: { duration: 0.5, ease: "easeOut" } }}
-      viewport={{ once: true, margin: "100px" }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
       className="group relative bg-cream rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col h-[400px] cursor-pointer will-change-transform"
       onClick={handleCardClick}
       data-interactive="true"
@@ -123,7 +130,7 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
           <div className="absolute inset-0 bg-gray-200 animate-pulse"></div>
         )}
         <img
-          src={images.length > 0 ? getImageUrl(images[currentImageIndex]) : 'https://via.placeholder.com/400x400/f8fafc/e2e8f0?text=No+Image'}
+          src={displayImages.length > 0 ? getImageUrl(displayImages[currentImageIndex]) : 'https://via.placeholder.com/400x400/f8fafc/e2e8f0?text=No+Image'}
           alt={`${product.name} item ${currentImageIndex + 1}`}
           loading="lazy"
           decoding="async"
@@ -166,7 +173,7 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
         {/* Carousel DOT Indicators */}
         {hasMultipleImages && (
           <div className="absolute bottom-[80px] md:bottom-[70px] left-0 right-0 flex justify-center gap-1.5 z-20 md:opacity-0 group-hover:opacity-100 opacity-100 transition-opacity duration-300 pointer-events-none">
-            {images.map((_, idx) => (
+            {displayImages.map((_, idx) => (
               <div
                 key={idx}
                 className={`h-1.5 rounded-full transition-all duration-300 ${currentImageIndex === idx ? 'w-4 bg-white shadow-sm' : 'w-1.5 bg-white/50 backdrop-blur-sm'}`}
@@ -185,25 +192,48 @@ const ProductCard = memo(({ product, onAddToCart, onBuyNow, onWishlistUpdate, va
             </span>
           )}
         </div>
-        <button
-          onClick={handleWishlistClick}
-          disabled={isAddingToWishlist}
-          className="p-2.5 rounded-full bg-white/70 backdrop-blur-sm text-dark-brown hover:text-accent-red hover:bg-white transition-colors duration-200 shadow-sm"
-          title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-        >
-          {isAddingToWishlist ? (
-            <div className="w-5 h-5 border-2 border-white/50 border-t-accent-red rounded-full animate-spin"></div>
-          ) : (
-            <svg
-              className={`w-5 h-5 transition-all duration-300 md:group-hover:scale-110 ${isWishlisted ? 'fill-accent-red text-accent-red' : 'fill-none stroke-current'}`}
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        <div className="flex gap-1.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowShareModal(true);
+            }}
+            className="p-2.5 rounded-full bg-white/70 backdrop-blur-sm text-dark-brown hover:bg-white transition-colors duration-200 shadow-sm"
+            title="Share"
+            data-interactive="true"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
-          )}
-        </button>
+          </button>
+          <button
+            onClick={handleWishlistClick}
+            disabled={isAddingToWishlist}
+            className="p-2.5 rounded-full bg-white/70 backdrop-blur-sm text-dark-brown hover:text-accent-red hover:bg-white transition-colors duration-200 shadow-sm"
+            title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          >
+            {isAddingToWishlist ? (
+              <div className="w-5 h-5 border-2 border-white/50 border-t-accent-red rounded-full animate-spin"></div>
+            ) : (
+              <svg
+                className={`w-5 h-5 transition-all duration-300 md:group-hover:scale-110 ${isWishlisted ? 'fill-accent-red text-accent-red' : 'fill-none stroke-current'}`}
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Share modal for this product */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        shareUrl={typeof window !== 'undefined' ? `${window.location.origin}/product/${product._id}` : ''}
+        shareTitle={product.name}
+      />
 
       {/* Bottom Glass Panel */}
       <div className="relative z-10 mt-auto p-3 transform md:translate-y-14 translate-y-0 group-hover:translate-y-0 transition-transform duration-300 ease-out will-change-transform">

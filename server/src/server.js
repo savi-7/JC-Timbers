@@ -32,6 +32,8 @@ import enquiryRoutes from "./routes/enquiryRoutes.js";
 import holidayRoutes from "./routes/holidayRoutes.js";
 import marketplaceRoutes from "./routes/marketplaceRoutes.js";
 import machineryRoutes from "./routes/machineryRoutes.js";
+import chatbotRoutes from "./routes/chatbotRoutes.js";
+import afterSaleRoutes from "./routes/afterSaleRoutes.js";
 import { getAvailableSlots } from "./controllers/serviceScheduleController.js";
 import { getProductImage } from "./controllers/imageController.js";
 import { getBaseUrl } from "./utils/getBaseUrl.js";
@@ -133,6 +135,8 @@ app.use("/api/services", serviceEnquiryRoutes);
 app.use("/api/holidays", holidayRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/machinery", machineryRoutes);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api", afterSaleRoutes);
 // Register woodQualityRoutes LAST - it uses router.use(requireAdmin) which applies to ALL routes in that router
 app.use("/api", woodQualityRoutes);
 

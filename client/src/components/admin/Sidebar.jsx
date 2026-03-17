@@ -155,6 +155,15 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </svg>
               <span className="truncate">Service Enquiries</span>
             </button>
+            <button
+              onClick={() => navigate('/admin/content')}
+              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${location.pathname === '/admin/content' ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-100'}`}
+            >
+              <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v10m2 2v-2m0 0V8m0 4h2m-2-4h2m-2-4h2" />
+              </svg>
+              <span className="truncate">Content & FAQs</span>
+            </button>
           </div>
 
           {/* Service Module */}
@@ -170,6 +179,15 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
               </svg>
               <span className="truncate">Timber Cutting Enquiry</span>
+            </button>
+            <button
+              onClick={() => navigate('/admin/after-sale')}
+              className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-150"
+            >
+              <svg className="w-4 h-4 text-gray-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m1-5H8a2 2 0 00-2 2v12l6-3 6 3V6a2 2 0 00-2-2z" />
+              </svg>
+              <span className="truncate">After-Sale Requests</span>
             </button>
           </div>
 

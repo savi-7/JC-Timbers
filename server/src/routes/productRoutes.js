@@ -7,7 +7,8 @@ import {
   getProductById,
   updateProduct,
   deleteProduct,
-  removeProductImage
+  removeProductImage,
+  reindexImageSearch
 } from '../controllers/productController.js';
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.use(authorizeAdmin);
 
 // Product CRUD routes with image upload
 router.post('/', uploadImages, handleUploadError, createProduct);
+router.post('/reindex-image-search', reindexImageSearch);
 router.put('/:id', uploadImages, handleUploadError, updateProduct);
 router.delete('/:id', deleteProduct);
 router.delete('/:id/images', removeProductImage);

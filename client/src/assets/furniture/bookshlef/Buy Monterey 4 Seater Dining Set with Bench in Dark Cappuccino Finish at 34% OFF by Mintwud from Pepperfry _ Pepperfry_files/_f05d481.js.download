@@ -1,0 +1,66 @@
+try { 
+	webengage.survey.onSubmit(function (data) {
+    if (data.surveyId === "~5g1co54") {
+        var fname;  
+        var phone;
+        var email;
+        var pincode; 
+       var Page_name = _weq['webengage.customData'].page_name;
+		var Page_type = _weq['webengage.customData'].page_type;
+    
+        console.log(data);
+
+        for (var i = 0; i < data.questionResponses.length; i++) {
+            if (Object.prototype.toString.call(data.questionResponses[i].value.values) == "[object Object]") {
+                for (var keys in data.questionResponses[i].value.values) {
+                    if (keys === "Full Name") {
+                        fname = data.questionResponses[i].value.values[keys];
+                    }
+                    if (keys === "Email") {
+                        email = data.questionResponses[i].value.values[keys];
+                    }
+                    if (keys === "Mobile Number") {
+                        phone = data.questionResponses[i].value.values[keys];
+                    }
+                    if (keys === "Pincode") {
+                        pincode = data.questionResponses[i].value.values[keys];
+                    }
+                }
+            }
+        }
+
+        console.log("we_fname", fname);
+        console.log("we_phone", phone);
+        console.log("we_email", email);
+        console.log("we_pincode", pincode);
+        console.log("we_pagename", Page_name);  
+        console.log("we_pagetype", Page_type);  
+
+        if (webengage && webengage.state && typeof webengage.state.getForever === "function" &&
+            (webengage.state.getForever().cuid === null || webengage.state.getForever().cuid === undefined) && phone !== null) {
+
+            webengage.user.setAttribute({
+                "we_fname": fname,
+                "we_phone": phone,
+                "we_email": email,
+                "we_pincode": pincode
+            });
+
+            webengage.track('Visit Survey Submited', {
+                "we_fname": fname,
+                "we_email": email,
+                "we_phone": phone,
+                "we_pincode": pincode,
+                "page_name": Page_name,  
+                "page_type": Page_type   
+            });
+        }
+    }
+});
+ } catch(e) { 
+ 	if (e instanceof Error) { 
+		var data = e.stack || e.description;
+		data = (data.length > 900 ? data.substring(0, 900) : data);
+	 	webengage.eLog(null, 'error', data, 'cwc-error','cwc', '~f05d481');
+	 }
+ }

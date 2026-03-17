@@ -3,13 +3,17 @@ import { authenticateToken } from '../middleware/auth.js';
 import { 
   createRazorpayOrder, 
   verifyRazorpayPayment,
-  createCODOrder 
+  createCODOrder,
+  createAfterSalePaymentOrder
 } from '../controllers/paymentController.js';
 
 const router = express.Router();
 
 // Create Razorpay order
 router.post('/razorpay', authenticateToken, createRazorpayOrder);
+
+// Create Razorpay order for After-Sale Service
+router.post('/razorpay/after-sale', authenticateToken, createAfterSalePaymentOrder);
 
 // Verify Razorpay payment
 router.post('/verify', authenticateToken, verifyRazorpayPayment);

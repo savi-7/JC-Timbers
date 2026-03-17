@@ -29,86 +29,43 @@ export default function Header({backgroundClass = 'bg-cream'}) {
 
   return (
     <nav className={`${backgroundClass}`}>
-      <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="w-full px-4 lg:px-8 xl:px-12 py-4">
         <div className="flex justify-between items-center">
           {/* Left - Brand Name */}
-          <div 
-            className="text-xl font-paragraph text-dark-brown tracking-wide cursor-pointer whitespace-nowrap mr-8 lg:mr-12"
-            onClick={() => navigate('/')}
-          >
-            JC Timbers
+          <div className="flex-1 flex justify-start">
+            <div 
+              className="text-2xl font-paragraph font-semibold text-dark-brown tracking-widest cursor-pointer whitespace-nowrap"
+              onClick={() => navigate('/')}
+            >
+              JC Timbers
+            </div>
           </div>
           
           {/* Center - Navigation Links */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8">
-            <button 
-              onClick={() => navigate(location.pathname === '/' ? '/' : '/customer-home')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
-            >
-              Home
-            </button>
-            
-            <button 
-              onClick={() => navigate('/timber-products')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
-            >
-              Timber Products
-            </button>
-
-            <button 
-              onClick={() => navigate('/furniture')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
-            >
-              Furniture
-            </button>
-
-            <button 
-              onClick={() => navigate('/construction-materials')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
-            >
-              Construction Materials
-            </button>
-            
-            <button 
-              onClick={() => navigate('/marketplace')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
-            >
-              Marketplace
-            </button>
-            
-            <button 
-              onClick={() => navigate('/service')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
-            >
-              Service
-            </button>
-            
-            <button 
-              onClick={() => {
-                navigate('/about');
-                // Scroll to about us section after navigation
-                // setTimeout(() => {
-                //   const aboutSection = document.getElementById('about-us');
-                //   if (aboutSection) {
-                //     aboutSection.scrollIntoView({ behavior: 'smooth' });
-                //   }
-                // }, 100);
-              }}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
-            >
-              About Us
-            </button>
-            
-            <button 
-              onClick={() => navigate('/contact-us')}
-              className="text-dark-brown hover:text-accent-red transition-colors duration-200 font-paragraph px-2 py-1 whitespace-nowrap"
-            >
-              Contact Us
-            </button>
+          <div className="hidden lg:flex items-center justify-center gap-4 xl:gap-8 flex-none w-max">
+            {[
+              { path: location.pathname === '/' ? '/' : '/customer-home', label: 'Home' },
+              { path: '/timber-products', label: 'Timber Products' },
+              { path: '/furniture', label: 'Furniture' },
+              { path: '/construction-materials', label: 'Construction Materials' },
+              { path: '/marketplace', label: 'Marketplace' },
+              { path: '/service', label: 'Service' },
+              { path: '/about', label: 'About Us' },
+              { path: '/contact-us', label: 'Contact Us' }
+            ].map((link, index) => (
+              <button 
+                key={index}
+                onClick={() => navigate(link.path)}
+                className="relative text-[15px] font-paragraph font-medium text-dark-brown tracking-wide hover:text-accent-red transition-colors duration-300 py-1 group whitespace-nowrap"
+              >
+                {link.label}
+                <span className="absolute left-0 bottom-0 w-0 h-[2px] bg-accent-red transition-all duration-300 group-hover:w-full"></span>
+              </button>
+            ))}
           </div>
           
           {/* Right - Profile, Wishlist, and Cart */}
-          <div className="flex items-center space-x-4">
+          <div className="flex-1 flex justify-end items-center space-x-4">
             {isAuthenticated ? (
               <>
                 {/* Profile Dropdown */}
@@ -122,7 +79,7 @@ export default function Header({backgroundClass = 'bg-cream'}) {
                         {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                       </span>
                     </div>
-                    <span className="hidden sm:block font-paragraph">{user?.name || 'User'}</span>
+                    <span className="hidden sm:block font-paragraph whitespace-nowrap">{user?.name || 'User'}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>

@@ -17,7 +17,9 @@ export const createProduct = async (req, res) => {
       attributes,
       featuredType,
       productType,
-      customizationOptions
+      customizationOptions,
+      warrantyIncluded,
+      warrantyMonths
     } = req.body;
 
     // Validate required fields
@@ -150,6 +152,13 @@ export const createProduct = async (req, res) => {
       });
     }
 
+    // Set cover image: coverIndex (0-based) from body, default 0 (first image)
+    const coverIndex = Math.max(0, parseInt(req.body.coverIndex, 10) || 0);
+    if (images.length > 0) {
+      const safeCoverIndex = Math.min(coverIndex, images.length - 1);
+      images.forEach((img, i) => { img.isCover = (i === safeCoverIndex); });
+    }
+
     // Create product
     console.log('Creating product with data:', {
       name: name.trim(),
@@ -175,7 +184,9 @@ export const createProduct = async (req, res) => {
       attributes: parsedAttributes,
       featuredType: featuredType || 'none',
       productType: productType || 'ready-stock',
-      customizationOptions: parsedCustomizationOptions
+      customizationOptions: parsedCustomizationOptions,
+      warrantyIncluded: warrantyIncluded === true || warrantyIncluded === 'true',
+      warrantyMonths: warrantyIncluded === true || warrantyIncluded === 'true' ? Math.max(0, parseInt(warrantyMonths, 10) || 0) : 0
     });
 
     console.log('Saving product to database...');
@@ -223,6 +234,8 @@ export const createProduct = async (req, res) => {
         attributes: product.attributes,
         productType: product.productType,
         customizationOptions: product.customizationOptions,
+        warrantyIncluded: product.warrantyIncluded,
+        warrantyMonths: product.warrantyMonths,
         createdAt: product.createdAt
       }
     });
@@ -416,6 +429,14 @@ export const updateProduct = async (req, res) => {
     if (updateData.quantity) {
       updateData.quantity = parseInt(updateData.quantity);
     }
+    if (updateData.hasOwnProperty('warrantyIncluded')) {
+      updateData.warrantyIncluded = updateData.warrantyIncluded === true || updateData.warrantyIncluded === 'true';
+    }
+    if (updateData.hasOwnProperty('warrantyMonths')) {
+      const months = parseInt(updateData.warrantyMonths, 10);
+      updateData.warrantyMonths = isNaN(months) ? 0 : Math.max(0, months);
+      if (!updateData.warrantyIncluded) updateData.warrantyMonths = 0;
+    }
 
     // Parse imageColors if provided
     let parsedImageColors = [];
@@ -489,11 +510,24 @@ export const updateProduct = async (req, res) => {
       }
 
       if (images.length > 0) {
+        const coverIndex = Math.max(0, parseInt(req.body.coverIndex, 10) || 0);
+        const safeCoverIndex = Math.min(coverIndex, images.length - 1);
+        images.forEach((img, i) => { img.isCover = (i === safeCoverIndex); });
         updateData.images = images;
-        console.log(`Added ${images.length} images to update data`);
+        console.log(`Added ${images.length} images to update data (cover index: ${safeCoverIndex})`);
       }
 
       cleanupTempFiles(req.files);
+    } else if (req.body.coverIndex !== undefined && req.body.coverIndex !== '') {
+      // No new files but cover index changed: update only isCover on existing images
+      const doc = await Product.findById(id);
+      if (doc && doc.images && doc.images.length > 0) {
+        const coverIndex = Math.max(0, parseInt(req.body.coverIndex, 10) || 0);
+        const safeCoverIndex = Math.min(coverIndex, doc.images.length - 1);
+        doc.images.forEach((img, i) => { img.isCover = (i === safeCoverIndex); });
+        doc.markModified('images');
+        await doc.save();
+      }
     }
 
     console.log('About to update product with data:', {
@@ -606,6 +640,93 @@ export const removeProductImage = async (req, res) => {
     console.error('Error removing image:', error);
     res.status(500).json({
       message: 'Failed to remove image',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Reindex all furniture products into the image search (Pinecone) service.
+ * For each product: uses stored base64 when available, otherwise fetches image from URL
+ * (Cloudinary or /api/images) and sends to FastAPI add-product.
+ * Call this once to fix "same image from site not showing" when products were never indexed.
+ */
+export const reindexImageSearch = async (req, res) => {
+  const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+  try {
+    const products = await Product.find({
+      category: 'furniture',
+      isActive: true
+    }).select('name category subcategory images').lean();
+
+    let reindexed = 0;
+    const errors = [];
+
+    for (const product of products) {
+      const images = product.images || [];
+      if (images.length === 0) continue;
+
+      const imagesForPinecone = [];
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        if (img.data) {
+          const data = img.data.includes(',') ? img.data : `data:${img.contentType || 'image/jpeg'};base64,${img.data}`;
+          imagesForPinecone.push({
+            data: data,
+            filename: img.filename || `product_${product._id}_${i}.jpg`,
+            contentType: img.contentType || 'image/jpeg'
+          });
+          continue;
+        }
+        const imageUrl = img.url || `${baseUrl}/api/images/${product._id}/${i}`;
+        try {
+          const response = await axios.get(imageUrl, {
+            responseType: 'arraybuffer',
+            timeout: 15000,
+            maxRedirects: 5
+          });
+          const contentType = response.headers['content-type'] || img.contentType || 'image/jpeg';
+          const base64 = Buffer.from(response.data).toString('base64');
+          imagesForPinecone.push({
+            data: `data:${contentType};base64,${base64}`,
+            filename: img.filename || `product_${product._id}_${i}.jpg`,
+            contentType: contentType
+          });
+        } catch (fetchErr) {
+          errors.push({ productId: product._id, imageIndex: i, error: fetchErr.message });
+          continue;
+        }
+      }
+
+      if (imagesForPinecone.length === 0) continue;
+
+      try {
+        await axios.post(`${FASTAPI_URL}/add-product`, {
+          product_id: product._id.toString(),
+          product_name: product.name,
+          category: product.category,
+          subcategory: product.subcategory || '',
+          images: imagesForPinecone
+        }, { timeout: 30000 });
+        reindexed++;
+        console.log(`Reindexed image search for product: ${product.name} (${product._id})`);
+      } catch (apiErr) {
+        errors.push({ productId: product._id, productName: product.name, error: apiErr.message });
+      }
+    }
+
+    res.json({
+      message: `Reindexed ${reindexed} furniture products for image search`,
+      reindexed,
+      total: products.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('Reindex image search failed:', error);
+    res.status(500).json({
+      message: 'Reindex failed',
       error: error.message
     });
   }

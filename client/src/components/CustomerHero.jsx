@@ -1,175 +1,189 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from 'react-i18next';
-import dashboardImg from "../assets/livingroom.png";
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import api from "../api/axios";
-// import { useNotification } from './NotificationProvider';
 
 export default function CustomerHero() {
   const navigate = useNavigate();
-  const { user,  isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { t } = useTranslation();
-  // const { showInfo } = useNotification();
-  const [showShopDropdown, setShowShopDropdown] = useState(false);
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  
   const [, setCartCount] = useState(0);
   const [, setWishlistCount] = useState(0);
 
-  // Click outside handler for dropdowns
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showShopDropdown && !event.target.closest('.shop-dropdown')) {
-        setShowShopDropdown(false);
-      }
-      if (showProfileDropdown && !event.target.closest('.profile-dropdown')) {
-        setShowProfileDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showShopDropdown, showProfileDropdown]);
-
-  // Fetch cart count
-  useEffect(() => {
-    const fetchCartCount = async () => {
+    const fetchCounts = async () => {
       if (isAuthenticated) {
         try {
-          const response = await api.get('/cart');
-          const items = response.data.items || [];
-          const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-          setCartCount(totalItems);
-        } catch (error) {
-          console.log('Cart fetch error:', error.response?.status, error.message);
-          setCartCount(0);
-        }
-      } else {
-        // Check guest cart in localStorage
-        const guestCart = localStorage.getItem('guestCart');
-        if (guestCart) {
-          try {
-            const cartData = JSON.parse(guestCart);
-            const totalItems = cartData.items.reduce((sum, item) => sum + item.quantity, 0);
-            setCartCount(totalItems);
-          } catch {
-            setCartCount(0);
-          }
-        } else {
-          setCartCount(0);
+          const cartRes = await api.get('/cart');
+          const wishRes = await api.get('/wishlist');
+          setCartCount(cartRes.data.items?.reduce((s, i) => s + i.quantity, 0) || 0);
+          setWishlistCount(wishRes.data.items?.length || 0);
+        } catch (e) {
+          console.error('Fetch error:', e);
         }
       }
     };
-
-    fetchCartCount();
+    fetchCounts();
   }, [isAuthenticated]);
 
-  // Fetch wishlist count
-  useEffect(() => {
-    const fetchWishlistCount = async () => {
-      if (isAuthenticated) {
-        try {
-          const response = await api.get('/wishlist');
-          const wishlistItems = response.data.items || [];
-          setWishlistCount(wishlistItems.length);
-        } catch (error) {
-          console.log('Wishlist fetch error:', error.response?.status, error.message);
-          setWishlistCount(0);
-        }
-      } else {
-        // Check guest wishlist in localStorage
-        const guestWishlist = localStorage.getItem('guestWishlist');
-        if (guestWishlist) {
-          try {
-            const wishlistData = JSON.parse(guestWishlist);
-            setWishlistCount(wishlistData.items?.length || 0);
-          } catch {
-            setWishlistCount(0);
-          }
-        } else {
-          setWishlistCount(0);
-        }
-      }
-    };
+  // 3D Hover Effect Logic
+  const boundedRef = useRef(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
 
-    fetchWishlistCount();
-  }, [isAuthenticated]);
+  const handleMouseMove = (e) => {
+    if (!boundedRef.current) return;
+    const rect = boundedRef.current.getBoundingClientRect();
+    // Calculate mouse position relative to the center of the card (-1 to 1)
+    const x = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
+    const y = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
+    mouseX.set(x);
+    mouseY.set(y);
+  };
 
-  // const handleLogout = () => {
-  //   logout();
-  //   // Navigation is handled by the logout function in useAuth hook
-  // };
+  const handleMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+  };
+
+  const springConfig = { damping: 20, stiffness: 150, mass: 0.5 };
+  const smoothX = useSpring(mouseX, springConfig);
+  const smoothY = useSpring(mouseY, springConfig);
+
+  // Rotate based on mouse position (invert Y for natural tilt)
+  const rotateX = useTransform(smoothY, [-1, 1], [15, -15]);
+  const rotateY = useTransform(smoothX, [-1, 1], [-15, 15]);
+  
+  // Floating layers inside the 3D card
+  const layer1Z = useTransform(smoothX, [-1, 1], [-20, 20]);
+  const layer2Z = useTransform(smoothY, [-1, 1], [30, -30]);
 
   return (
-    <section className="relative z-10">
-      {/* Navigation Header */}
+    <section className="relative z-10 w-full min-h-[90svh] bg-cream overflow-hidden pt-20 pb-16 flex flex-col justify-center perspective-1000">
+      
+      {/* Background Decor */}
+      <div className="absolute top-0 right-0 w-1/2 h-full bg-dark-brown/5 skew-x-12 translate-x-1/4 pointer-events-none"></div>
 
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-cream to-light-cream py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <div className="space-y-8">
-              {/* Personalized Greeting */}
-              <div className="space-y-4">
-                <h1 className="text-4xl lg:text-6xl font-heading text-dark-brown leading-tight">
-                  {t('customerHero.welcomeBack')},<br />
-                  <span className="text-accent-red">{user?.name || t('customerHero.valuedCustomer')}!</span>
-                </h1>
-                <p className="text-lg text-gray-700 font-paragraph leading-relaxed">
-                  {t('customerHero.description')}
-                </p>
-              </div>
+      <div className="max-w-[1600px] w-full mx-auto px-6 md:px-12 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center h-full">
+        
+        {/* Left Side: Staggered 3D Typography */}
+        <div className="flex flex-col justify-center h-full z-20">
+
+
+           <motion.h1 
+             initial={{ opacity: 0, x: -50 }}
+             animate={{ opacity: 1, x: 0 }}
+             transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+             className="text-5xl md:text-7xl font-heading text-dark-brown leading-[1.1] tracking-tight mb-6"
+           >
+             Welcome back, <br />
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-dark-brown to-accent-red">
+               {user?.name || t('customerHero.valuedCustomer')}
+             </span>
+           </motion.h1>
+
+           <motion.p 
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             transition={{ duration: 1, delay: 0.5 }}
+             className="font-paragraph text-dark-brown/70 text-lg md:text-xl leading-relaxed max-w-lg mb-10"
+           >
+             Immerse yourself in our collection of flawlessly milled timber and exotic hardwoods. Your absolute best projects start here.
+           </motion.p>
+
+           <motion.div 
+             initial={{ opacity: 0, y: 30 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ duration: 1, delay: 0.7, ease: "easeOut" }}
+             className="flex flex-col sm:flex-row gap-5"
+           >
+              <button 
+                onClick={() => navigate('/timber-products')}
+                className="group relative px-8 py-4 bg-dark-brown text-cream overflow-hidden rounded-xl font-paragraph text-sm uppercase tracking-widest transition-all shadow-[0_10px_30px_-10px_rgba(101,67,33,0.5)] hover:shadow-[0_20px_40px_-10px_rgba(101,67,33,0.7)] hover:-translate-y-1"
+              >
+                <span className="relative z-10 group-hover:text-dark-brown transition-colors duration-300 font-semibold">Explore Timber</span>
+                <div className="absolute inset-0 bg-cream transform scale-y-0 origin-bottom transition-transform duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:scale-y-100 rounded-xl"></div>
+              </button>
               
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => navigate('/timber-products')}
-                  className="bg-dark-brown text-white px-8 py-4 rounded-lg font-paragraph hover:bg-accent-red transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  {t('customerHero.startShopping')}
-                </button>
-                <button
-                  onClick={() => navigate('/cart')}
-                  className="border-2 border-dark-brown text-dark-brown px-8 py-4 rounded-lg font-paragraph hover:bg-dark-brown hover:text-white transition-colors duration-200"
-                >
-                  {t('customerHero.viewCart')}
-                </button>
-              </div>
-              
-              {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-6 pt-8">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-dark-brown">500+</div>
-                  <div className="text-sm text-gray-600">{t('customerHero.products')}</div>
+              <button 
+                onClick={() => navigate('/cart')}
+                className="group flex items-center justify-center gap-3 px-8 py-4 bg-white/50 border border-dark-brown/20 text-dark-brown rounded-xl font-paragraph text-sm uppercase tracking-widest transition-all hover:bg-white hover:border-dark-brown"
+              >
+                <span>Active Cart</span>
+                <span className="group-hover:translate-x-2 transition-transform duration-300">→</span>
+              </button>
+           </motion.div>
+        </div>
+
+        {/* Right Side: 3D Interactive Hover Card */}
+        <div className="relative h-[60vh] lg:h-[75vh] w-full flex items-center justify-center perspective-1000">
+           
+           <motion.div
+             ref={boundedRef}
+             onMouseMove={handleMouseMove}
+             onMouseLeave={handleMouseLeave}
+             style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+             initial={{ opacity: 0, scale: 0.8, rotateY: -30 }}
+             animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+             transition={{ duration: 1.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+             className="relative w-full md:w-[85%] lg:w-[95%] aspect-[3/4] lg:aspect-square rounded-[2rem] shadow-2xl shadow-dark-brown/30 border border-white/50 cursor-crosshair"
+           >
+             {/* Base Image Layer */}
+             <div className="absolute inset-0 rounded-[2rem] overflow-hidden" style={{ transform: "translateZ(-20px)" }}>
+                 <img 
+                   src="https://images.unsplash.com/photo-1541194577687-8c63bf9e7ee3?q=80&w=2670&auto=format&fit=crop" 
+                   alt="Exotic Timber"
+                   className="object-cover w-full h-full scale-105"
+                 />
+                 <div className="absolute inset-0 bg-gradient-to-tr from-dark-brown/60 to-transparent mix-blend-multiply"></div>
+             </div>
+
+
+
+             {/* Bottom Decorative Title (Translates Z heavily) */}
+             <motion.div 
+               style={{ transform: "translateZ(100px)" }}
+               className="absolute bottom-10 left-10 pointer-events-none"
+             >
+                <div className="overflow-hidden">
+                   <motion.h2 
+                     initial={{ y: "100%" }}
+                     animate={{ y: 0 }}
+                     transition={{ duration: 1, delay: 1 }}
+                     className="text-white text-4xl md:text-5xl font-heading leading-none mix-blend-overlay"
+                   >
+                     Nature's
+                   </motion.h2>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-dark-brown">1000+</div>
-                  <div className="text-sm text-gray-600">{t('customerHero.happyCustomers')}</div>
+                <div className="overflow-hidden">
+                   <motion.h2 
+                     initial={{ y: "100%" }}
+                     animate={{ y: 0 }}
+                     transition={{ duration: 1, delay: 1.2 }}
+                     className="text-white text-5xl md:text-6xl font-heading leading-none"
+                   >
+                     Masterpiece
+                   </motion.h2>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-dark-brown">24/7</div>
-                  <div className="text-sm text-gray-600">{t('customerHero.support')}</div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Right Content - Image */}
-            <div className="relative">
-              <div className="relative z-10">
-                <img
-                  src={dashboardImg}
-                  alt="Premium Timber Products"
-                  className="w-full h-auto rounded-2xl shadow-2xl"
-                />
-              </div>
-              {/* Decorative elements */}
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-accent-red rounded-full opacity-20"></div>
-              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-dark-brown rounded-full opacity-10"></div>
-            </div>
-          </div>
+             </motion.div>
+
+             {/* 3D Reflection Glare */}
+             <motion.div 
+               style={{ 
+                 opacity: useTransform(smoothX, [-1, 1], [0, 0.3]),
+                 background: "linear-gradient(105deg, transparent 20%, white 45%, white 55%, transparent 80%)",
+                 transform: "translateZ(10px)"
+               }}
+               className="absolute inset-0 mix-blend-overlay pointer-events-none rounded-[2rem]"
+             />
+
+           </motion.div>
+
         </div>
       </div>
     </section>
   );
 }
-

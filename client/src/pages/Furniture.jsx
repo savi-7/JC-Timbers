@@ -280,8 +280,16 @@ export default function Furniture() {
         return;
       }
 
+      if (response.data.data.message === 'not_furniture') {
+        showError('Please upload a furniture image from our catalog (e.g. sofas, chairs, tables from our site). Doors, plastic furniture, and non-catalog images are not supported.');
+        setIsImageSearchMode(false);
+        setImageSearchResults(null);
+        setImageSearchLoading(false);
+        return;
+      }
+
       if (!response.data.data.results || response.data.data.results.length === 0) {
-        showError('No similar products found. Try a different image or check if similar products exist in the catalog.');
+        showError('No similar products found. Try uploading a furniture image from our catalog.');
         setIsImageSearchMode(false);
         setImageSearchResults(null);
         setImageSearchLoading(false);
@@ -302,9 +310,8 @@ export default function Furniture() {
         }))
       });
 
-      // Filter results by minimum similarity score (only high-confidence matches)
-      // Higher threshold ensures only truly similar products are shown
-      const MIN_SIMILARITY_SCORE = 0.70; // 70% similarity required for accurate matches
+      // Backend uses 0.58+ for same-image path, 0.62+ otherwise — accept 0.58+ so catalog matches show
+      const MIN_SIMILARITY_SCORE = 0.58;
       const highConfidenceResults = results.filter(r => r.score >= MIN_SIMILARITY_SCORE);
 
       console.log('High confidence results:', highConfidenceResults.length, 'out of', results.length);
@@ -439,6 +446,35 @@ export default function Furniture() {
         }
       }
 
+      // Strategy 4: Fetch by ID any result that had product_id but wasn't in the current product list (e.g. beyond limit)
+      const missingIds = sortedResults
+        .filter(r => r.product_id && !usedProductIds.has(String(r.product_id).trim()))
+        .map(r => String(r.product_id).trim());
+      if (missingIds.length > 0) {
+        try {
+          const fetched = await Promise.all(
+            missingIds.slice(0, 10).map(id => api.get(`/products/${id}`).then(res => res.data?.product).catch(() => null))
+          );
+          for (let i = 0; i < fetched.length; i++) {
+            const product = fetched[i];
+            if (!product) continue;
+            const id = missingIds[i];
+            const result = sortedResults.find(r => String(r.product_id).trim() === id);
+            if (result && !usedProductIds.has(id)) {
+              usedProductIds.add(id);
+              matchedProducts.push({
+                ...product,
+                similarityScore: result.score,
+                searchResult: { ...result, matchMethod: 'product_id' }
+              });
+              console.log(`✅ Fetched by product_id: ${id} -> ${product.name} (score: ${result.score.toFixed(3)})`);
+            }
+          }
+        } catch (e) {
+          console.warn('Fetch by ID for image search failed:', e);
+        }
+      }
+
       // Sort matched products by similarity score (highest first)
       matchedProducts.sort((a, b) => b.similarityScore - a.similarityScore);
 
@@ -464,27 +500,61 @@ export default function Furniture() {
       }
 
       if (matchedProducts.length > 0) {
-        // Only show if we have truly similar products (70%+ similarity)
+        // Backend returns 0.58+ (same image) or 0.62+ (furniture filter path)
         const topScore = matchedProducts[0].similarityScore;
-        if (topScore >= 0.70) {
+        const MIN_DISPLAY_SCORE = 0.58;
+        if (topScore >= MIN_DISPLAY_SCORE) {
           setFilteredProducts(matchedProducts);
-          showSuccess(`Found ${matchedProducts.length} similar product${matchedProducts.length > 1 ? 's' : ''}! (Similarity: ${(topScore * 100).toFixed(0)}%+)`);
+          showSuccess(`Found ${matchedProducts.length} similar product${matchedProducts.length > 1 ? 's' : ''}! (Best match: ${(topScore * 100).toFixed(0)}% similar)`);
         } else {
-          // Results are not similar enough
-          showError(`No truly similar products found. The uploaded image doesn't match any products in our catalog with sufficient similarity (minimum 70% required).`);
+          showError(`No similar products found. Best match was ${(topScore * 100).toFixed(0)}% similar (we need ${(MIN_DISPLAY_SCORE * 100).toFixed(0)}%+ for catalog matches).`);
           setIsImageSearchMode(false);
           setImageSearchResults(null);
         }
       } else {
-        // If no matches but we have results, show more helpful message
+        // If no matches but we have results, try to fetch missing products by ID so exact product can show
         if (highConfidenceResults.length > 0) {
-          showError(`Found ${highConfidenceResults.length} similar images, but couldn't match them to products in the catalog. The products may need to be re-indexed.`);
+          const missingIds = highConfidenceResults
+            .filter(r => r.product_id && !productsById[String(r.product_id).trim()] && !productsById[String(r.product_id).trim().toLowerCase()])
+            .map(r => String(r.product_id).trim());
+          if (missingIds.length > 0) {
+            try {
+              const fetched = await Promise.all(
+                missingIds.slice(0, 10).map(id => api.get(`/products/${id}`).then(res => res.data?.product).catch(() => null))
+              );
+              const valid = fetched.filter(Boolean);
+              if (valid.length > 0) {
+                const withScores = highConfidenceResults
+                  .filter(r => valid.some(p => (p._id || p.id)?.toString() === String(r.product_id).trim()))
+                  .sort((a, b) => b.score - a.score);
+                const merged = [];
+                const seen = new Set();
+                for (const r of withScores) {
+                  const pid = String(r.product_id).trim();
+                  const product = valid.find(p => (p._id || p.id)?.toString() === pid);
+                  if (product && !seen.has(pid)) {
+                    seen.add(pid);
+                    merged.push({ ...product, similarityScore: r.score, searchResult: { ...r, matchMethod: 'product_id' } });
+                  }
+                }
+                if (merged.length > 0) {
+                  setIsImageSearchMode(true);
+                  setFilteredProducts(merged);
+                  setImageSearchResults(highConfidenceResults);
+                  showSuccess(`Found ${merged.length} similar product${merged.length > 1 ? 's' : ''}! (Best: ${(merged[0].similarityScore * 100).toFixed(0)}% similar)`);
+                  return;
+                }
+              }
+            } catch (e) {
+              console.warn('Fetch missing products for image search failed:', e);
+            }
+          }
+          showError(`Found ${highConfidenceResults.length} similar images but couldn't match them to the catalog. Try re-indexing products (Admin: POST /api/products/reindex-image-search).`);
         } else if (results.length > 0) {
-          // We have results but they're below the similarity threshold
           const maxScore = Math.max(...results.map(r => r.score || 0));
-          showError(`No similar products found. The best match had only ${(maxScore * 100).toFixed(0)}% similarity, which is below the required 70% threshold for accurate matches.`);
+          showError(`No similar products found. Best match was ${(maxScore * 100).toFixed(0)}% similar. Try a clearer photo or re-index the catalog.`);
         } else {
-          showError(`No similar products found. The uploaded image doesn't match any products in our catalog. Try uploading a different image or check if similar products exist.`);
+          showError(`No similar products found. Upload a product image from our site, or ensure the FastAPI image search service is running and products are re-indexed.`);
         }
         setIsImageSearchMode(false);
         setImageSearchResults(null);
@@ -598,15 +668,13 @@ export default function Furniture() {
     return () => clearTimeout(timeoutId);
   }, []);
 
-  // Fetch furniture products from API
+  // Fetch furniture products from API (use category filter so all furniture products are returned, not limited by global limit)
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/products?limit=100');
-        const allProducts = response.data.products || [];
-        // Filter only furniture products
-        const furnitureProducts = allProducts.filter(product => product.category === 'furniture');
+        const response = await api.get('/products?category=furniture&limit=500');
+        const furnitureProducts = response.data.products || [];
         setProducts(furnitureProducts);
         setFilteredProducts(furnitureProducts);
         setError(null);
@@ -740,14 +808,15 @@ export default function Furniture() {
           </div>
         </motion.div>
 
-        {/* Floating Search and Filter Section */}
+        {/* Floating Search and Filter Section - plain div for sticky so parent transform doesn't break it */}
         {!loading && !error && products.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="sticky top-[80px] z-40 bg-white/80 backdrop-blur-xl shadow-lg border border-white/50 p-4 mb-12 rounded-2xl"
-          >
+          <div className="sticky top-[80px] z-40 mb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="bg-white/80 backdrop-blur-xl shadow-lg border border-white/50 p-4 rounded-2xl"
+            >
             <div className="flex flex-col lg:flex-row gap-4 items-center">
               {/* Search Bar */}
               <div className="w-full lg:flex-1">
@@ -889,7 +958,8 @@ export default function Furniture() {
                 )}
               </p>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
 
         {/* Error State */}
@@ -1156,11 +1226,11 @@ export default function Furniture() {
 
                 {/* Products Grid */}
                 <div
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12"
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12 min-h-[420px]"
                 >
                   {filteredProducts.map((product) => (
                     <ProductCard
-                      key={product._id}
+                      key={product._id || product.id || product.name}
                       product={product}
                       onAddToCart={handleAddToCart}
                       onBuyNow={handleBuyNow}

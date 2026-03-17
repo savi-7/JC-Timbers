@@ -118,7 +118,11 @@ app.add_middleware(
 FURNITURE_TYPES = {
     "bed": ["bed", "bunk", "cot", "king", "queen", "single", "double", "mattress", "headboard"],
     "chair": ["chair", "armchair", "stool", "seat", "seating", "recliner"],
-    "sofa": ["sofa", "couch", "lounger", "settee", "divan"],
+    "sofa": [
+        "sofa", "couch", "lounger", "settee", "divan",
+        "seater", "2 seater", "3 seater", "l shape", "l-shaped", "sectional",
+        "sofa set", "sofa cum bed", "sofa bed"
+    ],
     "table": ["table", "desk", "coffee", "dining", "side", "console", "end"],
     "bookshelf": ["bookshelf", "bookcase", "shelf", "shelving", "rack"],
     "wardrobe": ["wardrobe", "closet", "cupboard", "cabinet", "almirah"],
@@ -126,10 +130,24 @@ FURNITURE_TYPES = {
     "study": ["study", "office", "work", "workstation", "computer"]
 }
 
+# Sofa gets multiple prompts so the model predicts "sofa" more reliably for sofa images
 FURNITURE_TYPE_PROMPTS = {
-    type_name: f"a photo of a {type_name.replace('_', ' ')}"
-    for type_name in FURNITURE_TYPES.keys()
+    "bed": "a photo of a bed",
+    "chair": "a photo of a chair",
+    "sofa": "a photo of a sofa",  # Primary; sofa also boosted in predict_furniture_type
+    "table": "a photo of a table",
+    "bookshelf": "a photo of a bookshelf",
+    "wardrobe": "a photo of a wardrobe",
+    "dining": "a photo of a dining table",
+    "study": "a photo of a study table"
 }
+SOFA_PROMPTS = [
+    "a photo of a sofa",
+    "a photo of a couch",
+    "a photo of a two seater sofa",
+    "a photo of a three seater sofa",
+    "a photo of a living room sofa",
+]
 
 
 class SearchResult(BaseModel):
@@ -150,6 +168,7 @@ class SearchResponse(BaseModel):
     results: List[SearchResult]
     total_results: int
     top_k: int
+    message: Optional[str] = None  # e.g. "not_furniture" when upload is door/plastic/non-catalog
 
 
 
@@ -224,7 +243,7 @@ async def add_product_to_search(request: AddProductRequest):
         vectors_to_upsert = []
         added_count = 0
         
-        # Process each image
+        # Process each image using the same preprocessing as search-by-image for consistent embeddings
         for idx, image_obj in enumerate(request.images):
             try:
                 image_data = image_obj.get('data', '')
@@ -236,8 +255,7 @@ async def add_product_to_search(request: AddProductRequest):
                     image_data = image_data.split(',')[1]
                 
                 image_bytes = base64.b64decode(image_data)
-                image = Image.open(BytesIO(image_bytes)).convert("RGB")
-                image = image.resize(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
+                image = preprocess_image(image_bytes)  # Same pipeline as search so same image => same embedding
                 
                 # Generate embedding
                 embedding = model.encode(image, convert_to_numpy=True)
@@ -458,7 +476,14 @@ def is_furniture_image(image_embedding: np.ndarray) -> bool:
             "a photo of lumber",
             "a photo of wooden planks",
             "a photo of building materials",
-            "a photo of wood panels"
+            "a photo of wood panels",
+            "a photo of a door",
+            "a photo of a wooden door",
+            "a photo of a window",
+            "a photo of a glass window",
+            "a photo of plastic chair",
+            "a photo of plastic furniture",
+            "a photo of outdoor plastic furniture",
         ]
         
         # Encode all prompts
@@ -482,15 +507,19 @@ def is_furniture_image(image_embedding: np.ndarray) -> bool:
             f"non_furniture_score={best_non_furniture_score:.3f}"
         )
         
-        # Image is furniture if furniture score is higher (more lenient threshold)
-        # Lower threshold to avoid false negatives
+        # Reject only when non-furniture (door/window/plastic/timber) wins by a clear margin
         MIN_FURNITURE_SCORE = 0.20
-        is_furniture = best_furniture_score > best_non_furniture_score and best_furniture_score >= MIN_FURNITURE_SCORE
+        margin = 0.05  # Only reject if non_furniture is clearly ahead (avoids rejecting catalog furniture)
+        clearly_non_furniture = best_non_furniture_score > (best_furniture_score + margin)
+        is_furniture = (
+            not clearly_non_furniture
+            and best_furniture_score >= MIN_FURNITURE_SCORE
+        )
         
         if not is_furniture:
             logger.warning(
                 f"Image does not appear to be furniture. "
-                f"Furniture score ({best_furniture_score:.3f}) is too low or lower than non-furniture score ({best_non_furniture_score:.3f})"
+                f"Furniture score ({best_furniture_score:.3f}) vs non_furniture ({best_non_furniture_score:.3f})"
             )
         
         return is_furniture
@@ -504,26 +533,28 @@ def predict_furniture_type(image_embedding: np.ndarray) -> Optional[str]:
     """
     Predict high-level furniture type (bed, chair, sofa, bookshelf, etc.)
     using CLIP text prompts and cosine similarity.
-
-    Returns the best type name or None if confidence is too low.
+    Sofa uses multiple prompts for better accuracy (two seater, couch, etc.).
     """
     try:
         if model is None:
             logger.warning("Model not loaded, cannot predict furniture type.")
             return None
 
-        # Build prompt list
         type_names = list(FURNITURE_TYPE_PROMPTS.keys())
         prompts = [FURNITURE_TYPE_PROMPTS[t] for t in type_names]
-
-        # Encode text prompts into the same embedding space
         text_embeddings = model.encode(prompts, convert_to_numpy=True)
 
-        # Compute cosine similarities between image embedding and each text prompt
-        # st_utils.pytorch_cos_sim expects tensors; for numpy we compute manually
         image_vec = image_embedding / (np.linalg.norm(image_embedding) + 1e-8)
         text_vecs = text_embeddings / (np.linalg.norm(text_embeddings, axis=1, keepdims=True) + 1e-8)
         similarities = np.dot(text_vecs, image_vec)
+
+        # Boost sofa: take best score over multiple sofa-specific prompts
+        sofa_embeddings = model.encode(SOFA_PROMPTS, convert_to_numpy=True)
+        sofa_vecs = sofa_embeddings / (np.linalg.norm(sofa_embeddings, axis=1, keepdims=True) + 1e-8)
+        sofa_scores = np.dot(sofa_vecs, image_vec)
+        best_sofa_score = float(np.max(sofa_scores))
+        sofa_idx = type_names.index("sofa")
+        similarities[sofa_idx] = max(similarities[sofa_idx], best_sofa_score)
 
         best_idx = int(np.argmax(similarities))
         best_score = float(similarities[best_idx])
@@ -531,12 +562,10 @@ def predict_furniture_type(image_embedding: np.ndarray) -> Optional[str]:
 
         logger.info(
             f"Predicted furniture type from image: {best_type} "
-            f"(score={best_score:.3f}, prompts={FURNITURE_TYPE_PROMPTS[best_type]!r})"
+            f"(score={best_score:.3f})"
         )
 
-        # Threshold to avoid wrong strong predictions; CLIP image-text sims are typically ~0.2–0.35+
-        # Lower threshold to allow more type predictions
-        MIN_TYPE_SIMILARITY = 0.22  # Lowered to allow more matches
+        MIN_TYPE_SIMILARITY = 0.26
         if best_score < MIN_TYPE_SIMILARITY:
             logger.warning(
                 f"Furniture type prediction not confident enough "
@@ -623,110 +652,107 @@ async def search_by_image(
         embedding = generate_embedding(image)
         logger.info(f"✅ Embedding generated: {len(embedding)} dimensions from YOUR uploaded image")
 
-        # Check if the image is actually furniture (not just wood/timber)
-        # Make this a warning instead of blocking - let the category filter handle it
-        is_furniture = is_furniture_image(embedding)
-        if not is_furniture:
-            logger.warning(
-                "⚠️ Uploaded image may not be furniture (could be raw wood/timber). "
-                "Will still search but will filter results to furniture category only."
-            )
-
-        # Predict high-level furniture type from the image embedding
-        predicted_type = predict_furniture_type(embedding)
-        if predicted_type:
-            logger.info(f"🎯 Predicted furniture type: {predicted_type} (will use for filtering)")
-        else:
-            logger.warning("⚠️ Could not confidently predict furniture type. Proceeding with search but results may be less accurate.")
-        
-        # Query Pinecone with the embedding generated from YOUR uploaded image
-        # Use top_k * 3 to get more candidates for filtering
-        query_top_k = min(top_k * 3, 50)  # Get 3x more candidates, max 50
-        logger.info(f"🔍 Searching Pinecone using embedding from YOUR uploaded image...")
-        logger.info(f"   Querying for top {query_top_k} similar images (will filter to {top_k} best matches)...")
+        # --- STEP 1: Always query Pinecone first (so same/catalog image always gets results) ---
+        query_top_k = min(top_k * 3, 50)
+        logger.info(f"🔍 Querying Pinecone for top {query_top_k} similar images...")
         query_results = pinecone_index.query(
-            vector=embedding.tolist(),  # This is the embedding from YOUR uploaded image
+            vector=embedding.tolist(),
             top_k=query_top_k,
             include_metadata=True
         )
-        logger.info(f"✅ Found {len(query_results.get('matches', []))} candidate matches from YOUR image")
-        
-        # Filter by minimum similarity threshold (cosine similarity: 0.0 to 1.0)
-        # Higher threshold for accurate matches only - prevents false positives
-        MIN_SIMILARITY_THRESHOLD = 0.70  # Only accept matches with 70%+ similarity (strict)
-        
-        # Format and filter results
+        matches = query_results.get("matches", [])
+        logger.info(f"✅ Found {len(matches)} candidate matches")
+
+        best_score = float(matches[0].get("score", 0.0)) if matches else 0.0
+
+        # --- STEP 2: Same-image path: if best match is very high = same or near-same catalog image ---
+        SAME_IMAGE_THRESHOLD = 0.76  # Same or very close image from your site
+        SAME_IMAGE_MIN_MATCH = 0.58   # Include all furniture above this when in same-image path
+
+        if best_score >= SAME_IMAGE_THRESHOLD:
+            logger.info(f"📌 Same-image path: best score {best_score:.3f} >= {SAME_IMAGE_THRESHOLD} — returning catalog matches (no furniture/type filter)")
+            results = []
+            for match in matches:
+                similarity_score = float(match.get("score", 0.0))
+                if similarity_score < SAME_IMAGE_MIN_MATCH:
+                    continue
+                metadata = match.get("metadata", {}) or {}
+                category = (metadata.get("category") or "").lower()
+                if category and category != "furniture":
+                    continue
+                results.append(SearchResult(
+                    id=match.get("id", ""),
+                    score=similarity_score,
+                    filename=metadata.get("filename", ""),
+                    filepath=metadata.get("filepath"),
+                    image_size=metadata.get("image_size"),
+                    category=metadata.get("category", "furniture"),
+                    product_id=metadata.get("product_id"),
+                    product_name=metadata.get("product_name"),
+                ))
+            results.sort(key=lambda x: x.score, reverse=True)
+            results = results[:top_k]
+            logger.info(f"✅ Returning {len(results)} results (same-image path)")
+            return SearchResponse(query_image=file.filename, results=results, total_results=len(results), top_k=top_k)
+
+        # --- STEP 3: Not same image — apply furniture gate (reject door, window, plastic) ---
+        is_furniture = is_furniture_image(embedding)
+        if not is_furniture:
+            logger.info("🛑 Not furniture (door/window/plastic/timber). Returning no results.")
+            return SearchResponse(
+                query_image=file.filename,
+                results=[],
+                total_results=0,
+                top_k=top_k,
+                message="not_furniture"
+            )
+
+        # --- STEP 4: Furniture but not same image — filter by type and similarity ---
+        predicted_type = predict_furniture_type(embedding)
+        if predicted_type:
+            logger.info(f"🎯 Predicted furniture type: {predicted_type}")
+        MIN_SIMILARITY_THRESHOLD = 0.62
+
         results = []
-        for match in query_results.get('matches', []):
-            similarity_score = float(match.get('score', 0.0))
-            
-            # Only include results above threshold
+        for match in matches:
+            similarity_score = float(match.get("score", 0.0))
             if similarity_score < MIN_SIMILARITY_THRESHOLD:
-                logger.debug(f"Skipping match: similarity {similarity_score:.3f} < threshold {MIN_SIMILARITY_THRESHOLD}")
                 continue
-
-            metadata = match.get('metadata', {}) or {}
-            
-            # CRITICAL: Only include furniture products
-            category = metadata.get('category', '').lower()
-            if category and category != 'furniture':
-                logger.debug(f"Skipping non-furniture product: category={category}")
+            metadata = match.get("metadata", {}) or {}
+            category = (metadata.get("category") or "").lower()
+            if category and category != "furniture":
                 continue
-            # If category is missing/empty, assume it's furniture (for backward compatibility with old embeddings)
-            if not category:
-                logger.debug(f"Match has no category metadata, assuming furniture: {metadata.get('filename', 'N/A')}")
-            
-            filename = (metadata.get('filename') or "").lower()
-            filepath = (metadata.get('filepath') or "").lower()
-            product_name = (metadata.get('product_name') or "").lower()
-            subcategory = (metadata.get('subcategory') or "").lower()
-            
-            # Log match details for debugging
-            logger.info(f"Match found: score={similarity_score:.3f}, product_id={metadata.get('product_id', 'N/A')}, product_name={metadata.get('product_name', 'N/A')}, filename={metadata.get('filename', 'N/A')}")
+            filename = (metadata.get("filename") or "").lower()
+            filepath = (metadata.get("filepath") or "").lower()
+            product_name = (metadata.get("product_name") or "").lower()
+            subcategory = (metadata.get("subcategory") or "").lower()
 
-            # Optional type-based filtering - only apply if we have a confident prediction
-            # Make this very lenient to avoid filtering out valid matches
             if predicted_type:
                 type_keywords = FURNITURE_TYPES.get(predicted_type, [])
-                # Check if any keyword appears in filename, filepath, product_name, or subcategory
                 matches_type = any(
                     kw in filename or kw in filepath or kw in product_name or kw in subcategory
                     for kw in type_keywords
                 )
-                
-                if not matches_type:
-                    # Only skip if similarity is very low AND type doesn't match
-                    # This is very lenient - most matches will pass through
-                    if similarity_score < 0.60:
-                        logger.debug(f"Skipping {filename or product_name}: low similarity ({similarity_score:.3f}) and doesn't match predicted type '{predicted_type}'")
-                        continue
-                    else:
-                        logger.info(f"Keeping match despite type mismatch (high similarity): {filename or product_name} (score={similarity_score:.3f})")
-
-            result = SearchResult(
-                id=match.get('id', ''),
+                if not matches_type and similarity_score < 0.66:
+                    continue
+            results.append(SearchResult(
+                id=match.get("id", ""),
                 score=similarity_score,
-                filename=metadata.get('filename', ''),
-                filepath=metadata.get('filepath'),
-                image_size=metadata.get('image_size'),
-                category=metadata.get('category', 'furniture'),
-                product_id=metadata.get('product_id'),
-                product_name=metadata.get('product_name')
-            )
-            results.append(result)
-        
-        # Sort by similarity score (highest first) and limit to top_k
+                filename=metadata.get("filename", ""),
+                filepath=metadata.get("filepath"),
+                image_size=metadata.get("image_size"),
+                category=metadata.get("category", "furniture"),
+                product_id=metadata.get("product_id"),
+                product_name=metadata.get("product_name"),
+            ))
         results.sort(key=lambda x: x.score, reverse=True)
         results = results[:top_k]
+        logger.info(f"✅ Found {len(results)} similar images (threshold: {MIN_SIMILARITY_THRESHOLD})")
         
-        logger.info(f"✅ Found {len(results)} similar images (filtered from {len(query_results.get('matches', []))} candidates, threshold: {MIN_SIMILARITY_THRESHOLD})")
-        
-        if len(results) == 0 and len(query_results.get('matches', [])) > 0:
-            # Log why results were filtered out
-            logger.warning(f"⚠️ No results after filtering. {len(query_results.get('matches', []))} candidates found but all filtered out.")
+        if len(results) == 0 and len(matches) > 0:
+            logger.warning(f"⚠️ No results after filtering. {len(matches)} candidates found but all filtered out.")
             logger.warning(f"   Threshold: {MIN_SIMILARITY_THRESHOLD}, Predicted type: {predicted_type}, Is furniture: {is_furniture}")
-            # Log top candidate scores and metadata for debugging
-            top_candidates = sorted(query_results.get('matches', []), key=lambda x: x.get('score', 0), reverse=True)[:5]
+            top_candidates = sorted(matches, key=lambda x: x.get("score", 0), reverse=True)[:5]
             for i, candidate in enumerate(top_candidates, 1):
                 cand_meta = candidate.get('metadata', {})
                 logger.warning(
@@ -803,46 +829,71 @@ async def search_by_image_base64(
         logger.info("Generating CLIP embedding...")
         embedding = generate_embedding(image)
         
-        # Query Pinecone with higher top_k to get more candidates, then filter by similarity
-        query_top_k = min(top_k * 3, 50)  # Get 3x more candidates, max 50
-        logger.info(f"Querying Pinecone for top {query_top_k} similar images (will filter to {top_k} best matches)...")
+        # Query Pinecone first (same logic as search-by-image)
+        query_top_k = min(top_k * 3, 50)
         query_results = pinecone_index.query(
             vector=embedding.tolist(),
             top_k=query_top_k,
             include_metadata=True
         )
+        b64_matches = query_results.get("matches", [])
+        b64_best = float(b64_matches[0].get("score", 0.0)) if b64_matches else 0.0
+
+        if b64_best >= 0.76:
+            # Same-image path: return catalog matches without furniture gate
+            results = []
+            for match in b64_matches:
+                sc = float(match.get("score", 0.0))
+                if sc < 0.58:
+                    continue
+                meta = match.get("metadata", {}) or {}
+                if meta.get("category", "").lower() not in ("", "furniture"):
+                    continue
+                results.append(SearchResult(
+                    id=match.get("id", ""),
+                    score=sc,
+                    filename=meta.get("filename", ""),
+                    filepath=meta.get("filepath"),
+                    image_size=meta.get("image_size"),
+                    category=meta.get("category", "furniture"),
+                    product_id=meta.get("product_id"),
+                    product_name=meta.get("product_name"),
+                ))
+            results.sort(key=lambda x: x.score, reverse=True)
+            results = results[:top_k]
+            return SearchResponse(query_image="base64_image", results=results, total_results=len(results), top_k=top_k)
+
+        if not is_furniture_image(embedding):
+            return SearchResponse(
+                query_image="base64_image",
+                results=[],
+                total_results=0,
+                top_k=top_k,
+                message="not_furniture"
+            )
         
-        # Filter by minimum similarity threshold
-        MIN_SIMILARITY_THRESHOLD = 0.65  # Only accept matches with 65%+ similarity
-        
-        # Format and filter results
+        MIN_SIMILARITY_THRESHOLD = 0.62
         results = []
-        for match in query_results.get('matches', []):
-            similarity_score = float(match.get('score', 0.0))
-            
-            if similarity_score >= MIN_SIMILARITY_THRESHOLD:
-                result = SearchResult(
-                    id=match.get('id', ''),
-                    score=similarity_score,
-                    filename=match.get('metadata', {}).get('filename', ''),
-                    filepath=match.get('metadata', {}).get('filepath'),
-                    image_size=match.get('metadata', {}).get('image_size'),
-                    category=match.get('metadata', {}).get('category', 'furniture')
-                )
-                results.append(result)
-        
-        # Sort by similarity score (highest first) and limit to top_k
+        for match in b64_matches:
+            sc = float(match.get("score", 0.0))
+            if sc < MIN_SIMILARITY_THRESHOLD:
+                continue
+            meta = match.get("metadata", {}) or {}
+            if meta.get("category", "").lower() not in ("", "furniture"):
+                continue
+            results.append(SearchResult(
+                id=match.get("id", ""),
+                score=sc,
+                filename=meta.get("filename", ""),
+                filepath=meta.get("filepath"),
+                image_size=meta.get("image_size"),
+                category=meta.get("category", "furniture"),
+                product_id=meta.get("product_id"),
+                product_name=meta.get("product_name"),
+            ))
         results.sort(key=lambda x: x.score, reverse=True)
         results = results[:top_k]
-        
-        logger.info(f"Found {len(results)} similar images (filtered from {len(query_results.get('matches', []))} candidates, threshold: {MIN_SIMILARITY_THRESHOLD})")
-        
-        return SearchResponse(
-            query_image="base64_image",
-            results=results,
-            total_results=len(results),
-            top_k=top_k
-        )
+        return SearchResponse(query_image="base64_image", results=results, total_results=len(results), top_k=top_k)
         
     except HTTPException:
         raise

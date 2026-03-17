@@ -57,7 +57,9 @@ const productSchema = new mongoose.Schema({
     color: {
       type: String,
       trim: true
-    }
+    },
+    // Cover image shown on listing; first image is cover if none set
+    isCover: { type: Boolean, default: false }
   }],
   attributes: {
     type: mongoose.Schema.Types.Mixed,
@@ -89,6 +91,15 @@ const productSchema = new mongoose.Schema({
     max: 5
   },
   reviewCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  warrantyIncluded: {
+    type: Boolean,
+    default: false
+  },
+  warrantyMonths: {
     type: Number,
     default: 0,
     min: 0
