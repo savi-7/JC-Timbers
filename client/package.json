@@ -13,6 +13,7 @@
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:report": "playwright show-report",
+    "test:run-and-report": "playwright test --reporter=html && playwright show-report",
     "serve:dist": "npx serve -s dist -l 5173",
     "test:selenium": "cross-env NODE_ENV=test mocha tests/selenium/tests/**/*.test.js --timeout 90000 --reporter mochawesome --reporter-options reportDir=tests/selenium/report,reportFilename=index,quiet=true"
   },

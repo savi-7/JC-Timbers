@@ -3,7 +3,6 @@ import { Bird, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { useAuth } from '../hooks/useAuth';
-import Woodpecker3DCanvas from './Woodpecker3DModel';
 
 const WoodpeckerChatbot = () => {
   const { user } = useAuth();
@@ -69,10 +68,8 @@ const WoodpeckerChatbot = () => {
             {/* Header */}
             <div className="bg-[#464033] text-white p-4 flex items-center justify-between shadow-md">
               <div className="flex items-center gap-3">
-                <div className="bg-white/10 w-10 h-10 rounded-full overflow-hidden flex items-center justify-center relative shadow-inner">
-                  <div className="absolute inset-0 scale-[2.5] origin-center -translate-y-2">
-                    {isOpen && <Woodpecker3DCanvas isChatOpen={true} />}
-                  </div>
+                <div className="bg-white/20 p-2 rounded-full">
+                  <Bird size={20} className="text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-[15px]">Woodpecker</h3>
@@ -156,20 +153,14 @@ const WoodpeckerChatbot = () => {
       {/* Floating Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 relative overflow-hidden ${
+        className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 ${
           isOpen 
             ? 'bg-white text-[#464033] border-2 border-[#464033] scale-90' 
-            : 'bg-[#464033] text-white hover:scale-105 hover:bg-[#353026] hover:shadow-3xl'
+            : 'bg-[#464033] text-white hover:scale-105 hover:bg-[#353026]'
         }`}
         aria-label={isOpen ? "Close chat" : "Open chat"}
       >
-        {isOpen ? (
-          <X size={24} className="z-10 relative" />
-        ) : (
-          <div className="absolute inset-0 w-full h-full scale-[2.5] origin-center -translate-y-2 pointer-events-none">
-            {!isOpen && <Woodpecker3DCanvas isChatOpen={false} />}
-          </div>
-        )}
+        {isOpen ? <X size={24} /> : <Bird size={28} />}
       </button>
     </div>
   );

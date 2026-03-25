@@ -1,8 +1,17 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Authentication Tests (sanity only)', () => {
-  test('basic equality check', async () => {
-    expect(2 + 2).toBe(4);
+test.describe('Wishlist Functionality', () => {
+  test('opens wishlist route and validates auth or wishlist state', async ({ page }) => {
+    await page.goto('/wishlist');
+    await page.waitForLoadState('domcontentloaded');
+
+    const currentUrl = page.url();
+    expect(currentUrl).toMatch(/\/wishlist$|\/login$/);
+
+    if (/\/wishlist$/.test(currentUrl)) {
+      await expect(page.getByRole('heading', { name: /my wishlist/i })).toBeVisible();
+    } else {
+      await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
+    }
   });
 });
-

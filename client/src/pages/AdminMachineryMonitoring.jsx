@@ -32,6 +32,43 @@ const MAX_HISTORY_TABLE_ROWS = 40;
 /** Consider device "on" if last reading was within this many ms */
 const DEVICE_ON_WINDOW_MS = 2 * 60 * 1000;
 
+// Mock machines for UI demonstration
+const MOCK_MACHINES = [
+  {
+    _id: "mock-1",
+    machineId: "MACH-002",
+    name: "CNC Router B (Idle)",
+    tempThreshold: 75,
+    vibrationThreshold: 8,
+    lastTemperature: 0,
+    lastVibration: 0,
+    lastReadingAt: new Date(Date.now() - 10000000).toISOString(),
+    isMock: true,
+  },
+  {
+    _id: "mock-2",
+    machineId: "MACH-003",
+    name: "Edge Bander (Maintenance)",
+    tempThreshold: 80,
+    vibrationThreshold: 6,
+    lastTemperature: 0,
+    lastVibration: 0,
+    lastReadingAt: new Date(Date.now() - 10000000).toISOString(),
+    isMock: true,
+  },
+  {
+    _id: "mock-3",
+    machineId: "MACH-004",
+    name: "Panel Saw (Offline)",
+    tempThreshold: 70,
+    vibrationThreshold: 10,
+    lastTemperature: 0,
+    lastVibration: 0,
+    lastReadingAt: new Date(Date.now() - 10000000).toISOString(),
+    isMock: true,
+  }
+];
+
 function isOverThreshold(m) {
   if (m == null) return false;
   const tempOver =
@@ -69,10 +106,13 @@ export default function AdminMachineryMonitoring() {
       setError(null);
       const res = await api.get("/machinery/machines");
       const list = res.data.machines || [];
-      setMachines(list);
+      // Combine API machines with Mock machines
+      const fullList = [...list, ...MOCK_MACHINES];
+      setMachines(fullList);
+      
       setReadingsHistory((prev) => {
         const now = Date.now();
-        const fromOnDevices = list
+        const fromOnDevices = fullList
           .filter(isMachineOn)
           .map((m) => ({
             timestamp: now,
@@ -98,10 +138,13 @@ export default function AdminMachineryMonitoring() {
   }, [fetchMachines]);
 
   useEffect(() => {
-    if (graphMachineId == null && machines.length > 0) {
-      setGraphMachineId(machines[0].machineId);
+    const viewMachines = viewFilter === "alerts" ? machines.filter(isOverThreshold) : machines;
+    if (viewMachines.length > 0 && (!graphMachineId || !viewMachines.find(m => m.machineId === graphMachineId))) {
+      // Prioritize selecting a real machine initially if there is one
+      const actualMachine = viewMachines.find((m) => !m.isMock);
+      setGraphMachineId(actualMachine ? actualMachine.machineId : viewMachines[0].machineId);
     }
-  }, [machines, graphMachineId]);
+  }, [machines, graphMachineId, viewFilter]);
 
   const openEdit = (machine) => {
     setEditingMachine(machine);
@@ -121,6 +164,19 @@ export default function AdminMachineryMonitoring() {
     const temp = Number(editForm.tempThreshold);
     const vib = Number(editForm.vibrationThreshold);
     if (Number.isNaN(temp) && Number.isNaN(vib)) return;
+    
+    // For mock machines, simulate save
+    if (editingMachine.isMock) {
+        setSaving(true);
+        setTimeout(() => {
+            setMachines((prev) =>
+                prev.map((m) => (m._id === editingMachine._id ? { ...m, tempThreshold: temp, vibrationThreshold: vib } : m))
+            );
+            closeEdit();
+        }, 500);
+        return;
+    }
+
     try {
       setSaving(true);
       const payload = {};
@@ -162,8 +218,13 @@ export default function AdminMachineryMonitoring() {
 
   const historyTableRows = useMemo(() => {
     const byTime = [...readingsHistory].sort((a, b) => b.timestamp - a.timestamp);
-    return byTime.slice(0, MAX_HISTORY_TABLE_ROWS);
-  }, [readingsHistory]);
+    let slice = byTime.slice(0, MAX_HISTORY_TABLE_ROWS);
+    if (viewFilter === "alerts") {
+      const alertedIds = new Set(machines.filter(isOverThreshold).map(m => m.machineId));
+      slice = slice.filter(row => alertedIds.has(row.machineId));
+    }
+    return slice;
+  }, [readingsHistory, viewFilter, machines]);
 
   const formatTime = (dateStr) => {
     if (!dateStr) return "—";
@@ -176,90 +237,102 @@ export default function AdminMachineryMonitoring() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex overflow-hidden">
+    <div className="min-h-screen bg-gray-50 flex overflow-hidden font-sans">
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        
+        {/* Subtle decorative background blur gradients */}
+        <div className="absolute top-0 right-0 -mr-40 -mt-40 h-[500px] w-[500px] rounded-full bg-emerald-400/10 blur-[100px] pointer-events-none" />
+        <div className="absolute top-40 left-0 -ml-40 h-[600px] w-[600px] rounded-full bg-blue-400/5 blur-[120px] pointer-events-none" />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <main className="flex-1 overflow-y-auto relative z-10">
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             {/* Top: Title + Live + Refresh */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between mb-10">
               <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="relative flex h-2 w-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="relative flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                   </span>
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-widest">
-                    Live
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">
+                    Live System
                   </span>
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-                  Machinery Monitoring
+                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl">
+                  Machinery Intelligence
                 </h1>
-                <p className="mt-1 text-sm text-gray-500">
-                  Temperature and vibration from IoT. Adjust limits and see alerts when values exceed thresholds.
+                <p className="mt-2 text-sm text-gray-500 max-w-xl">
+                  Real-time temperature, vibration monitoring, and predictive alerting. Adjust operational limits to maintain safety requirements.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => { setLoading(true); fetchMachines(); }}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-colors shrink-0"
+                className="group relative inline-flex items-center justify-center gap-2 rounded-2xl bg-white/80 backdrop-blur-md border border-gray-200/50 px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:shadow-md hover:bg-white hover:-translate-y-0.5 transition-all duration-300 shrink-0 overflow-hidden"
               >
-                <RefreshCw className="h-4 w-4" aria-hidden />
-                Refresh
+                <div className="absolute inset-0 bg-gradient-to-r from-gray-50 to-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                <RefreshCw className="h-4 w-4 relative z-10 group-hover:rotate-180 transition-transform duration-500 text-blue-600" aria-hidden />
+                <span className="relative z-10">Refresh Data</span>
               </button>
             </div>
 
-            {/* Status strip: one card with three metrics */}
-            <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Overview
+            {/* Status strip: glassmorphism style */}
+            <div className="mb-10 rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/0 pointer-events-none" />
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-6 relative z-10">
+                System Overview
               </h2>
-              <div className="grid grid-cols-3 gap-6">
-                <div>
-                  <p className="text-3xl font-bold text-gray-900 tabular-nums">{totalMachines}</p>
-                  <p className="mt-1 text-sm text-gray-500">Total machines</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+                <div className="bg-white/50 rounded-2xl p-5 border border-gray-100/50 shadow-sm transition-transform hover:-translate-y-1 duration-300">
+                  <p className="text-4xl font-extrabold text-gray-900 tabular-nums">{totalMachines}</p>
+                  <p className="mt-1.5 text-sm font-medium text-gray-500">Total Machinery</p>
                 </div>
-                <div>
-                  <p className="text-3xl font-bold text-red-600 tabular-nums">{overCount}</p>
-                  <p className="mt-1 text-sm text-gray-500">Above threshold</p>
+                <div className="bg-white/50 rounded-2xl p-5 border border-red-50 shadow-sm transition-transform hover:-translate-y-1 duration-300">
+                  <p className="text-4xl font-extrabold text-red-600 tabular-nums">{overCount}</p>
+                  <p className="mt-1.5 text-sm font-medium text-red-400 flex items-center gap-1.5">
+                    {overCount > 0 && <AlertTriangle className="h-4 w-4" />}
+                    Critical Alerts
+                  </p>
                 </div>
-                <div>
-                  <p className="text-3xl font-bold text-emerald-600 tabular-nums">{healthyCount}</p>
-                  <p className="mt-1 text-sm text-gray-500">Healthy</p>
+                <div className="bg-white/50 rounded-2xl p-5 border border-emerald-50 shadow-sm transition-transform hover:-translate-y-1 duration-300">
+                  <p className="text-4xl font-extrabold text-emerald-600 tabular-nums">{healthyCount}</p>
+                  <p className="mt-1.5 text-sm font-medium text-emerald-500 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Optimal Operations
+                  </p>
                 </div>
               </div>
-              {/* Mini health bar */}
+              {/* Sleek mini health bar */}
               {totalMachines > 0 && (
-                <div className="mt-6 flex h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                <div className="mt-8 flex h-3 w-full overflow-hidden rounded-full bg-gray-200/50 relative z-10 shadow-inner">
                   <div
-                    className="bg-emerald-500 transition-all duration-500"
+                    className="bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-1000 ease-out"
                     style={{ width: `${(healthyCount / totalMachines) * 100}%` }}
                   />
                   <div
-                    className="bg-red-500 transition-all duration-500"
+                    className="bg-gradient-to-r from-red-400 to-red-500 transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(239,68,68,0.5)]"
                     style={{ width: `${(overCount / totalMachines) * 100}%` }}
                   />
                 </div>
               )}
             </div>
 
-            {/* Machines — directly below Overview */}
-            <section className="mb-8" aria-labelledby="machines-heading">
+            {/* Machines section */}
+            <section className="mb-10" aria-labelledby="machines-heading">
               {machines.length > 0 && (
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <h2 id="machines-heading" className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-                    Machines
+                <div className="flex items-center justify-between gap-4 mb-6">
+                  <h2 id="machines-heading" className="text-sm font-bold text-gray-800 uppercase tracking-wider">
+                    Operational Nodes
                   </h2>
-                  <div className="inline-flex rounded-xl bg-white p-1 shadow-sm border border-gray-200">
+                  <div className="inline-flex rounded-2xl bg-white/80 backdrop-blur-md p-1.5 shadow-sm border border-gray-200/50">
                     <button
                       type="button"
                       onClick={() => setViewFilter("all")}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                        viewFilter === "all" ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100"
+                      className={`rounded-xl px-5 py-2 text-sm font-semibold transition-all duration-200 ${
+                        viewFilter === "all" ? "bg-gray-900 text-white shadow-md shadow-gray-900/20" : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                       }`}
                     >
                       All
@@ -267,54 +340,63 @@ export default function AdminMachineryMonitoring() {
                     <button
                       type="button"
                       onClick={() => setViewFilter("alerts")}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                        viewFilter === "alerts" ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100"
+                      className={`rounded-xl px-5 py-2 text-sm font-semibold transition-all duration-200 ${
+                        viewFilter === "alerts" ? "bg-red-500 text-white shadow-md shadow-red-500/20" : "text-gray-500 hover:text-gray-800 hover:bg-red-50"
                       }`}
                     >
-                      Alerts only
+                      Alerts Only
                     </button>
                   </div>
                 </div>
               )}
               {loading && machines.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white py-24">
-                  <RefreshCw className="h-10 w-10 text-blue-500 animate-spin mb-4" aria-hidden />
-                  <p className="text-sm font-medium text-gray-700">Loading machines</p>
-                  <p className="text-xs text-gray-500 mt-1">Fetching latest data…</p>
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-gray-200/50 bg-white/60 backdrop-blur-sm py-24 shadow-sm">
+                  <div className="relative mb-6">
+                    <div className="absolute inset-0 rounded-full blur-md bg-blue-400/30 animate-pulse" />
+                    <RefreshCw className="relative h-12 w-12 text-blue-500 animate-spin" aria-hidden />
+                  </div>
+                  <p className="text-base font-bold text-gray-800">Initializing Data Link</p>
+                  <p className="text-sm text-gray-500 mt-2">Connecting to IoT sensors…</p>
                 </div>
               ) : error ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-10 text-center max-w-md mx-auto">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" aria-hidden />
-                  <p className="font-semibold text-red-900">Could not load data</p>
-                  <p className="text-sm text-red-700 mt-2 mb-6">{error}</p>
+                <div className="rounded-3xl border border-red-200/50 bg-white/80 backdrop-blur-md p-10 text-center max-w-md mx-auto shadow-xl shadow-red-100/50">
+                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-500 mb-6 border border-red-200">
+                    <AlertTriangle className="h-8 w-8" aria-hidden />
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">Connection Interrupted</p>
+                  <p className="text-sm text-gray-500 mt-2 mb-8">{error}</p>
                   <button
                     type="button"
                     onClick={() => { setLoading(true); fetchMachines(); }}
-                    className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+                    className="w-full rounded-2xl bg-gray-900 px-5 py-3.5 text-sm font-bold text-white hover:bg-gray-800 transition-all focus:ring-4 focus:ring-gray-900/10 shadow-lg shadow-gray-900/20"
                   >
-                    Retry
+                    Retry Connection
                   </button>
                 </div>
               ) : filteredMachines.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
+                <div className="rounded-3xl border border-dashed border-gray-300/50 bg-white/50 backdrop-blur-sm py-20 text-center">
                   {machines.length === 0 ? (
                     <>
-                      <Activity className="h-14 w-14 text-gray-300 mx-auto mb-4" aria-hidden />
-                      <p className="text-base font-semibold text-gray-800">No machines yet</p>
-                      <p className="text-sm text-gray-500 mt-2 max-w-sm mx-auto">
-                        When your IoT devices send data to the webhook, machines will show up here with live readings.
+                      <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 mb-6">
+                         <Activity className="h-8 w-8" aria-hidden />
+                      </div>
+                      <p className="text-lg font-bold text-gray-800">No Nodes Registered</p>
+                      <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto leading-relaxed">
+                        Data from connected timber processing units will naturally populate this interface once telemetry transmission starts.
                       </p>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="h-14 w-14 text-emerald-400 mx-auto mb-4" aria-hidden />
-                      <p className="text-base font-semibold text-gray-800">No alerts</p>
-                      <p className="text-sm text-gray-500 mt-2">All machines are within limits. Switch to “All” to see the full list.</p>
+                      <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-500 mb-6">
+                         <CheckCircle2 className="h-8 w-8" aria-hidden />
+                      </div>
+                      <p className="text-lg font-bold text-gray-800">All Systems Nominal</p>
+                      <p className="text-sm text-gray-500 mt-2">Zero machinery parameter breaches detected across operational nodes.</p>
                     </>
                   )}
                 </div>
               ) : (
-                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {filteredMachines.map((m) => {
                     const over = isOverThreshold(m);
                     const tempOver =
@@ -326,109 +408,130 @@ export default function AdminMachineryMonitoring() {
                       typeof m.vibrationThreshold === "number" &&
                       m.lastVibration > m.vibrationThreshold;
                     const displayName = m.name || m.machineId || "Unknown";
-                    const showId = (m.name && m.name !== m.machineId) || !m.name;
+                    const isMock = m.isMock;
+                    const isOnline = isMock ? false : isMachineOn(m);
 
                     return (
                       <article
                         key={m._id}
-                        className={`rounded-2xl border bg-white shadow-sm transition-all duration-200 hover:shadow-md overflow-hidden ${
-                          over ? "border-red-200 ring-1 ring-red-100" : "border-gray-200"
+                        className={`group relative rounded-3xl border backdrop-blur-xl bg-white/80 p-0 shadow-[0_8px_30px_rgb(0,0,0,0.05)] transition-all duration-300 hover:shadow-[0_20px_40px_rgb(0,0,0,0.1)] hover:-translate-y-1 overflow-hidden ${
+                          over ? "border-red-300/60 ring-1 ring-red-100/50" : "border-white/60"
                         }`}
                       >
-                        <div className="p-6">
+                         {/* Card inner gradient for depth */}
+                         <div className="absolute inset-0 bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
+                         
+                         {/* Decorative status glow */}
+                         {over && (
+                             <div className="absolute top-0 right-0 w-32 h-32 bg-red-400/10 blur-[40px] rounded-full pointer-events-none" />
+                         )}
+                         {(!over && isOnline) && (
+                             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/10 blur-[30px] rounded-full pointer-events-none" />
+                         )}
+
+                        <div className="p-6 relative z-10 flex flex-col h-full">
                           {/* Header: name + status + time */}
-                          <div className="flex items-start justify-between gap-4 mb-6">
-                            <div className="min-w-0">
-                              <h3 className="text-xl font-bold text-gray-900 truncate">{displayName}</h3>
-                              {showId && (
-                                <p className="text-sm text-gray-500 font-mono mt-0.5 truncate">{m.machineId}</p>
-                              )}
+                          <div className="flex items-start justify-between gap-3 mb-6">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-lg font-bold text-gray-900 truncate tracking-tight">{displayName}</h3>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                 <span className="text-xs font-mono text-gray-400/80 bg-gray-100/50 px-2 py-0.5 rounded-md truncate">{m.machineId}</span>
+                                 <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-gray-300'}`} />
+                              </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1 shrink-0">
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                                  over ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
+                                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${
+                                  over ? "bg-red-50 text-red-600 border border-red-100" : isOnline ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-gray-100 text-gray-500 border border-gray-200"
                                 }`}
                               >
                                 {over ? (
-                                  <AlertTriangle className="h-4 w-4" aria-hidden />
+                                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                                ) : isOnline ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                                 ) : (
-                                  <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
+                                  <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                                 )}
-                                {over ? "Alert" : "OK"}
+                                {over ? "Alert" : isOnline ? "Machine On" : "Device Off"}
                               </span>
-                              <span className="text-xs text-gray-500">{formatTime(m.lastReadingAt)}</span>
+                              <span className="text-[10px] font-medium text-gray-400">{formatTime(m.lastReadingAt)}</span>
                             </div>
                           </div>
 
-                          {/* Temperature */}
-                          <div className="mb-5">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <Thermometer className="h-3.5 w-3.5" aria-hidden />
-                                Temperature
-                              </span>
-                              <span className="text-[10px] text-gray-400 uppercase">°C</span>
+                          <div className="flex-1 space-y-5">
+                            {/* Temperature */}
+                            <div className="rounded-2xl bg-gray-50/50 border border-gray-100 p-4 transition-colors group-hover:bg-white">
+                                <div className="flex items-center justify-between mb-2">
+                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                                    <Thermometer className="h-4 w-4 text-blue-400" aria-hidden />
+                                    Temp
+                                </span>
+                                </div>
+                                <div className="flex items-end justify-between mb-3">
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className={`text-3xl font-black tabular-nums tracking-tighter ${tempOver ? "text-red-500" : "text-gray-800"}`}>
+                                    {typeof m.lastTemperature === "number" ? m.lastTemperature : "0"}
+                                    </span>
+                                    <span className="text-sm font-bold text-gray-300">°C</span>
+                                </div>
+                                <span className="text-xs font-semibold text-gray-400">
+                                    Max {m.tempThreshold ?? "—"}
+                                </span>
+                                </div>
+                                <div className="h-1.5 w-full rounded-full bg-gray-200/60 overflow-hidden shadow-inner">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                    tempOver ? "bg-gradient-to-r from-red-400 to-red-500" : "bg-gradient-to-r from-blue-400 to-indigo-500"
+                                    }`}
+                                    style={{
+                                    width: `${m.tempThreshold > 0 && typeof m.lastTemperature === "number"
+                                        ? Math.min((m.lastTemperature / m.tempThreshold) * 100, 100)
+                                        : 0}%`,
+                                    }}
+                                />
+                                </div>
                             </div>
-                            <div className="flex items-baseline gap-2 mb-2">
-                              <span className={`text-2xl font-bold tabular-nums ${tempOver ? "text-red-600" : "text-gray-900"}`}>
-                                {typeof m.lastTemperature === "number" ? m.lastTemperature : "—"}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                / {m.tempThreshold ?? "—"} max
-                              </span>
-                            </div>
-                            <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  tempOver ? "bg-red-500" : "bg-blue-500"
-                                }`}
-                                style={{
-                                  width: `${m.tempThreshold > 0 && typeof m.lastTemperature === "number"
-                                    ? Math.min((m.lastTemperature / m.tempThreshold) * 100, 100)
-                                    : 0}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
 
-                          {/* Vibration */}
-                          <div className="mb-6">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <Vibrate className="h-3.5 w-3.5" aria-hidden />
-                                Vibration
-                              </span>
-                            </div>
-                            <div className="flex items-baseline gap-2 mb-2">
-                              <span className={`text-2xl font-bold tabular-nums ${vibOver ? "text-red-600" : "text-gray-900"}`}>
-                                {typeof m.lastVibration === "number" ? m.lastVibration : "—"}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                / {m.vibrationThreshold ?? "—"} max
-                              </span>
-                            </div>
-                            <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  vibOver ? "bg-red-500" : "bg-blue-500"
-                                }`}
-                                style={{
-                                  width: `${m.vibrationThreshold > 0 && typeof m.lastVibration === "number"
-                                    ? Math.min((m.lastVibration / m.vibrationThreshold) * 100, 100)
-                                    : 0}%`,
-                                }}
-                              />
+                            {/* Vibration */}
+                            <div className="rounded-2xl bg-gray-50/50 border border-gray-100 p-4 transition-colors group-hover:bg-white">
+                                <div className="flex items-center justify-between mb-2">
+                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                                    <Vibrate className="h-4 w-4 text-amber-500" aria-hidden />
+                                    Vibration
+                                </span>
+                                </div>
+                                <div className="flex items-end justify-between mb-3">
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className={`text-3xl font-black tabular-nums tracking-tighter ${vibOver ? "text-red-500" : "text-gray-800"}`}>
+                                    {typeof m.lastVibration === "number" ? m.lastVibration : "0"}
+                                    </span>
+                                </div>
+                                <span className="text-xs font-semibold text-gray-400">
+                                    Max {m.vibrationThreshold ?? "—"}
+                                </span>
+                                </div>
+                                <div className="h-1.5 w-full rounded-full bg-gray-200/60 overflow-hidden shadow-inner">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                    vibOver ? "bg-gradient-to-r from-red-400 to-red-500" : "bg-gradient-to-r from-amber-400 to-orange-400"
+                                    }`}
+                                    style={{
+                                    width: `${m.vibrationThreshold > 0 && typeof m.lastVibration === "number"
+                                        ? Math.min((m.lastVibration / m.vibrationThreshold) * 100, 100)
+                                        : 0}%`,
+                                    }}
+                                />
+                                </div>
                             </div>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => openEdit(m)}
-                            className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-colors"
+                            className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200/60 bg-white shadow-sm py-3.5 text-sm font-bold text-gray-700 hover:text-gray-900 hover:bg-gray-50 hover:border-gray-300 transition-all focus:ring-4 focus:ring-gray-100"
                           >
-                            <Settings2 className="h-4 w-4" aria-hidden />
-                            Edit limits
+                            <Settings2 className="h-4 w-4 text-gray-400" aria-hidden />
+                            Configure Limits
                           </button>
                         </div>
                       </article>
@@ -440,124 +543,148 @@ export default function AdminMachineryMonitoring() {
 
             {/* Alert banner */}
             {overCount > 0 && (
-              <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <div className="flex gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100">
-                    <AlertTriangle className="h-5 w-5 text-amber-700" aria-hidden />
+              <div className="mb-8 rounded-3xl border border-red-200 bg-gradient-to-r from-red-50 to-white/80 backdrop-blur-md p-6 shadow-lg shadow-red-100/30 transform transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex gap-4 items-center">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-100 border border-red-200 shadow-inner">
+                    <AlertTriangle className="h-7 w-7 text-red-600 animate-pulse" aria-hidden />
                   </div>
                   <div>
-                    <p className="font-semibold text-amber-900">
-                      {overCount} machine{overCount !== 1 ? "s" : ""} above threshold
+                    <p className="text-lg font-extrabold text-red-900">
+                      {overCount} active parameter breach{overCount !== 1 ? "es" : ""} detected
                     </p>
-                    <p className="text-sm text-amber-800 mt-0.5">
-                      Review the machine cards above and update limits if needed.
+                    <p className="text-sm font-medium text-red-700/80 mt-1">
+                      Immediate attention required. Adjust thresholds or schedule maintenance downtime.
                     </p>
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      {machines.filter(isOverThreshold).map((m) => (
+                        <div key={m.machineId} className="flex items-center gap-2 text-xs font-bold text-red-800 bg-red-100/50 px-3 py-1.5 rounded-lg w-fit border border-red-200/50">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                          {m.name || m.machineId} Alert Detected At: {formatTime(m.lastReadingAt)}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Real-time analytics graph — only records data when device is on (recent reading) */}
+            {/* Real-time analytics graph */}
             {machines.length > 0 && (() => {
               const selectedMachine = machines.find((m) => m.machineId === graphMachineId);
               const deviceOn = selectedMachine ? isMachineOn(selectedMachine) : false;
               return (
-              <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
-                      <LineChartIcon className="h-4 w-4 text-blue-600" aria-hidden />
+              <div className="mb-10 rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-10">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between mb-8 border-b border-gray-100/80 pb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 shadow-inner">
+                      <LineChartIcon className="h-6 w-6 text-blue-600" aria-hidden />
                     </div>
                     <div>
-                      <h2 className="text-base font-semibold text-gray-900">Real-time analytics</h2>
-                      <p className="text-xs text-gray-500">Chart updates only when the device is on and sending data (last 2 min)</p>
+                      <h2 className="text-xl font-bold text-gray-900">Live Telemetry</h2>
+                      <p className="text-sm font-medium text-gray-500 mt-1">Streaming metrics captured during operational window</p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <label htmlFor="graph-machine" className="text-sm text-gray-600">Machine:</label>
-                      <select
-                        id="graph-machine"
-                        value={graphMachineId ?? ""}
-                        onChange={(e) => setGraphMachineId(e.target.value || null)}
-                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
-                      >
-                        {machines.map((m) => (
-                          <option key={m.machineId} value={m.machineId}>
-                            {m.name || m.machineId}
-                          </option>
-                        ))}
-                      </select>
+                  <div className="flex flex-wrap items-center gap-4 bg-gray-50/80 backdrop-blur border border-gray-200/50 p-2 rounded-2xl">
+                    <div className="flex items-center gap-3 pl-3">
+                      <label htmlFor="graph-machine" className="text-sm font-bold text-gray-500 uppercase tracking-widest text-[10px]">Select Node</label>
+                      <div className="relative">
+                        <select
+                            id="graph-machine"
+                            value={graphMachineId ?? ""}
+                            onChange={(e) => setGraphMachineId(e.target.value || null)}
+                            className="appearance-none rounded-xl border border-gray-200 bg-white pl-4 pr-10 py-2.5 text-sm font-semibold text-gray-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
+                        >
+                            {filteredMachines.map((m) => (
+                            <option key={m.machineId} value={m.machineId}>
+                                {m.name || m.machineId}
+                            </option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                            <Settings2 className="h-4 w-4 text-gray-400" />
+                        </div>
+                      </div>
                     </div>
                     {graphMachineId && (
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-                          deviceOn ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"
+                        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm border ${
+                          deviceOn ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-white text-gray-500 border-gray-200"
                         }`}
                       >
-                        <span className={`h-1.5 w-1.5 rounded-full ${deviceOn ? "bg-emerald-500" : "bg-gray-400"}`} />
-                        {deviceOn ? "Device on" : "Device off"}
+                        <span className={`h-2 w-2 rounded-full ${deviceOn ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-gray-400"}`} />
+                        {deviceOn ? "Machine On" : "Device Off"}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="h-[280px] w-full">
+                <div className="h-[350px] w-full">
                   {!deviceOn && selectedMachine ? (
-                    <div className="flex h-full flex-col items-center justify-center rounded-xl bg-gray-50 border border-gray-200 text-center p-6">
-                      <p className="font-semibold text-gray-700">Real-time analysis stopped</p>
-                      <p className="mt-2 text-sm text-gray-500 max-w-sm">
-                        The device is off. The chart will resume when this machine sends new readings (within the last 2 minutes).
+                    <div className="flex h-full flex-col items-center justify-center rounded-2xl bg-gray-50/50 border border-dashed border-gray-200 text-center p-8">
+                      <div className="h-16 w-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                          <Activity className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <p className="text-lg font-bold text-gray-700">Telemetry Paused</p>
+                      <p className="mt-2 text-sm font-medium text-gray-500 max-w-sm leading-relaxed">
+                        Data flow resumes automatically when the machinery node initiates active session broadcasts.
                       </p>
                     </div>
                   ) : graphData.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-500 p-4 text-center">
-                      <p>Waiting for data… Chart updates only while the device is on and sending readings.</p>
+                    <div className="flex h-full flex-col items-center justify-center rounded-2xl bg-gray-50/50 border border-dashed border-gray-200 text-sm font-medium text-gray-500 p-8 text-center">
+                      <div className="h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin mb-4" />
+                      <p>Buffering real-time packets…</p>
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={graphData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                      <AreaChart data={graphData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
                             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                           </linearGradient>
                           <linearGradient id="colorVib" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
                         <XAxis
                           dataKey="time"
                           tickFormatter={(ts) => new Date(ts).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                          stroke="#9ca3af"
+                          stroke="#cbd5e1"
                           fontSize={11}
+                          fontFamily="inherit"
+                          fontWeight={600}
+                          tickLine={false}
+                          axisLine={false}
                         />
-                        <YAxis yAxisId="temp" stroke="#3b82f6" fontSize={11} tickFormatter={(v) => `${v}°`} />
-                        <YAxis yAxisId="vib" orientation="right" stroke="#10b981" fontSize={11} />
+                        <YAxis yAxisId="temp" stroke="#cbd5e1" fontSize={11} fontFamily="inherit" fontWeight={600} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}°`} />
+                        <YAxis yAxisId="vib" orientation="right" stroke="#cbd5e1" fontSize={11} fontFamily="inherit" fontWeight={600} tickLine={false} axisLine={false} />
                         <Tooltip
-                          contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb" }}
+                          contentStyle={{ borderRadius: "16px", border: "none", boxShadow: "0 10px 40px -10px rgba(0,0,0,0.1)", backgroundColor: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(8px)", padding: "12px 16px", fontWeight: "600", color: "#1e293b", fontSize: "13px" }}
                           labelFormatter={(ts) => new Date(ts).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                           formatter={(value, name) => [value ?? "—", name === "temperature" ? "Temperature (°C)" : "Vibration"]}
+                          cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '5 5' }}
                         />
-                        <Legend formatter={(name) => (name === "temperature" ? "Temperature (°C)" : "Vibration")} />
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", fontWeight: "600", paddingTop: "20px" }} formatter={(name) => (name === "temperature" ? "Temperature Baseline" : "Vibration Matrix")} />
                         <Area
                           yAxisId="temp"
-                          type="monotone"
+                          type="natural"
                           dataKey="temperature"
                           name="temperature"
                           stroke="#3b82f6"
-                          strokeWidth={2}
+                          strokeWidth={3}
                           fill="url(#colorTemp)"
+                          animationDuration={1500}
                         />
                         <Area
                           yAxisId="vib"
-                          type="monotone"
+                          type="natural"
                           dataKey="vibration"
                           name="vibration"
-                          stroke="#10b981"
-                          strokeWidth={2}
+                          stroke="#f59e0b"
+                          strokeWidth={3}
                           fill="url(#colorVib)"
+                          animationDuration={1500}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -569,42 +696,49 @@ export default function AdminMachineryMonitoring() {
 
             {/* History section */}
             {readingsHistory.length > 0 && (
-              <div className="mb-8 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                <div className="flex items-center gap-2 border-b border-gray-100 px-6 py-4">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
-                    <History className="h-4 w-4 text-gray-600" aria-hidden />
+              <div className="mb-10 rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+                <div className="flex items-center gap-3 border-b border-gray-100/50 px-8 py-6 bg-white/50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100/80 shadow-inner">
+                    <History className="h-5 w-5 text-gray-600" aria-hidden />
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold text-gray-900">Reading history</h2>
-                    <p className="text-xs text-gray-500">Latest readings from this session (newest first)</p>
+                    <h2 className="text-lg font-bold text-gray-900">Operations Log</h2>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-1">Chronological Trace</p>
                   </div>
                 </div>
-                <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
+                <div className="overflow-x-auto max-h-[400px] scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                   <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
+                    <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-gray-100 shadow-sm">
                       <tr>
-                        <th className="text-left font-semibold text-gray-600 px-6 py-3">Time</th>
-                        <th className="text-left font-semibold text-gray-600 px-6 py-3">Machine</th>
-                        <th className="text-right font-semibold text-gray-600 px-6 py-3">Temperature (°C)</th>
-                        <th className="text-right font-semibold text-gray-600 px-6 py-3">Vibration</th>
+                        <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-widest px-8 py-4">Timestamp</th>
+                        <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-widest px-8 py-4">Node Identity</th>
+                        <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-widest px-8 py-4">Temp (°C)</th>
+                        <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-widest px-8 py-4">Vibration</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-50/80">
                       {historyTableRows.map((row, idx) => (
-                        <tr key={`${row.timestamp}-${row.machineId}-${idx}`} className="hover:bg-gray-50/80">
-                          <td className="px-6 py-2.5 text-gray-600 whitespace-nowrap">
+                        <tr key={`${row.timestamp}-${row.machineId}-${idx}`} className="hover:bg-blue-50/30 transition-colors group">
+                          <td className="px-8 py-4 text-gray-500 font-medium whitespace-nowrap">
                             {new Date(row.timestamp).toLocaleTimeString("en-IN", {
                               hour: "2-digit",
                               minute: "2-digit",
                               second: "2-digit",
                             })}
                           </td>
-                          <td className="px-6 py-2.5 font-medium text-gray-900">{row.machineName}</td>
-                          <td className="px-6 py-2.5 text-right tabular-nums text-gray-700">
-                            {typeof row.temperature === "number" ? row.temperature : "—"}
+                          <td className="px-8 py-4 font-bold text-gray-800 flex items-center gap-2">
+                             <div className="w-1.5 h-1.5 rounded-full bg-blue-400 group-hover:scale-150 transition-transform" />
+                             {row.machineName}
                           </td>
-                          <td className="px-6 py-2.5 text-right tabular-nums text-gray-700">
-                            {typeof row.vibration === "number" ? row.vibration : "—"}
+                          <td className="px-8 py-4 text-right">
+                             <span className="bg-gray-100/80 px-2.5 py-1 rounded-md text-gray-700 font-bold tabular-nums">
+                                {typeof row.temperature === "number" ? row.temperature : "—"}
+                             </span>
+                          </td>
+                          <td className="px-8 py-4 text-right">
+                             <span className="bg-gray-100/80 px-2.5 py-1 rounded-md text-gray-700 font-bold tabular-nums">
+                                {typeof row.vibration === "number" ? row.vibration : "—"}
+                             </span>
                           </td>
                         </tr>
                       ))}
@@ -617,58 +751,69 @@ export default function AdminMachineryMonitoring() {
         </main>
       </div>
 
-      {/* Modal */}
+      {/* Modern Modal */}
       {editingMachine && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm transition-all duration-300"
           onClick={closeEdit}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-2xl"
+            className="w-full max-w-md rounded-[2rem] border border-white/20 bg-white/90 backdrop-blur-xl shadow-2xl p-2 animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-b border-gray-100 px-6 py-5">
-              <h3 className="text-lg font-semibold text-gray-900">Edit limits</h3>
-              <p className="text-sm text-gray-500 mt-0.5">{editingMachine.name || editingMachine.machineId}</p>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Temperature limit (°C)</label>
-                <input
-                  type="number"
-                  value={editForm.tempThreshold}
-                  onChange={(e) => setEditForm((f) => ({ ...f, tempThreshold: e.target.value }))}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
-                  placeholder="80"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Vibration limit</label>
-                <input
-                  type="number"
-                  value={editForm.vibrationThreshold}
-                  onChange={(e) => setEditForm((f) => ({ ...f, vibrationThreshold: e.target.value }))}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
-                  placeholder="10"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 px-6 pb-6">
-              <button
-                type="button"
-                onClick={closeEdit}
-                className="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveThresholds}
-                disabled={saving}
-                className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
+            <div className="bg-white rounded-[1.5rem] overflow-hidden">
+                <div className="border-b border-gray-100 px-8 py-6 bg-gradient-to-b from-gray-50/50 to-transparent">
+                <h3 className="text-xl font-extrabold text-gray-900">Define Guardrails</h3>
+                <p className="text-sm font-semibold text-gray-500 mt-1 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    {editingMachine.name || editingMachine.machineId}
+                </p>
+                </div>
+                <div className="px-8 py-6 space-y-5">
+                <div>
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Max Operating Temp (°C)</label>
+                    <div className="relative">
+                        <Thermometer className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                        type="number"
+                        value={editForm.tempThreshold}
+                        onChange={(e) => setEditForm((f) => ({ ...f, tempThreshold: e.target.value }))}
+                        className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 py-3.5 text-gray-900 font-bold placeholder-gray-300 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        placeholder="e.g. 80"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Vibration Tolerance</label>
+                    <div className="relative">
+                        <Vibrate className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                        type="number"
+                        value={editForm.vibrationThreshold}
+                        onChange={(e) => setEditForm((f) => ({ ...f, vibrationThreshold: e.target.value }))}
+                        className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 py-3.5 text-gray-900 font-bold placeholder-gray-300 focus:bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all"
+                        placeholder="e.g. 10"
+                        />
+                    </div>
+                </div>
+                </div>
+                <div className="flex gap-4 px-8 pb-8 pt-4">
+                <button
+                    type="button"
+                    onClick={closeEdit}
+                    className="flex-1 rounded-2xl border border-gray-200 py-3.5 text-sm font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:border-gray-300 transition-all focus:ring-4 focus:ring-gray-100"
+                >
+                    Discard
+                </button>
+                <button
+                    type="button"
+                    onClick={saveThresholds}
+                    disabled={saving}
+                    className="flex-1 rounded-2xl bg-gray-900 py-3.5 text-sm font-bold text-white hover:bg-gray-800 disabled:opacity-50 transition-all shadow-lg shadow-gray-900/20 focus:ring-4 focus:ring-gray-900/20"
+                >
+                    {saving ? "Deploying…" : "Deploy Configuration"}
+                </button>
+                </div>
             </div>
           </div>
         </div>

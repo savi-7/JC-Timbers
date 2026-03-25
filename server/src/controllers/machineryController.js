@@ -1,4 +1,5 @@
 import Machine from "../models/Machine.js";
+import MachineReading from "../models/MachineReading.js";
 
 const DEFAULT_TEMP = Number(process.env.MACHINERY_DEFAULT_TEMP_THRESHOLD) || 40;
 const DEFAULT_VIBRATION = Number(process.env.MACHINERY_DEFAULT_VIBRATION_THRESHOLD) || 1500;
@@ -50,6 +51,14 @@ export const webhook = async (req, res) => {
       );
 
       if (doc) {
+        if (Number.isFinite(temperature) || Number.isFinite(vibration)) {
+          await MachineReading.create({
+            machineId: doc.machineId,
+            temperature: Number.isFinite(temperature) ? temperature : undefined,
+            vibration: Number.isFinite(vibration) ? vibration : undefined,
+            timestamp: setFields.lastReadingAt
+          });
+        }
         updatedMachines.push({
           machineId: doc.machineId,
           name: doc.name,
@@ -134,5 +143,23 @@ export const updateMachine = async (req, res) => {
   } catch (err) {
     console.error("Update machine error:", err);
     res.status(500).json({ message: err.message || "Internal server error" });
+  }
+};
+
+export const getMachineReadings = async (req, res) => {
+  try {
+    const { machineId } = req.params;
+    const limit = parseInt(req.query.limit, 10) || 100;
+    if (!machineId) {
+      return res.status(400).json({ message: "machineId is required" });
+    }
+    const readings = await MachineReading.find({ machineId })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+    return res.json({ ok: true, readings });
+  } catch (err) {
+    console.error("Get machine readings error:", err);
+    return res.status(500).json({ message: err.message || "Internal server error" });
   }
 };

@@ -4,6 +4,7 @@ import '../auth/auth_service.dart';
 import '../pages/home_page.dart';
 import '../theme/jc_timber_theme.dart';
 import 'login_screen.dart';
+import 'admin/admin_dashboard_screen.dart';
 
 /// Splash screen with JC Timbers logo and slogan.
 /// Shown on app launch, then navigates to Home or Login.
@@ -28,10 +29,12 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(_duration);
     if (!mounted) return;
     final auth = context.read<AuthService>();
+    Widget nextScreen = const LoginScreen();
+    if (auth.isLoggedIn) {
+      nextScreen = auth.user?.role == 'admin' ? const AdminDashboardScreen() : const HomePage();
+    }
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => auth.isLoggedIn ? const HomePage() : const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => nextScreen),
     );
   }
 

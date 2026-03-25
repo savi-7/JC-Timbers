@@ -75,4 +75,9 @@ class ApiConfig {
     }
     return marketplaceListingImage(listingId);
   }
+
+  // Admin - Machinery Monitoring
+  static String get machineryMachines => '$baseUrl/api/machinery/machines';
+  static String machineReadings(String machineId) =>
+      '$baseUrl/api/machinery/machines/$machineId/readings';
 }

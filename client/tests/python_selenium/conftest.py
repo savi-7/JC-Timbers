@@ -44,21 +44,25 @@ def step_logger(request, driver):
   if not hasattr(request.node, "extra"):
     request.node.extra = []
 
-  def _log(description: str):
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    slug = re.sub(r"[^a-zA-Z0-9]+", "_", description)[:40].strip("_")
-    filename = f"{request.node.name}_{timestamp}_{slug}.png"
-    filepath = screenshots_dir / filename
-    driver.save_screenshot(str(filepath))
-    img_b64 = driver.get_screenshot_as_base64()
-    request.node.extra.append(
-      extras.html(
+  def _log(description: str, with_screenshot: bool = True):
+    if with_screenshot:
+      timestamp = time.strftime("%Y%m%d_%H%M%S")
+      slug = re.sub(r"[^a-zA-Z0-9]+", "_", description)[:40].strip("_")
+      filename = f"{request.node.name}_{timestamp}_{slug}.png"
+      filepath = screenshots_dir / filename
+      driver.save_screenshot(str(filepath))
+      img_b64 = driver.get_screenshot_as_base64()
+      html = (
         f"<div><strong>{description}</strong><br>"
         f"<img src='data:image/png;base64,{img_b64}' "
         f"style='border:1px solid #ccc;' width='600'></div>"
       )
-    )
-    print(f"[STEP] {description} -- screenshot saved: {filepath}")
+      print(f"[STEP] {description} -- screenshot saved: {filepath}")
+    else:
+      html = f"<div><strong>{description}</strong></div>"
+      filepath = None
+
+    request.node.extra.append(extras.html(html))
     return filepath
 
   return _log
@@ -74,16 +78,35 @@ def api_client():
 @pytest.fixture(scope="function")
 def seeded_customer(api_client):
   """Creates a brand new customer via the REST API for login/cart/wishlist tests."""
-  payload = {
-    "name": random_name("Customer"),
-    "email": unique_email(),
-    "phone": unique_phone(),
-    "password": "Tester@1234",
-  }
-  resp = api_client.post(f"{settings.api_base_url}/auth/register", json=payload, timeout=10)
-  if resp.status_code != 201:
-    raise RuntimeError(f"Failed to seed customer via API: {resp.status_code} {resp.text}")
-  return {"email": payload["email"], "password": payload["password"], "name": payload["name"]}
+  # Backend has rate limiting; on 429 we retry with backoff to keep UI tests stable.
+  max_attempts = 3
+  last_exc: Exception | None = None
+  for attempt in range(max_attempts):
+    payload = {
+      "name": random_name("Customer"),
+      "email": unique_email(),
+      "phone": unique_phone(),
+      "password": "Tester@1234",
+    }
+    resp = api_client.post(
+      f"{settings.api_base_url}/auth/register",
+      json=payload,
+      timeout=10,
+    )
+    if resp.status_code == 201:
+      return {"email": payload["email"], "password": payload["password"], "name": payload["name"]}
+
+    # Retry only on rate limit.
+    if resp.status_code == 429:
+      backoff_sec = 8 * (attempt + 1)
+      print(f"[seeded_customer] 429 received, backing off {backoff_sec}s (attempt {attempt + 1}/{max_attempts})")
+      time.sleep(backoff_sec)
+      continue
+
+    last_exc = RuntimeError(f"Failed to seed customer via API: {resp.status_code} {resp.text}")
+
+  # If we get here, we've exhausted retries.
+  raise last_exc or RuntimeError("Failed to seed customer via API after retries")
 
 
 @pytest.fixture(scope="function")

@@ -2,6 +2,7 @@ const { Builder } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const firefox = require('selenium-webdriver/firefox');
 const edge = require('selenium-webdriver/edge');
+const chromedriver = require('chromedriver');
 const fs = require('fs');
 const path = require('path');
 
@@ -20,9 +21,14 @@ async function buildDriver() {
 		builder = builder.forBrowser('MicrosoftEdge').setEdgeOptions(new edge.Options());
 	} else {
 		const options = new chrome.Options();
-		// options.addArguments('--headless=new');
+		if (process.env.HEADED !== '1') {
+			options.addArguments('--headless=new');
+		}
 		options.addArguments('--start-maximized');
-		builder = builder.forBrowser('chrome').setChromeOptions(options);
+		builder = builder
+			.forBrowser('chrome')
+			.setChromeOptions(options)
+			.setChromeService(new chrome.ServiceBuilder(chromedriver.path));
 	}
 	return builder.build();
 }

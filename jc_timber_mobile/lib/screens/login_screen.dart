@@ -9,6 +9,7 @@ import 'register_screen.dart';
 import '../pages/home_page.dart';
 import 'cart_screen.dart';
 import 'wishlist_screen.dart';
+import 'admin/admin_dashboard_screen.dart';
 
 /// Login Screen - exact UI/UX match to MERN LoginPage.
 class LoginScreen extends StatefulWidget {
@@ -66,7 +67,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (result.success) {
-      // MERN-style: process pending cart/wishlist and redirect
+      if (result.user?.role == 'admin') {
+        await PendingActionsStorage.clearAll();
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        );
+        return;
+      }
+
       final redirect = await PendingActionsStorage.getLoginRedirect();
       final pendingCart = await PendingActionsStorage.getPendingCartItem();
       final pendingWishlist = await PendingActionsStorage.getPendingWishlistItem();

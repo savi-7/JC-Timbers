@@ -1,0 +1,240 @@
+{
+  "stats": {
+    "suites": 1,
+    "tests": 6,
+    "passes": 5,
+    "pending": 1,
+    "failures": 0,
+    "start": "2026-03-23T09:00:26.956Z",
+    "end": "2026-03-23T09:00:46.271Z",
+    "duration": 19315,
+    "testsRegistered": 6,
+    "passPercent": 100,
+    "pendingPercent": 16.666666666666664,
+    "other": 0,
+    "hasOther": false,
+    "skipped": 0,
+    "hasSkipped": false
+  },
+  "results": [
+    {
+      "uuid": "0eb00442-9824-4a90-b1af-5b3006a0b072",
+      "title": "",
+      "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\06-functional-suite.spec.js",
+      "file": "\\tests\\06-functional-suite.spec.js",
+      "beforeHooks": [],
+      "afterHooks": [],
+      "tests": [],
+      "suites": [
+        {
+          "uuid": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+          "title": "[chrome] Functional Suite: 6 Requested Test Cases",
+          "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\06-functional-suite.spec.js",
+          "file": "\\tests\\06-functional-suite.spec.js",
+          "beforeHooks": [
+            {
+              "title": "\"before all\" hook in \"[chrome] Functional Suite: 6 Requested Test Cases\"",
+              "fullTitle": "[chrome] Functional Suite: 6 Requested Test Cases \"before all\" hook in \"[chrome] Functional Suite: 6 Requested Test Cases\"",
+              "timedOut": false,
+              "duration": 928,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "driver = await buildDriver();",
+              "err": {},
+              "uuid": "9f436d73-3249-49d0-b92f-70365e39ddd2",
+              "parentUUID": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "afterHooks": [
+            {
+              "title": "\"after all\" hook in \"[chrome] Functional Suite: 6 Requested Test Cases\"",
+              "fullTitle": "[chrome] Functional Suite: 6 Requested Test Cases \"after all\" hook in \"[chrome] Functional Suite: 6 Requested Test Cases\"",
+              "timedOut": false,
+              "duration": 97,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "if (driver) await driver.quit();",
+              "err": {},
+              "uuid": "3f006479-8a04-406f-bdf1-92ca767077c7",
+              "parentUUID": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "tests": [
+            {
+              "title": "TC-01: Login + Registration forms and real-user login",
+              "fullTitle": "[chrome] Functional Suite: 6 Requested Test Cases TC-01: Login + Registration forms and real-user login",
+              "timedOut": false,
+              "duration": 7777,
+              "state": "pending",
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": true,
+              "context": "[\n  {\n    \"title\": \"Test Description\",\n    \"value\": \"Precondition: App is running. Actions: (1) Open /register and verify registration form fields. (2) Open /login and sign in using real credentials from LOGIN_EMAIL/LOGIN_PASSWORD. Expected: Login succeeds and the browser lands outside /login (or shows a success notification). If LOGIN_EMAIL/LOGIN_PASSWORD are not set, TC-01 will skip functional login unless ATTEMPT_REGISTRATION_SUBMIT=1 is enabled.\"\n  },\n  {\n    \"title\": \"Registration page form validated\",\n    \"value\": \"../screenshots/06-01-register-page.png\"\n  },\n  {\n    \"title\": \"Execution Report\",\n    \"value\": \"Status: PENDING\\n\\nTest Case: Login + Registration (TC-01)\\nDescription: LOGIN_EMAIL/LOGIN_PASSWORD were not provided. TC-01 validated registration and login UI, then skipped functional login to avoid false failures.\\nExecution Time: 7.78 seconds\\n\\nUser Flow Steps:\\n1. Step 1: Open registration page and verify fields exist\\n2. Screenshot saved: ../screenshots/06-01-register-page.png\\n\"\n  }\n]",
+              "code": "const steps = [];\nconst startTime = Date.now();\naddContext(this, {\n\ttitle: 'Test Description',\n\tvalue:\n\t\t'Precondition: App is running. Actions: (1) Open /register and verify registration form fields. (2) Open /login and sign in using real credentials from LOGIN_EMAIL/LOGIN_PASSWORD. Expected: Login succeeds and the browser lands outside /login (or shows a success notification). If LOGIN_EMAIL/LOGIN_PASSWORD are not set, TC-01 will skip functional login unless ATTEMPT_REGISTRATION_SUBMIT=1 is enabled.'\n});\nconst loginEmail = process.env.LOGIN_EMAIL;\nconst loginPassword = process.env.LOGIN_PASSWORD;\nconst hasRealLogin = !!loginEmail && !!loginPassword;\nconst generatedUser = {\n\tfirstName: 'Selenium',\n\tlastName: 'User',\n\temail: `selenium.user.${Date.now()}@gmail.com`,\n\tphone: '9876543210',\n\tpassword: 'Selenium@123'\n};\n// Start clean to avoid stale auth state affecting redirects.\nawait driver.get(`${BASE_URL}/`);\nawait driver.sleep(800);\nawait driver.manage().deleteAllCookies();\nawait driver.executeScript('window.localStorage && window.localStorage.clear && window.localStorage.clear();');\nawait driver.sleep(300);\nstep(steps, 'Step 1: Open registration page and verify fields exist');\nawait driver.get(`${BASE_URL}/register`);\nawait driver.sleep(1200);\nconst registerUrl = await driver.getCurrentUrl();\nassert.ok(registerUrl.includes('/register'), `Expected /register URL, got: ${registerUrl}`);\n// Registration UI elements (field ids come from RegisterPage.jsx)\nawait driver.findElement(By.id('firstName'));\nawait driver.findElement(By.id('lastName'));\nawait driver.findElement(By.id('email'));\nawait driver.findElement(By.id('phone'));\nawait driver.findElement(By.id('password'));\nawait driver.findElement(By.id('confirmPassword'));\nawait driver.findElement(By.css('input[name=\"agreeToTerms\"]'));\nconst registerButtons = await driver.findElements(By.css('button[type=\"submit\"]'));\nassert.ok(registerButtons.length > 0, 'Expected registration submit button');\nawait capture(this, steps, '06-01-register-page.png', 'Registration page form validated');\nif (!hasRealLogin && process.env.ATTEMPT_REGISTRATION_SUBMIT !== '1') {\n\taddContext(this, {\n\t\ttitle: 'Execution Report',\n\t\tvalue: buildExecutionBlock({\n\t\t\tstatus: 'PENDING',\n\t\t\ttestCase: 'Login + Registration (TC-01)',\n\t\t\tdescription:\n\t\t\t\t'LOGIN_EMAIL/LOGIN_PASSWORD were not provided. TC-01 validated registration and login UI, then skipped functional login to avoid false failures.',\n\t\t\tdurationMs: Date.now() - startTime,\n\t\t\tsteps\n\t\t})\n\t});\n\tthis.skip();\n}\n// Registration submission is required when no real login credentials are provided.\n// Enable end-to-end registration explicitly using ATTEMPT_REGISTRATION_SUBMIT=1.\nconst shouldSubmitRegistration = !hasRealLogin || process.env.ATTEMPT_REGISTRATION_SUBMIT === '1';\nlet loginCredsEmail = hasRealLogin ? loginEmail : generatedUser.email;\nlet loginCredsPassword = hasRealLogin ? loginPassword : generatedUser.password;\nif (shouldSubmitRegistration) {\n\tstep(steps, `Step 2: Submit registration form to create user ${generatedUser.email}`);\n\tawait driver.findElement(By.id('firstName')).sendKeys(generatedUser.firstName);\n\tawait driver.findElement(By.id('lastName')).sendKeys(generatedUser.lastName);\n\tawait driver.findElement(By.id('email')).sendKeys(generatedUser.email);\n\tawait driver.findElement(By.id('phone')).sendKeys(generatedUser.phone);\n\tawait driver.findElement(By.id('password')).sendKeys(generatedUser.password);\n\tawait driver.findElement(By.id('confirmPassword')).sendKeys(generatedUser.password);\n\tconst terms = await driver.findElement(By.css('input[name=\"agreeToTerms\"]'));\n\tawait terms.click();\n\tassert.ok(await terms.isSelected(), 'Expected agreeToTerms checkbox to be selected after clicking');\n\tawait capture(this, steps, '06-01-register-filled.png', 'Registration form filled');\n\tstep(steps, 'Step 3: Click Register submit button');\n\tconst submitNow = await driver.findElements(By.css('button[type=\"submit\"]'));\n\tassert.ok(submitNow.length > 0, 'Expected registration submit button at click-time');\n\tawait submitNow[0].click();\n\tawait driver.sleep(600);\n\tstep(steps, 'Step 4: Waiting for registration result in UI');\n\tconst successCheck = await waitUntil(async () => {\n\t\tconst afterRegisterUrl = await driver.getCurrentUrl();\n\t\tconst srcLower = (await driver.getPageSource()).toLowerCase();\n\t\tif (afterRegisterUrl.includes('/login')) return { afterRegisterUrl };\n\t\tif (srcLower.includes('application successful')) return { afterRegisterUrl };\n\t\treturn null;\n\t}, 20000, 1000);\n\tif (!successCheck) {\n\t\tconst afterRegisterUrl = await driver.getCurrentUrl();\n\t\tconst srcLower = (await driver.getPageSource()).toLowerCase();\n\t\tconst toast = await getToast();\n\t\tconst inlineErrEls = await driver.findElements(By.css('p.text-accent-red'));\n\t\tconst inlineErrors = [];\n\t\tfor (const el of inlineErrEls.slice(0, 3)) {\n\t\t\tinlineErrors.push((await el.getText()).trim());\n\t\t}\n\t\tthrow new Error(\n\t\t\t`Registration did not show success feedback. url=${afterRegisterUrl}, toast=\"${toast?.text || ''}\", inlineErrors=\"${inlineErrors.join('; ')}\", pageHasSuccessText=${srcLower.includes('application successful')}`\n\t\t);\n\t}\n\tawait capture(this, steps, '06-01-register-result.png', 'Registration result detected in UI');\n} else {\n\tstep(steps, 'Step 2: Registration submission skipped (real login credentials provided and ATTEMPT_REGISTRATION_SUBMIT not enabled)');\n}\nstep(steps, 'Step 5: Open login page and sign in');\nawait driver.get(`${BASE_URL}/login`);\nawait driver.sleep(1000);\nawait assertLoginFormVisible();\nconst emailInput = await driver.findElement(By.id('email'));\nconst passwordInput = await driver.findElement(By.id('password'));\nawait emailInput.clear();\nawait emailInput.sendKeys(loginCredsEmail);\nawait passwordInput.clear();\nawait passwordInput.sendKeys(loginCredsPassword);\nawait capture(this, steps, '06-01-credentials-entered.png', 'Login credentials entered');\nstep(steps, 'Step 6: Submit login form');\nconst loginButtonCandidates = await driver.findElements(By.css('button[type=\"submit\"]'));\nassert.ok(loginButtonCandidates.length > 0, 'Login submit button should exist');\nawait loginButtonCandidates[0].click();\nstep(steps, 'Step 7: Wait for login success (URL change or success toast)');\nconst loginOutcome = await waitUntil(async () => {\n\tconst url = await driver.getCurrentUrl();\n\tif (!url.includes('/login')) return { status: 'redirect', url };\n\tconst toast = await getToast();\n\tif (toast && toast.text) {\n\t\treturn { status: toast.type || 'unknown', url, toast };\n\t}\n\treturn null;\n}, 30000);\nassert.ok(loginOutcome, 'Expected login result (redirect or toast), but none appeared');\nconst postLoginUrl = loginOutcome.url;\nconst toastText = loginOutcome.toast?.text || '';\nif (postLoginUrl.includes('/login')) {\n\tthrow new Error(`Login unsuccessful. Still on ${postLoginUrl}. Toast=\"${toastText}\"`);\n}\nif (process.env.LOGIN_SUCCESS_PATH) {\n\tassert.ok(\n\t\tpostLoginUrl.includes(process.env.LOGIN_SUCCESS_PATH),\n\t\t`Expected post-login URL to include ${process.env.LOGIN_SUCCESS_PATH}, got: ${postLoginUrl}`\n\t);\n}\nstep(steps, `Step 8: Login success confirmed at ${postLoginUrl}`);\nawait capture(this, steps, '06-01-login-result.png', 'Login result');\nattachSteps(this, steps);\naddContext(this, {\n\ttitle: 'Execution Report',\n\tvalue: buildExecutionBlock({\n\t\tstatus: 'PASSED',\n\t\ttestCase: 'Login + Registration (TC-01)',\n\t\tdescription:\n\t\t\t'Registration and login pages validated; login completed successfully and ended outside /login (or showed success feedback).',\n\t\tdurationMs: Date.now() - startTime,\n\t\tsteps\n\t})\n});",
+              "err": {},
+              "uuid": "434aaed7-7f7a-4505-b908-8db6417dc21e",
+              "parentUUID": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "TC-02: Cart - Open /cart and verify cart/checkout UI (or login redirect)",
+              "fullTitle": "[chrome] Functional Suite: 6 Requested Test Cases TC-02: Cart - Open /cart and verify cart/checkout UI (or login redirect)",
+              "timedOut": false,
+              "duration": 1958,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": "[\n  {\n    \"title\": \"Test Description\",\n    \"value\": \"Precondition: App is running. Actions: Open `/cart`. Expected: Cart page elements (cart/checkout/order summary markers) are visible. If the app redirects to `/login`, the login form inputs (`email`, `password`) must be visible.\"\n  },\n  {\n    \"title\": \"/cart result\",\n    \"value\": \"../screenshots/06-02-cart.png\"\n  },\n  {\n    \"title\": \"Detailed step log\",\n    \"value\": \"\\n1. 2026-03-23T09:00:35.667Z | Navigating to /cart\\n2. 2026-03-23T09:00:37.478Z | Current URL: http://localhost:5173/cart\\n3. 2026-03-23T09:00:37.478Z | Content marker check: found\\n4. 2026-03-23T09:00:37.606Z | Screenshot saved: ../screenshots/06-02-cart.png\\n5. 2026-03-23T09:00:37.625Z | Interactive elements found on cart flow: 13\\n\"\n  },\n  {\n    \"title\": \"Execution Report\",\n    \"value\": \"Status: PASSED\\n\\nTest Case: Cart (TC-02)\\nDescription: Opened /cart and verified cart UI markers and at least one interactive element. If redirected, verified login UI.\\nExecution Time: 1.96 seconds\\n\\nUser Flow Steps:\\n1. Navigating to /cart\\n2. Current URL: http://localhost:5173/cart\\n3. Content marker check: found\\n4. Screenshot saved: ../screenshots/06-02-cart.png\\n5. Interactive elements found on cart flow: 13\\n\"\n  }\n]",
+              "code": "const steps = [];\nconst startTime = Date.now();\naddContext(this, {\n\ttitle: 'Test Description',\n\tvalue:\n\t\t'Precondition: App is running. Actions: Open `/cart`. Expected: Cart page elements (cart/checkout/order summary markers) are visible. If the app redirects to `/login`, the login form inputs (`email`, `password`) must be visible.'\n});\nconst url = await openAndAssert(this, steps, '/cart', ['cart', 'checkout', 'order summary'], '06-02-cart.png');\nconst cartButtons = await driver.findElements(By.css('button, a'));\nassert.ok(cartButtons.length >= 1, `Expected interactive elements in cart flow, got: ${cartButtons.length} on ${url}`);\nstep(steps, `Interactive elements found on cart flow: ${cartButtons.length}`);\nattachSteps(this, steps);\naddContext(this, {\n\ttitle: 'Execution Report',\n\tvalue: buildExecutionBlock({\n\t\tstatus: 'PASSED',\n\t\ttestCase: 'Cart (TC-02)',\n\t\tdescription:\n\t\t\t'Opened /cart and verified cart UI markers and at least one interactive element. If redirected, verified login UI.',\n\t\tdurationMs: Date.now() - startTime,\n\t\tsteps\n\t})\n});",
+              "err": {},
+              "uuid": "c2ba9dcb-1785-44dc-b759-5f0939185b60",
+              "parentUUID": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "TC-03: Wishlist - Open /wishlist and verify wishlist UI (or login redirect)",
+              "fullTitle": "[chrome] Functional Suite: 6 Requested Test Cases TC-03: Wishlist - Open /wishlist and verify wishlist UI (or login redirect)",
+              "timedOut": false,
+              "duration": 2059,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": "[\n  {\n    \"title\": \"Test Description\",\n    \"value\": \"Precondition: App is running. Actions: Open `/wishlist`. Expected: Wishlist page markers are visible. If the app redirects to `/login`, the login form inputs (`email`, `password`) must be visible.\"\n  },\n  {\n    \"title\": \"/wishlist result\",\n    \"value\": \"../screenshots/06-03-wishlist.png\"\n  },\n  {\n    \"title\": \"Detailed step log\",\n    \"value\": \"\\n1. 2026-03-23T09:00:37.625Z | Navigating to /wishlist\\n2. 2026-03-23T09:00:39.509Z | Current URL: http://localhost:5173/login\\n3. 2026-03-23T09:00:39.510Z | Content marker check: not found\\n4. 2026-03-23T09:00:39.510Z | Redirected to /login; verifying login form exists\\n5. 2026-03-23T09:00:39.683Z | Screenshot saved: ../screenshots/06-03-wishlist.png\\n\"\n  },\n  {\n    \"title\": \"Execution Report\",\n    \"value\": \"Status: PASSED\\n\\nTest Case: Wishlist (TC-03)\\nDescription: Opened /wishlist and verified wishlist markers in the page content. If redirected, verified login UI markers.\\nExecution Time: 2.06 seconds\\n\\nUser Flow Steps:\\n1. Navigating to /wishlist\\n2. Current URL: http://localhost:5173/login\\n3. Content marker check: not found\\n4. Redirected to /login; verifying login form exists\\n5. Screenshot saved: ../screenshots/06-03-wishlist.png\\n\"\n  }\n]",
+              "code": "const steps = [];\nconst startTime = Date.now();\naddContext(this, {\n\ttitle: 'Test Description',\n\tvalue:\n\t\t'Precondition: App is running. Actions: Open `/wishlist`. Expected: Wishlist page markers are visible. If the app redirects to `/login`, the login form inputs (`email`, `password`) must be visible.'\n});\nawait openAndAssert(this, steps, '/wishlist', ['wishlist', 'saved', 'favorites'], '06-03-wishlist.png');\nattachSteps(this, steps);\naddContext(this, {\n\ttitle: 'Execution Report',\n\tvalue: buildExecutionBlock({\n\t\tstatus: 'PASSED',\n\t\ttestCase: 'Wishlist (TC-03)',\n\t\tdescription:\n\t\t\t'Opened /wishlist and verified wishlist markers in the page content. If redirected, verified login UI markers.',\n\t\tdurationMs: Date.now() - startTime,\n\t\tsteps\n\t})\n});",
+              "err": {},
+              "uuid": "a757ebfc-7a86-4670-8523-7b0f6ec9266b",
+              "parentUUID": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "TC-04: Products - Open /timber-products and verify product listing markers",
+              "fullTitle": "[chrome] Functional Suite: 6 Requested Test Cases TC-04: Products - Open /timber-products and verify product listing markers",
+              "timedOut": false,
+              "duration": 2086,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": "[\n  {\n    \"title\": \"Test Description\",\n    \"value\": \"Precondition: App is running. Actions: Open `/timber-products`. Expected: Product listing markers (timber/products/wood keywords) are present in the page content.\"\n  },\n  {\n    \"title\": \"/timber-products result\",\n    \"value\": \"../screenshots/06-04-products.png\"\n  },\n  {\n    \"title\": \"Detailed step log\",\n    \"value\": \"\\n1. 2026-03-23T09:00:39.685Z | Navigating to /timber-products\\n2. 2026-03-23T09:00:41.610Z | Current URL: http://localhost:5173/timber-products\\n3. 2026-03-23T09:00:41.610Z | Content marker check: found\\n4. 2026-03-23T09:00:41.769Z | Screenshot saved: ../screenshots/06-04-products.png\\n\"\n  },\n  {\n    \"title\": \"Execution Report\",\n    \"value\": \"Status: PASSED\\n\\nTest Case: Products (TC-04)\\nDescription: Opened /timber-products and verified product listing keywords (timber/products/wood) are present in the page content.\\nExecution Time: 2.08 seconds\\n\\nUser Flow Steps:\\n1. Navigating to /timber-products\\n2. Current URL: http://localhost:5173/timber-products\\n3. Content marker check: found\\n4. Screenshot saved: ../screenshots/06-04-products.png\\n\"\n  }\n]",
+              "code": "const steps = [];\nconst startTime = Date.now();\naddContext(this, {\n\ttitle: 'Test Description',\n\tvalue:\n\t\t'Precondition: App is running. Actions: Open `/timber-products`. Expected: Product listing markers (timber/products/wood keywords) are present in the page content.'\n});\nawait openAndAssert(this, steps, '/timber-products', ['timber', 'products', 'wood'], '06-04-products.png');\nattachSteps(this, steps);\naddContext(this, {\n\ttitle: 'Execution Report',\n\tvalue: buildExecutionBlock({\n\t\tstatus: 'PASSED',\n\t\ttestCase: 'Products (TC-04)',\n\t\tdescription:\n\t\t\t'Opened /timber-products and verified product listing keywords (timber/products/wood) are present in the page content.',\n\t\tdurationMs: Date.now() - startTime,\n\t\tsteps\n\t})\n});",
+              "err": {},
+              "uuid": "4eba1446-de0a-43d5-895a-7d2e7292acbf",
+              "parentUUID": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "TC-05: Marketplace - Open /marketplace and verify listing markers",
+              "fullTitle": "[chrome] Functional Suite: 6 Requested Test Cases TC-05: Marketplace - Open /marketplace and verify listing markers",
+              "timedOut": false,
+              "duration": 2271,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": "[\n  {\n    \"title\": \"Test Description\",\n    \"value\": \"Precondition: App is running. Actions: Open `/marketplace`. Expected: Marketplace listing markers (marketplace/listing/seller keywords) are present in the page content.\"\n  },\n  {\n    \"title\": \"/marketplace result\",\n    \"value\": \"../screenshots/06-05-marketplace.png\"\n  },\n  {\n    \"title\": \"Detailed step log\",\n    \"value\": \"\\n1. 2026-03-23T09:00:41.770Z | Navigating to /marketplace\\n2. 2026-03-23T09:00:43.906Z | Current URL: http://localhost:5173/marketplace\\n3. 2026-03-23T09:00:43.906Z | Content marker check: found\\n4. 2026-03-23T09:00:44.040Z | Screenshot saved: ../screenshots/06-05-marketplace.png\\n\"\n  },\n  {\n    \"title\": \"Execution Report\",\n    \"value\": \"Status: PASSED\\n\\nTest Case: Marketplace (TC-05)\\nDescription: Opened /marketplace and verified marketplace/listing/seller keywords are present in the page content.\\nExecution Time: 2.27 seconds\\n\\nUser Flow Steps:\\n1. Navigating to /marketplace\\n2. Current URL: http://localhost:5173/marketplace\\n3. Content marker check: found\\n4. Screenshot saved: ../screenshots/06-05-marketplace.png\\n\"\n  }\n]",
+              "code": "const steps = [];\nconst startTime = Date.now();\naddContext(this, {\n\ttitle: 'Test Description',\n\tvalue:\n\t\t'Precondition: App is running. Actions: Open `/marketplace`. Expected: Marketplace listing markers (marketplace/listing/seller keywords) are present in the page content.'\n});\nawait openAndAssert(this, steps, '/marketplace', ['marketplace', 'listing', 'seller'], '06-05-marketplace.png');\nattachSteps(this, steps);\naddContext(this, {\n\ttitle: 'Execution Report',\n\tvalue: buildExecutionBlock({\n\t\tstatus: 'PASSED',\n\t\ttestCase: 'Marketplace (TC-05)',\n\t\tdescription:\n\t\t\t'Opened /marketplace and verified marketplace/listing/seller keywords are present in the page content.',\n\t\tdurationMs: Date.now() - startTime,\n\t\tsteps\n\t})\n});",
+              "err": {},
+              "uuid": "8d0d4d34-624b-488a-b784-3848319e8d6b",
+              "parentUUID": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "TC-06: After-sale service - Open /after-sale/new and verify service enquiry form (or login redirect)",
+              "fullTitle": "[chrome] Functional Suite: 6 Requested Test Cases TC-06: After-sale service - Open /after-sale/new and verify service enquiry form (or login redirect)",
+              "timedOut": false,
+              "duration": 2130,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": "[\n  {\n    \"title\": \"Test Description\",\n    \"value\": \"Precondition: App is running. Actions: Open `/after-sale/new`. Expected: After-sale service request page markers (after sale/request/service keywords) are present. If the app redirects to `/login`, the login form inputs (`email`, `password`) must be visible.\"\n  },\n  {\n    \"title\": \"/after-sale/new result\",\n    \"value\": \"../screenshots/06-06-after-sale.png\"\n  },\n  {\n    \"title\": \"Detailed step log\",\n    \"value\": \"\\n1. 2026-03-23T09:00:44.042Z | Navigating to /after-sale/new\\n2. 2026-03-23T09:00:46.017Z | Current URL: http://localhost:5173/login\\n3. 2026-03-23T09:00:46.017Z | Content marker check: not found\\n4. 2026-03-23T09:00:46.017Z | Redirected to /login; verifying login form exists\\n5. 2026-03-23T09:00:46.172Z | Screenshot saved: ../screenshots/06-06-after-sale.png\\n\"\n  },\n  {\n    \"title\": \"Execution Report\",\n    \"value\": \"Status: PASSED\\n\\nTest Case: After-sale service (TC-06)\\nDescription: Opened /after-sale/new and verified service enquiry markers exist. If redirected, verified login UI markers.\\nExecution Time: 2.13 seconds\\n\\nUser Flow Steps:\\n1. Navigating to /after-sale/new\\n2. Current URL: http://localhost:5173/login\\n3. Content marker check: not found\\n4. Redirected to /login; verifying login form exists\\n5. Screenshot saved: ../screenshots/06-06-after-sale.png\\n\"\n  }\n]",
+              "code": "const steps = [];\nconst startTime = Date.now();\naddContext(this, {\n\ttitle: 'Test Description',\n\tvalue:\n\t\t'Precondition: App is running. Actions: Open `/after-sale/new`. Expected: After-sale service request page markers (after sale/request/service keywords) are present. If the app redirects to `/login`, the login form inputs (`email`, `password`) must be visible.'\n});\nawait openAndAssert(this, steps, '/after-sale/new', ['after sale', 'request', 'service'], '06-06-after-sale.png');\nattachSteps(this, steps);\naddContext(this, {\n\ttitle: 'Execution Report',\n\tvalue: buildExecutionBlock({\n\t\tstatus: 'PASSED',\n\t\ttestCase: 'After-sale service (TC-06)',\n\t\tdescription:\n\t\t\t'Opened /after-sale/new and verified service enquiry markers exist. If redirected, verified login UI markers.',\n\t\tdurationMs: Date.now() - startTime,\n\t\tsteps\n\t})\n});",
+              "err": {},
+              "uuid": "c62878d6-767e-43a4-b815-bb64876d2d47",
+              "parentUUID": "3d9ed8a8-ee23-425a-97a0-5fc4d087370f",
+              "isHook": false,
+              "skipped": false
+            }
+          ],
+          "suites": [],
+          "passes": [
+            "c2ba9dcb-1785-44dc-b759-5f0939185b60",
+            "a757ebfc-7a86-4670-8523-7b0f6ec9266b",
+            "4eba1446-de0a-43d5-895a-7d2e7292acbf",
+            "8d0d4d34-624b-488a-b784-3848319e8d6b",
+            "c62878d6-767e-43a4-b815-bb64876d2d47"
+          ],
+          "failures": [],
+          "pending": [
+            "434aaed7-7f7a-4505-b908-8db6417dc21e"
+          ],
+          "skipped": [],
+          "duration": 18281,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 90000
+        }
+      ],
+      "passes": [],
+      "failures": [],
+      "pending": [],
+      "skipped": [],
+      "duration": 0,
+      "root": true,
+      "rootEmpty": true,
+      "_timeout": 90000
+    }
+  ],
+  "meta": {
+    "mocha": {
+      "version": "10.8.2"
+    },
+    "mochawesome": {
+      "options": {
+        "quiet": false,
+        "reportFilename": "functional-6-cases",
+        "saveHtml": true,
+        "saveJson": true,
+        "consoleReporter": "spec",
+        "useInlineDiffs": false,
+        "code": true
+      },
+      "version": "7.1.4"
+    },
+    "marge": {
+      "options": {
+        "reportDir": "reports",
+        "reportFilename": "functional-6-cases",
+        "overwrite": "true",
+        "html": "true",
+        "json": "true"
+      },
+      "version": "6.3.0"
+    }
+  }
+}

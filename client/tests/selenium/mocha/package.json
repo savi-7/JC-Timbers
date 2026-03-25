@@ -4,13 +4,16 @@
   "private": true,
   "scripts": {
     "test": "mocha \"tests/**/*.spec.js\" --timeout 60000 --reporter mochawesome --reporter-options reportDir=reports,reportFilename=index,overwrite=true,html=true,json=true",
-    "test:chrome": "BROWSER=chrome npm run test",
-    "test:firefox": "BROWSER=firefox npm run test",
-    "test:edge": "BROWSER=edge npm run test",
-    "open:report": "node open-report.js"
+    "test:functional6": "mocha \"tests/06-functional-suite.spec.js\" --timeout 90000 --reporter mochawesome --reporter-options reportDir=reports,reportFilename=functional-6-cases,overwrite=true,html=true,json=true",
+    "test:chrome": "set BROWSER=chrome&& npm run test",
+    "test:functional6:chrome": "set BROWSER=chrome&& npm run test:functional6",
+    "test:functional6:chrome:headed": "set HEADED=1&& set BROWSER=chrome&& npm run test:functional6",
+    "test:firefox": "set BROWSER=firefox&& npm run test",
+    "test:edge": "set BROWSER=edge&& npm run test",
+    "open:report": "node open-report.js reports/functional-6-cases.html"
   },
   "dependencies": {
-    "chromedriver": "latest",
+    "chromedriver": "^146.0.5",
     "edgedriver": "latest",
     "geckodriver": "latest",
     "mocha": "^10.6.0",
@@ -18,6 +21,3 @@
     "selenium-webdriver": "^4.24.0"
   }
 }
-
-
-
