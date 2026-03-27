@@ -2,6 +2,11 @@ import User from "../models/User.js";
 import Order from "../models/Order.js";
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
+import Enquiry from "../models/Enquiry.js";
+import ServiceEnquiry from "../models/ServiceEnquiry.js";
+import AfterSaleRequest from "../models/AfterSaleRequest.js";
+import Review from "../models/Review.js";
+import Address from "../models/Address.js";
 import { getBaseUrl } from "../utils/getBaseUrl.js";
 
 // Get dashboard overview data (admin only)
@@ -62,32 +67,78 @@ export const getDashboardOverview = async (req, res) => {
   }
 };
 
-// Get all users (admin only)
+// Get all users (admin only) — includes order count & lifetime spend
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({ role: 'customer' })
-      .select('name email phone address createdAt lastLogin status')
-      .sort({ createdAt: -1 });
-    
-    return res.status(200).json({ 
-      success: true, 
-      users: users.map(user => ({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin,
-        status: user.status || 'active'
-      }))
+    const rows = await User.aggregate([
+      { $match: { role: "customer" } },
+      {
+        $lookup: {
+          from: "orders",
+          localField: "_id",
+          foreignField: "user",
+          as: "orderDocs",
+        },
+      },
+      {
+        $addFields: {
+          orderCount: { $size: "$orderDocs" },
+          lifetimeSpend: {
+            $ifNull: [{ $sum: "$orderDocs.totalAmount" }, 0],
+          },
+          lastOrderDate: { $max: "$orderDocs.createdAt" },
+          lastStatusEvent: {
+            $let: {
+              vars: {
+                statusEvents: {
+                  $filter: {
+                    input: "$adminActivityLog",
+                    as: "e",
+                    cond: { $eq: ["$$e.type", "status"] },
+                  },
+                },
+              },
+              in: { $arrayElemAt: ["$$statusEvents", 0] },
+            },
+          },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $project: {
+          orderDocs: 0,
+          password: 0,
+          adminActivityLog: 0,
+          wishlist: 0,
+        },
+      },
+    ]);
+
+    const users = rows.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      address: u.address,
+      createdAt: u.createdAt,
+      lastLogin: u.lastLogin,
+      status: u.status || "active",
+      orderCount: u.orderCount ?? 0,
+      lifetimeSpend: u.lifetimeSpend ?? 0,
+      lastOrderDate: u.lastOrderDate || null,
+      lastStatusEvent: u.lastStatusEvent || null,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      users,
     });
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch users',
-      error: error.message 
+    console.error("Error fetching users:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+      error: error.message,
     });
   }
 };
@@ -116,10 +167,13 @@ export const getUserOrders = async (req, res) => {
       orders: orders.map(order => ({
         _id: order._id,
         items: order.items,
-        total: order.total,
+        total: order.totalAmount,
+        totalAmount: order.totalAmount,
         status: order.status,
         createdAt: order.createdAt,
-        updatedAt: order.updatedAt
+        updatedAt: order.updatedAt,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus
       }))
     });
   } catch (error) {
@@ -132,46 +186,209 @@ export const getUserOrders = async (req, res) => {
   }
 };
 
-// Update user status (admin only)
+// Update account status (admin only) — active | suspended | banned + reason + activity log
 export const updateUserStatus = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { status } = req.body;
-    
-    if (!status || !['active', 'inactive'].includes(status)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid status. Must be "active" or "inactive"' 
+    const { status, reason } = req.body;
+    const reasonText = typeof reason === "string" ? reason.trim() : "";
+
+    const allowed = ["active", "suspended", "banned"];
+    if (!status || !allowed.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${allowed.join(", ")}`,
       });
     }
-    
+    if (!reasonText) {
+      return res.status(400).json({
+        success: false,
+        message: "Reason is required",
+      });
+    }
+
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
+    if (!user || user.role !== "customer") {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
-    
+
+    const adminName = req.user?.name || "Admin";
+    const adminId = req.user?.userId || req.user?.id;
+    const prev = user.status;
     user.status = status;
+    const entry = {
+      type: "status",
+      actionKey: "S",
+      description: `Status changed from ${prev} to ${status} — Reason: ${reasonText}`,
+      adminName,
+      adminId,
+      createdAt: new Date(),
+    };
+    user.adminActivityLog = user.adminActivityLog || [];
+    user.adminActivityLog.unshift(entry);
     await user.save();
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: `User ${status === 'active' ? 'activated' : 'deactivated'} successfully`,
+
+    return res.status(200).json({
+      success: true,
+      message: `User status updated to ${status}`,
       user: {
         _id: user._id,
         name: user.name,
         email: user.email,
-        status: user.status
-      }
+        status: user.status,
+      },
+      activity: entry,
     });
   } catch (error) {
-    console.error('Error updating user status:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Failed to update user status',
-      error: error.message 
+    console.error("Error updating user status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update user status",
+      error: error.message,
+    });
+  }
+};
+
+// Single customer profile (admin)
+export const getUserByIdAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).select("-password -adminActivityLog").lean();
+    if (!user || user.role !== "customer") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const addresses = await Address.find({ userId }).lean();
+    return res.status(200).json({
+      success: true,
+      user: {
+        ...user,
+        addresses,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user",
+      error: error.message,
+    });
+  }
+};
+
+// Activity log (admin)
+export const getUserActivityAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).select("adminActivityLog role").lean();
+    if (!user || user.role !== "customer") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const log = [...(user.adminActivityLog || [])].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    return res.status(200).json({ success: true, activity: log });
+  } catch (error) {
+    console.error("Error fetching activity:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch activity",
+      error: error.message,
+    });
+  }
+};
+
+// Combined enquiries: custom (general) + timber processing
+export const getUserEnquiriesAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const exists = await User.findById(userId).select("_id role").lean();
+    if (!exists || exists.role !== "customer") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const [general, timber] = await Promise.all([
+      Enquiry.find({ user: userId }).sort({ createdAt: -1 }).lean(),
+      ServiceEnquiry.find({ customerId: userId }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const enquiries = [
+      ...general.map((e) => ({
+        _id: e._id,
+        kind: "general",
+        enquiryType: e.enquiryType,
+        status: e.status,
+        createdAt: e.createdAt,
+        summary:
+          e.customDescription ||
+          e.selectedOptions?.additionalNotes ||
+          `${e.enquiryType} enquiry`,
+      })),
+      ...timber.map((e) => ({
+        _id: e._id,
+        kind: "timber",
+        enquiryType: "timber_processing",
+        status: e.status,
+        createdAt: e.createdAt,
+        workType: e.workType,
+        summary:
+          e.notes?.trim() ||
+          `${e.workType} — ${e.logItems?.length || 0} log batch(es)`,
+      })),
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return res.status(200).json({ success: true, enquiries });
+  } catch (error) {
+    console.error("Error fetching user enquiries:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch enquiries",
+      error: error.message,
+    });
+  }
+};
+
+export const getUserAfterSaleAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const exists = await User.findById(userId).select("_id role").lean();
+    if (!exists || exists.role !== "customer") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const requests = await AfterSaleRequest.find({ customerId: userId })
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.status(200).json({ success: true, requests });
+  } catch (error) {
+    console.error("Error fetching after-sale requests:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch after-sale requests",
+      error: error.message,
+    });
+  }
+};
+
+export const getUserReviewsAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const exists = await User.findById(userId).select("_id role").lean();
+    if (!exists || exists.role !== "customer") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const reviews = await Review.find({ user: userId })
+      .populate("product", "name")
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.status(200).json({ success: true, reviews });
+  } catch (error) {
+    console.error("Error fetching user reviews:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch reviews",
+      error: error.message,
     });
   }
 };

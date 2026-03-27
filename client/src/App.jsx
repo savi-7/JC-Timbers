@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -7,6 +7,8 @@ import AdminVendors from "./pages/AdminVendors";
 import AdminStock from "./pages/AdminStock";
 import AdminProducts from "./pages/AdminProducts";
 import AdminUsers from "./pages/AdminUsers";
+import AdminUserDetail from "./pages/AdminUserDetail";
+import AdminOrderDetail from "./pages/AdminOrderDetail";
 import AdminSupport from "./pages/AdminSupport";
 import TimberProducts from "./pages/TimberProducts";
 import Furniture from "./pages/Furniture";
@@ -19,6 +21,8 @@ import AddressManagement from "./pages/AddressManagement";
 import AboutUs from "./pages/AboutUs";
 import ContactUs from "./pages/ContactUs";
 import ServicePage from "./pages/ServicePage";
+import BlogPage from "./pages/BlogPage";
+import BlogDetailPage from "./pages/BlogDetailPage";
 import Cart from "./pages/Cart";
 import Wishlist from "./pages/Wishlist";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -67,6 +71,9 @@ import AdminContentManagement from "./pages/AdminContentManagement";
 import WoodpeckerChatbot from "./components/WoodpeckerChatbot";
 
 export default function App() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
   return (
     <NotificationProvider>
       <CartProvider>
@@ -87,6 +94,8 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/service" element={<ServicePage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:id" element={<BlogDetailPage />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/contact-us" element={<ContactUs />} />
@@ -133,6 +142,14 @@ export default function App() {
             }
           />
           <Route
+            path="/admin/users/:id"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminUserDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/support"
             element={
               <ProtectedRoute role="admin">
@@ -145,6 +162,14 @@ export default function App() {
             element={
               <ProtectedRoute role="admin">
                 <AdminOrders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/orders/:id"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminOrderDetail />
               </ProtectedRoute>
             }
           />
@@ -496,8 +521,8 @@ export default function App() {
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        {/* Global Chatbot Component */}
-        <WoodpeckerChatbot />
+        {/* Global Chatbot Component (hidden on admin routes) */}
+        {!isAdminRoute && <WoodpeckerChatbot />}
       </CartProvider>
     </NotificationProvider>
   );

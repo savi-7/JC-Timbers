@@ -31,21 +31,21 @@ export default function QuickActions() {
           </button>
 
           <button 
-            onClick={() => navigate('/admin/stock')}
+            onClick={() => navigate('/admin/machinery-monitoring')}
             className="group p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all duration-150 text-left"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2zm0 0V7a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V11a2 2 0 012-2h2a2 2 0 012 2v6a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
               <svg className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </div>
-            <h3 className="font-medium text-gray-900 mb-1">Stock</h3>
-            <p className="text-sm text-gray-600">Manage inventory and stock levels</p>
+            <h3 className="font-medium text-gray-900 mb-1">Machinery</h3>
+            <p className="text-sm text-gray-600">Monitoring, uptime, and utilization</p>
           </button>
 
           <button 

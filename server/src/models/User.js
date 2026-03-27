@@ -16,10 +16,20 @@ const userSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'inactive'],
+    enum: ['active', 'inactive', 'suspended', 'banned'],
     default: 'active'
   },
+  /** Optional; reserved for future login security features */
+  twoFactorEnabled: { type: Boolean, default: false },
   lastLogin: { type: Date, default: null },
+  adminActivityLog: [{
+    type: { type: String, enum: ['status', 'note', 'order', 'review', 'other'], default: 'other' },
+    actionKey: { type: String, default: 'N' },
+    description: { type: String, required: true },
+    adminName: { type: String, default: '' },
+    adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now }
+  }],
   wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: [] }]
 }, {
   timestamps: true  // This will automatically add createdAt and updatedAt fields

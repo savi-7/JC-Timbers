@@ -17,6 +17,7 @@ export default function AdminContentManagement() {
   // Form states
   const [showBlogForm, setShowBlogForm] = useState(false);
   const [blogForm, setBlogForm] = useState({ title: '', excerpt: '', content: '', author: '', published: false, image: null });
+  const [editingBlogId, setEditingBlogId] = useState(null);
 
   const [showFaqForm, setShowFaqForm] = useState(false);
   const [faqForm, setFaqForm] = useState({ category: '', question: '', answer: '', order: 0 });
@@ -60,16 +61,43 @@ export default function AdminContentManagement() {
         formData.append('image', blogForm.image);
       }
 
-      await api.post('/blogs/admin', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      showSuccess('Blog added successfully');
+      if (editingBlogId) {
+        await api.put(`/blogs/admin/${editingBlogId}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        showSuccess('Blog updated successfully');
+      } else {
+        await api.post('/blogs/admin', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        showSuccess('Blog added successfully');
+      }
       setShowBlogForm(false);
+      setEditingBlogId(null);
       setBlogForm({ title: '', excerpt: '', content: '', author: '', published: false, image: null });
       fetchData();
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to add blog');
+      showError(error.response?.data?.message || (editingBlogId ? 'Failed to update blog' : 'Failed to add blog'));
     }
+  };
+
+  const handleEditBlog = (blog) => {
+    setEditingBlogId(blog.id);
+    setBlogForm({
+      title: blog.title || '',
+      excerpt: blog.excerpt || '',
+      content: blog.content || '',
+      author: blog.author || '',
+      published: !!blog.published,
+      image: null,
+    });
+    setShowBlogForm(true);
+  };
+
+  const handleCancelBlogEdit = () => {
+    setShowBlogForm(false);
+    setEditingBlogId(null);
+    setBlogForm({ title: '', excerpt: '', content: '', author: '', published: false, image: null });
   };
 
   const handleDeleteBlog = async (id) => {
@@ -80,6 +108,14 @@ export default function AdminContentManagement() {
       fetchData();
     } catch (error) {
       showError('Failed to delete blog');
+    }
+  };
+
+  const handleToggleBlogForm = () => {
+    if (showBlogForm) {
+      handleCancelBlogEdit();
+    } else {
+      setShowBlogForm(true);
     }
   };
 
@@ -173,13 +209,18 @@ export default function AdminContentManagement() {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-semibold">Blogs Content</h2>
-                  <button onClick={() => setShowBlogForm(!showBlogForm)} className="px-4 py-2 bg-blue-600 text-white rounded shadow text-sm">
+                  <button onClick={handleToggleBlogForm} className="px-4 py-2 bg-blue-600 text-white rounded shadow text-sm">
                     {showBlogForm ? 'Cancel' : '+ Add Blog'}
                   </button>
                 </div>
 
                 {showBlogForm && (
                   <form onSubmit={handleBlogSubmit} className="bg-white p-4 rounded shadow mb-6 space-y-4">
+                    {editingBlogId && (
+                      <div className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                        Editing existing blog post
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium">Title</label>
@@ -208,7 +249,16 @@ export default function AdminContentManagement() {
                         <label htmlFor="published" className="text-sm font-medium">Published</label>
                       </div>
                     </div>
-                    <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">Submit</button>
+                    <div className="flex items-center gap-2">
+                      <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">
+                        {editingBlogId ? 'Update Blog' : 'Submit'}
+                      </button>
+                      {editingBlogId && (
+                        <button type="button" onClick={handleCancelBlogEdit} className="px-4 py-2 bg-gray-200 text-gray-800 rounded">
+                          Cancel Edit
+                        </button>
+                      )}
+                    </div>
                   </form>
                 )}
 
@@ -231,7 +281,10 @@ export default function AdminContentManagement() {
                             {blog.published ? <span className="text-green-600">Published</span> : <span className="text-yellow-600">Draft</span>}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button onClick={() => handleDeleteBlog(blog.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                            <div className="inline-flex items-center gap-3">
+                              <button onClick={() => handleEditBlog(blog)} className="text-blue-600 hover:text-blue-900">Edit</button>
+                              <button onClick={() => handleDeleteBlog(blog.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                            </div>
                           </td>
                         </tr>
                       ))}

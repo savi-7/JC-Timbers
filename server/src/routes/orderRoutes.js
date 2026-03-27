@@ -4,6 +4,7 @@ import {
   checkout,
   getMyOrders,
   adminListOrders,
+  adminGetOrderById,
   adminUpdateOrderStatus,
   adminMarkCODPaid,
   getRevenueStats,
@@ -19,6 +20,7 @@ router.get("/orders/me", authenticateToken, getMyOrders);
 
 // Admin Order Management
 router.get("/admin/orders", authenticateToken, requireAdmin, adminListOrders);
+router.get("/admin/orders/:id", authenticateToken, requireAdmin, adminGetOrderById);
 router.put("/admin/orders/:id", authenticateToken, requireAdmin, adminUpdateOrderStatus);
 router.put("/admin/orders/:id/mark-paid", authenticateToken, requireAdmin, adminMarkCODPaid);
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../config';
 
 // Import newly generated high-quality editorial images
@@ -8,6 +9,7 @@ import blogImg2 from '../assets/blog_editorial_2.png';
 import blogImg3 from '../assets/blog_editorial_3.png';
 
 export default function BlogInspiration() {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hoveredIndex, setHoveredIndex] = useState(0);
@@ -95,7 +97,10 @@ export default function BlogInspiration() {
               The <span className="italic text-accent-red font-light">Journal</span>
             </h2>
           </div>
-          <button className="mt-6 md:mt-0 text-dark-brown font-paragraph uppercase tracking-widest text-sm hover:text-accent-red transition-colors font-bold pb-2 flex items-center group">
+          <button
+            onClick={() => navigate('/blog')}
+            className="mt-6 md:mt-0 text-dark-brown font-paragraph uppercase tracking-widest text-sm hover:text-accent-red transition-colors font-bold pb-2 flex items-center group"
+          >
             <span className="border-b border-current pb-1 mr-2">View All Articles</span>
             <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
           </button>

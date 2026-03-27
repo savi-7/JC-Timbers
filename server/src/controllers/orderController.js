@@ -298,6 +298,23 @@ export const adminListOrders = async (req, res) => {
   }
 };
 
+// ADMIN: single order (detailed view)
+export const adminGetOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id).populate({
+      path: "user",
+      select: "name email phone",
+    });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    return res.status(200).json(order);
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to fetch order", error: err.message });
+  }
+};
+
 // ADMIN: update order status
 export const adminUpdateOrderStatus = async (req, res) => {
   try {

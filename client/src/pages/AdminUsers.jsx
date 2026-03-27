@@ -1,14 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { API_BASE } from '../config';
+import StatusBadge, {
+  accountStatusDisplay,
+  accountStatusFilterGroup,
+} from '../components/admin/StatusBadge';
+
+function formatINR(n) {
+  if (n == null || Number.isNaN(Number(n))) return '₹0';
+  return `₹${Number(n).toLocaleString('en-IN')}`;
+}
+
+function formatLastActive(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export default function AdminUsers() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [customers, setCustomers] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [details, setDetails] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // all | active | suspended | banned | flagged
+  const [signalFilter, setSignalFilter] = useState(''); // overdue-enquiries | overdue-after-sale | unhappy-customers
+  const [signalUserIds, setSignalUserIds] = useState(null); // Set<string> | null
 
   const fetchCustomers = async () => {
     try {
@@ -16,7 +39,7 @@ export default function AdminUsers() {
       setError(null);
       const token = localStorage.getItem('token');
       const res = await fetch(API_BASE + '/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 403) throw new Error('Admin access required');
       if (!res.ok) throw new Error('Failed to load customers');
@@ -29,203 +52,264 @@ export default function AdminUsers() {
     }
   };
 
-  const fetchDetails = async (userId) => {
-    try {
-      setDetails(null);
-      const token = localStorage.getItem('token');
-      
-      // Fetch user orders, cart, and wishlist in parallel
-      const [ordersRes, cartRes, wishlistRes] = await Promise.all([
-        fetch(`${API_BASE}/admin/users/${userId}/orders`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/admin/users/${userId}/cart`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/admin/users/${userId}/wishlist`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
-      
-      // Get user data from customers list
-      const user = customers.find(c => c._id === userId);
-      
-      // Parse responses
-      const orders = ordersRes.ok ? (await ordersRes.json()).orders || [] : [];
-      const cart = cartRes.ok ? (await cartRes.json()).cart || { items: [], total: 0 } : { items: [], total: 0 };
-      const wishlist = wishlistRes.ok ? (await wishlistRes.json()).wishlist || [] : [];
-      
-      setDetails({
-        user: user,
-        cart: cart,
-        orders: orders,
-        wishlist: wishlist
-      });
-    } catch (e) {
-      setError(e.message);
-    }
-  };
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
-  useEffect(() => { fetchCustomers(); }, []);
+  // Initialize filters from query params (for dashboard links)
+  useEffect(() => {
+    const status = (searchParams.get('status') || '').toLowerCase();
+    const signal = (searchParams.get('signal') || '').toLowerCase();
+    if (status) {
+      if (['all', 'active', 'suspended', 'banned'].includes(status)) setStatusFilter(status);
+      if (status === 'flagged') setStatusFilter('flagged');
+    }
+    if (signal) setSignalFilter(signal);
+  }, [searchParams]);
+
+  // Fetch datasets only when a signal filter is requested
+  useEffect(() => {
+    let cancelled = false;
+    const token = localStorage.getItem('token');
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const isAfterSaleOpen = (s) => !['completed', 'closed'].includes(s);
+    const isServiceOpen = (s) => !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(s);
+
+    const run = async () => {
+      if (!signalFilter) {
+        setSignalUserIds(null);
+        return;
+      }
+      try {
+        // Pull only what we need for the signals
+        const [genEnqRes, svcEnqRes, afterSaleRes] = await Promise.all([
+          fetch(`${API_BASE}/admin/enquiries`, { headers }).then((r) => r.json()),
+          fetch(`${API_BASE}/services/admin/enquiries`, { headers }).then((r) => r.json()),
+          fetch(`${API_BASE}/admin/after-sale?limit=100&page=1`, { headers }).then((r) => r.json()),
+        ]);
+
+        const general = Array.isArray(genEnqRes) ? genEnqRes : (genEnqRes?.enquiries || []);
+        const service = svcEnqRes?.enquiries || [];
+        const afterSale = afterSaleRes?.requests || [];
+
+        const now = Date.now();
+        const hours24Ago = new Date(now - 24 * 60 * 60 * 1000);
+        const days7Ago = new Date(now - 7 * 24 * 60 * 60 * 1000);
+        const days30Ago = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+        const ids = new Set();
+
+        if (signalFilter === 'overdue-enquiries') {
+          general.forEach((e) => {
+            if (!e?.createdAt) return;
+            if (['Rejected', 'Converted to Order'].includes(e.status)) return;
+            if (new Date(e.createdAt) < hours24Ago) ids.add(String(e.user));
+          });
+          service.forEach((e) => {
+            if (!e?.createdAt) return;
+            if (!isServiceOpen(e.status)) return;
+            if (new Date(e.createdAt) < hours24Ago) ids.add(String(e.customerId?._id || e.customerId));
+          });
+        }
+
+        if (signalFilter === 'overdue-after-sale') {
+          afterSale.forEach((r) => {
+            if (!r?.createdAt) return;
+            if (!isAfterSaleOpen(r.status)) return;
+            if (new Date(r.createdAt) < days7Ago) ids.add(String(r.customerId?._id || r.customerId));
+          });
+        }
+
+        if (signalFilter === 'unhappy-customers') {
+          afterSale.forEach((r) => {
+            if (r?.status !== 'completed') return;
+            const rating = r?.feedback?.rating;
+            if (!(rating === 1 || rating === 2)) return;
+            const t = r.feedback?.submittedAt || r.updatedAt || r.createdAt;
+            if (t && new Date(t) >= days30Ago) ids.add(String(r.customerId?._id || r.customerId));
+          });
+        }
+
+        if (!cancelled) setSignalUserIds(ids);
+      } catch (e) {
+        if (!cancelled) setSignalUserIds(new Set());
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [signalFilter]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return customers.filter((u) => {
+      const group = accountStatusFilterGroup(u.status);
+      if (statusFilter === 'flagged') {
+        if (!(group === 'suspended' || group === 'banned')) return false;
+      } else if (statusFilter !== 'all' && group !== statusFilter) {
+        return false;
+      }
+      if (signalFilter && signalUserIds) {
+        if (!signalUserIds.has(String(u._id))) return false;
+      }
+      if (!q) return true;
+      const name = (u.name || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [customers, search, statusFilter, signalFilter, signalUserIds]);
+
+  const pillBtn = (key, label) => (
+    <button
+      type="button"
+      onClick={() => setStatusFilter(key)}
+      className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+        statusFilter === key
+          ? 'bg-gray-900 text-white'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
             <p className="text-gray-600">Customer accounts and activities</p>
           </div>
-          <button onClick={() => navigate('/admin/dashboard')} className="px-4 py-2 rounded-lg bg-gray-800 text-white">Back</button>
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="px-4 py-2 rounded-lg bg-gray-800 text-white"
+          >
+            Back
+          </button>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <input
+            type="search"
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 min-w-0 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            {pillBtn('all', 'All')}
+            {pillBtn('active', 'Active')}
+            {pillBtn('suspended', 'Suspended')}
+            {pillBtn('banned', 'Banned')}
+          </div>
+        </div>
+
+        {signalFilter && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-4 text-sm flex flex-wrap items-center gap-2">
+            Showing users matching signal: <span className="font-medium">{signalFilter}</span>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                setSignalFilter('');
+                setSignalUserIds(null);
+                navigate('/admin/users', { replace: true });
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {error && (
-          <div className="bg-red-50 text-red-700 px-4 py-3 rounded mb-4">{error}</div>
+          <div className="bg-red-50 text-red-700 px-4 py-3 rounded mb-4 flex flex-wrap items-center gap-3">
+            {error}
+            <button type="button" className="underline text-sm" onClick={fetchCustomers}>
+              Retry
+            </button>
+          </div>
         )}
 
         {loading ? (
-          <div className="text-center text-gray-500 py-12">Loading customers...</div>
+          <div className="bg-white border border-gray-200 rounded-xl p-8 space-y-3 animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-full" />
+            <div className="h-8 bg-gray-200 rounded w-full" />
+            <div className="h-8 bg-gray-200 rounded w-5/6" />
+          </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 bg-white border border-gray-200 rounded-xl p-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Customers</h2>
-              <div className="space-y-2 max-h-[70vh] overflow-y-auto">
-                {customers.length === 0 && (
-                  <div className="text-gray-500 text-sm">No customers found.</div>
-                )}
-                {customers.map((u) => (
-                  <button
-                    key={u._id}
-                    onClick={() => { setSelected(u); fetchDetails(u._id); }}
-                    className={`w-full text-left p-3 rounded-lg border ${selected?._id === u._id ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
-                  >
-                    <div className="font-medium text-gray-900">{u.name}</div>
-                    <div className="text-xs text-gray-600">{u.email}</div>
-                    <div className="text-xs text-gray-500 mt-1">Joined {new Date(u.createdAt).toLocaleDateString()}</div>
-                  </button>
-                ))}
-              </div>
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr className="text-left text-gray-600 uppercase text-xs tracking-wider">
+                    <th className="px-4 py-3 font-medium">Name</th>
+                    <th className="px-4 py-3 font-medium">Email</th>
+                    <th className="px-4 py-3 font-medium whitespace-nowrap">Joined</th>
+                    <th className="px-4 py-3 font-medium whitespace-nowrap">Last active</th>
+                    <th className="px-4 py-3 font-medium text-right">Orders</th>
+                    <th className="px-4 py-3 font-medium text-right whitespace-nowrap">
+                      Lifetime spend
+                    </th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
+                        No customers match your filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((u) => {
+                      const acc = accountStatusDisplay(u.status);
+                      const orderCount = u.orderCount ?? 0;
+                      const spend = u.lifetimeSpend ?? 0;
+                      return (
+                        <tr key={u._id} className="hover:bg-gray-50/80">
+                          <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
+                          <td className="px-4 py-3 text-gray-700">{u.email}</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {u.createdAt
+                              ? new Date(u.createdAt).toLocaleDateString('en-GB', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {formatLastActive(u.lastLogin)}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums">{orderCount}</td>
+                          <td className="px-4 py-3 text-right tabular-nums font-medium">
+                            {formatINR(spend)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge tone={acc.tone}>{acc.label}</StatusBadge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Link
+                              to={`/admin/users/${u._id}`}
+                              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-800"
+                            >
+                              View
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
-
-            <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Customer Details</h2>
-              {!selected && (
-                <div className="text-gray-500">Select a customer to view details</div>
-              )}
-              {selected && !details && (
-                <div className="text-gray-500">Loading details...</div>
-              )}
-              {selected && details && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-lg bg-blue-50">
-                      <div className="text-sm text-blue-800">Name</div>
-                      <div className="text-lg font-semibold text-blue-900">{details.user.name}</div>
-                    </div>
-                    <div className="p-4 rounded-lg bg-green-50">
-                      <div className="text-sm text-green-800">Email</div>
-                      <div className="text-lg font-semibold text-green-900">{details.user.email}</div>
-                    </div>
-                    <div className="p-4 rounded-lg bg-purple-50">
-                      <div className="text-sm text-purple-800">Joined</div>
-                      <div className="text-lg font-semibold text-purple-900">{new Date(details.user.createdAt).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Cart Items ({details.cart.items?.length || 0})</h3>
-                    <div className="space-y-2">
-                      {details.cart.items?.length === 0 && (
-                        <div className="text-sm text-gray-500">Cart is empty.</div>
-                      )}
-                      {details.cart.items?.map((item, idx) => (
-                        <div key={idx} className="p-3 rounded-lg border border-gray-200 flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                              {item.image ? (
-                                <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                              ) : (
-                                <span className="text-gray-400 text-xs">No Image</span>
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{item.name}</div>
-                              <div className="text-xs text-gray-500">Qty: {item.quantity} | {item.category}/{item.subcategory}</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium text-gray-900">₹{item.price.toLocaleString('en-IN')}</div>
-                            <div className="text-xs text-gray-500">Subtotal: ₹{item.subtotal.toLocaleString('en-IN')}</div>
-                          </div>
-                        </div>
-                      ))}
-                      {details.cart.items?.length > 0 && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                          <div className="flex justify-between items-center">
-                            <span className="font-semibold text-gray-900">Cart Total:</span>
-                            <span className="font-bold text-lg text-gray-900">₹{details.cart.total.toLocaleString('en-IN')}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Wishlist ({details.wishlist?.length || 0})</h3>
-                    <div className="space-y-2">
-                      {details.wishlist?.length === 0 && (
-                        <div className="text-sm text-gray-500">Wishlist is empty.</div>
-                      )}
-                      {details.wishlist?.map((item, idx) => (
-                        <div key={idx} className="p-3 rounded-lg border border-gray-200 flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                              {item.image ? (
-                                <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                              ) : (
-                                <span className="text-gray-400 text-xs">No Image</span>
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{item.name}</div>
-                              <div className="text-xs text-gray-500">{item.category}/{item.subcategory}</div>
-                            </div>
-                          </div>
-                          <div className="text-sm font-medium text-gray-900">₹{item.price.toLocaleString('en-IN')}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Orders</h3>
-                    <div className="space-y-2">
-                      {details.orders.length === 0 && (
-                        <div className="text-sm text-gray-500">No orders yet.</div>
-                      )}
-                      {details.orders.map((o) => (
-                        <div key={o._id} className="p-3 rounded-lg border border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium text-gray-900">Order ID: {o._id}</div>
-                              <div className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()}</div>
-                            </div>
-                            <div className="text-right">
-                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                o.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                o.status === 'Delivered' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                              }`}>{o.status}</span>
-                              <div className="text-sm font-semibold text-gray-900 mt-1">₹{o.items.reduce((sum, i) => sum + i.price * i.quantity, 0)}</div>
-                            </div>
-                          </div>
-                          <div className="mt-2 text-xs text-gray-600">Payment: {o.paymentMethod}</div>
-                          <div className="mt-2 text-sm text-gray-800">Items: {o.items.map(i => `${i.name} x${i.quantity}`).join(', ')}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="px-4 py-3 bg-gray-50 text-xs text-gray-500 border-t border-gray-200">
+              Showing {filtered.length} of {customers.length} customers
             </div>
           </div>
         )}
@@ -233,9 +317,3 @@ export default function AdminUsers() {
     </div>
   );
 }
-
-
-
-
-
-

@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "fix-order-images": "node scripts/fix-order-images.js",
     "seed-sample-customers": "node scripts/seedSampleCustomers.js",
+    "prune-selenium-users": "node scripts/pruneSeleniumUsers.js",
     "migrate-images": "node scripts/migrateImagesToCloudinary.js",
     "migrate-marketplace-images": "node scripts/migrateMarketplaceImagesToCloudinary.js",
     "train-ml": "cd ../ml/wood_quality && python train_evaluate.py --data dataset.csv --out results",
