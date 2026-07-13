@@ -1,0 +1,40 @@
+📧 QUICK EMAIL SETUP FOR JC TIMBERS
+=====================================
+
+⚠️ IMPORTANT: Update your server/.env file with email credentials
+
+Add these lines to server/.env:
+
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=jctimbers@gmail.com
+EMAIL_PASSWORD=your-gmail-app-password-here
+
+📝 HOW TO GET GMAIL APP PASSWORD:
+1. Go to https://myaccount.google.com/
+2. Security → 2-Step Verification (turn it ON)
+3. Go to https://myaccount.google.com/apppasswords
+4. Generate app password for "Mail" → "Other (JC Timbers)"
+5. Copy the 16-character password
+6. Paste it in EMAIL_PASSWORD above
+
+✅ WHAT'S ALREADY DONE:
+- ✅ Nodemailer installed
+- ✅ PDF invoice generator created
+- ✅ Beautiful HTML email templates ready
+- ✅ Order controller updated to send emails automatically
+- ✅ Status update emails configured
+
+📧 WHEN EMAILS ARE SENT:
+1. Order Confirmation (with PDF invoice) → After customer places order
+2. Status Update → When admin changes order status
+
+🧪 TO TEST:
+1. Update .env with your email credentials
+2. Restart server: cd server && npm run dev
+3. Place a test order
+4. Check console logs for email status
+5. Check customer email inbox
+
+📖 For detailed setup guide, see: server/EMAIL_SETUP_GUIDE.md
+

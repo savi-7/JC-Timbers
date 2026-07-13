@@ -1,0 +1,43 @@
+// MongoDB Commands to Remove Order Details
+// Run these commands in MongoDB shell or MongoDB Compass
+
+// 1. Connect to your database
+// use jc-timbers
+
+// 2. View all orders before deletion
+db.orders.find().count()
+
+// 3. Remove ALL orders (WARNING: This will delete everything)
+db.orders.deleteMany({})
+
+// 4. Remove orders by status
+// Remove pending orders
+db.orders.deleteMany({ status: "pending" })
+
+// Remove completed orders
+db.orders.deleteMany({ status: "completed" })
+
+// Remove cancelled orders
+db.orders.deleteMany({ status: "cancelled" })
+
+// 5. Remove orders by date range
+// Remove orders created before a specific date
+db.orders.deleteMany({ createdAt: { $lt: new Date("2024-01-01") } })
+
+// Remove orders created between two dates
+db.orders.deleteMany({ 
+  createdAt: { 
+    $gte: new Date("2024-01-01"), 
+    $lte: new Date("2024-12-31") 
+  } 
+})
+
+// 6. Remove orders for specific users (if needed)
+// Replace "USER_ID" with actual user ID
+db.orders.deleteMany({ user: ObjectId("USER_ID") })
+
+// 7. Verify deletion
+db.orders.find().count()
+
+// 8. Drop the entire orders collection (NUCLEAR OPTION - removes collection completely)
+// db.orders.drop()

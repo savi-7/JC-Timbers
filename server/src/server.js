@@ -1,0 +1,167 @@
+import dotenv from "dotenv";
+dotenv.config(); // Load .env BEFORE any other imports that use process.env
+
+import express from "express";
+import cors from "cors";
+import path from "path";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import connectDB from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import protectedRoutes from "./routes/protectedRoutes.js";
+import vendorRoutes from "./routes/vendorRoutes.js";
+import stockRoutes from "./routes/stockRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import wishlistRoutes from "./routes/wishlistRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import addressRoutes from "./routes/addressRoutes.js";
+import faqRoutes from "./routes/faqRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import recommendationRoutes from "./routes/recommendationRoutes.js";
+import segmentationRoutes from "./routes/segmentationRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
+import mlRoutes from "./routes/mlRoutes.js";
+import woodQualityRoutes from "./routes/woodQualityRoutes.js";
+import serviceScheduleRoutes from "./routes/serviceScheduleRoutes.js";
+import serviceEnquiryRoutes from "./routes/serviceEnquiryRoutes.js";
+import enquiryRoutes from "./routes/enquiryRoutes.js";
+import holidayRoutes from "./routes/holidayRoutes.js";
+import marketplaceRoutes from "./routes/marketplaceRoutes.js";
+import machineryRoutes from "./routes/machineryRoutes.js";
+import chatbotRoutes from "./routes/chatbotRoutes.js";
+import afterSaleRoutes from "./routes/afterSaleRoutes.js";
+import { getAvailableSlots } from "./controllers/serviceScheduleController.js";
+import { getProductImage } from "./controllers/imageController.js";
+import { getBaseUrl } from "./utils/getBaseUrl.js";
+
+connectDB();
+
+const app = express();
+
+// Backend requirements: Return JSON | JWT auth (see routes/middleware) | Full image URLs (see getBaseUrl, product/marketplace responses)
+
+// Middleware: attach base URL for full image URLs (e.g. http://192.168.1.5:5000)
+app.use((req, res, next) => {
+  req.baseUrl = getBaseUrl(req);
+  next();
+});
+
+// HTTP security headers
+app.use(helmet());
+
+// Global API rate limiting (bot & abuse protection)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 2000, // limit each IP to 2000 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests from this IP, please try again later." },
+});
+app.use("/api", apiLimiter);
+
+// Middleware - CORS
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+const allowedOrigins = new Set([
+  CLIENT_ORIGIN,
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000"
+]);
+// Allow Flutter web dev server (random port, e.g. localhost:53340)
+const isLocalhostOrigin = (origin) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+// Allow Vercel deployments (frontend URLs like https://xxx.vercel.app)
+const isVercelOrigin = (origin) =>
+  /^https?:\/\/([a-z0-9-]+\.)*vercel\.app(:\d+)?$/.test(origin);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin) || isLocalhostOrigin(origin) || isVercelOrigin(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  credentials: true
+}));
+// Parse JSON bodies - but don't parse multipart/form-data (multer handles that)
+app.use(express.json({ limit: '10mb' }));
+
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.warn("Invalid JSON payload received:", err.message);
+    return res.status(400).json({ ok: false, message: "Invalid JSON payload" });
+  }
+  next(err);
+});
+
+// Ensure DB is connected before API requests (fixes Vercel serverless cold-start buffering timeout)
+app.use(async (req, res, next) => {
+  if (req.path === '/api/health') return next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('DB connection failed:', err.message);
+    res.status(503).json({ message: 'Service temporarily unavailable. Please try again.' });
+  }
+});
+
+// Serve static files from uploads directory (fallback for local uploads)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api", protectedRoutes);
+app.use("/api/vendors", vendorRoutes);
+app.use("/api/stock", stockRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api", cartRoutes);
+app.use("/api", orderRoutes);
+app.use("/api", enquiryRoutes);
+app.use("/api", wishlistRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/faqs", faqRoutes);
+app.use("/api/blogs", blogRoutes);
+app.use("/api/contacts", contactRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/segmentation", segmentationRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api", mlRoutes);
+
+// PUBLIC route for availability check - register BEFORE any protected routes
+app.get("/api/services/schedule/available/:date", getAvailableSlots);
+
+// Register service routes AFTER the public route
+app.use("/api/services", serviceScheduleRoutes);
+app.use("/api/services", serviceEnquiryRoutes);
+app.use("/api/holidays", holidayRoutes);
+app.use("/api/marketplace", marketplaceRoutes);
+app.use("/api/machinery", machineryRoutes);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api", afterSaleRoutes);
+// Register woodQualityRoutes LAST - it uses router.use(requireAdmin) which applies to ALL routes in that router
+app.use("/api", woodQualityRoutes);
+
+// Image serving route
+app.get("/api/images/:productId/:imageIndex", getProductImage);
+
+// API responses are JSON (res.json). Protected routes use JWT via middleware/auth.js (Authorization: Bearer <token>).
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Server Start (skip on Vercel - app is exported as serverless handler)
+const PORT = Number(process.env.PORT) || 5001;
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+export default app;

@@ -1,0 +1,199 @@
+{
+  "stats": {
+    "suites": 1,
+    "tests": 4,
+    "passes": 4,
+    "pending": 0,
+    "failures": 0,
+    "start": "2025-11-17T11:58:27.937Z",
+    "end": "2025-11-17T11:58:46.915Z",
+    "duration": 18978,
+    "testsRegistered": 4,
+    "passPercent": 100,
+    "pendingPercent": 0,
+    "other": 0,
+    "hasOther": false,
+    "skipped": 0,
+    "hasSkipped": false
+  },
+  "results": [
+    {
+      "uuid": "8c5f9be2-66c5-4a69-9670-a38be833e434",
+      "title": "",
+      "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\tests\\app.test.js",
+      "file": "\\tests\\selenium\\tests\\app.test.js",
+      "beforeHooks": [],
+      "afterHooks": [],
+      "tests": [],
+      "suites": [
+        {
+          "uuid": "2635a19d-3862-4f85-adad-7742f88403c8",
+          "title": "JC Timbers - Selenium smoke suite",
+          "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\tests\\app.test.js",
+          "file": "\\tests\\selenium\\tests\\app.test.js",
+          "beforeHooks": [
+            {
+              "title": "\"before all\" hook in \"JC Timbers - Selenium smoke suite\"",
+              "fullTitle": "JC Timbers - Selenium smoke suite \"before all\" hook in \"JC Timbers - Selenium smoke suite\"",
+              "timedOut": false,
+              "duration": 920,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "driver = await buildDriver();\nawait driver.manage().setTimeouts({ implicit: 2000 });",
+              "err": {},
+              "uuid": "fac82aa8-9cb2-47a2-ac08-4ffc942a9d6f",
+              "parentUUID": "2635a19d-3862-4f85-adad-7742f88403c8",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "afterHooks": [
+            {
+              "title": "\"after all\" hook in \"JC Timbers - Selenium smoke suite\"",
+              "fullTitle": "JC Timbers - Selenium smoke suite \"after all\" hook in \"JC Timbers - Selenium smoke suite\"",
+              "timedOut": false,
+              "duration": 217,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "if (driver) {\n  await driver.quit();\n}",
+              "err": {},
+              "uuid": "bf8842d9-d939-4082-b86d-c6f9045c9b9d",
+              "parentUUID": "2635a19d-3862-4f85-adad-7742f88403c8",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "tests": [
+            {
+              "title": "registers a new customer",
+              "fullTitle": "JC Timbers - Selenium smoke suite registers a new customer",
+              "timedOut": false,
+              "duration": 3838,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await driver.get(`${BASE_URL}/register`);\nawait waitAndType(By.css('input[name=\"firstName\"]'), user.firstName);\nawait waitAndType(By.css('input[name=\"lastName\"]'), user.lastName);\nawait waitAndType(By.css('input[name=\"email\"]'), user.email);\nawait waitAndType(By.css('input[name=\"phone\"]'), user.phone);\nawait waitAndType(By.css('input[name=\"password\"]'), user.password);\nawait waitAndType(By.css('input[name=\"confirmPassword\"]'), user.password);\nconst checkbox = await driver.findElement(By.css('input[name=\"agreeToTerms\"]'));\nawait driver.executeScript('arguments[0].scrollIntoView({block:\"center\"});', checkbox);\nif (!(await checkbox.isSelected())) {\n  await checkbox.click();\n}\nconst submit = await driver.findElement(By.css('button[type=\"submit\"]'));\nawait submit.click();\nawait driver.wait(until.urlContains('/login'), 20000);",
+              "err": {},
+              "uuid": "85cb7a02-cb86-469c-9ec5-2565bb938c92",
+              "parentUUID": "2635a19d-3862-4f85-adad-7742f88403c8",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "logs in with the registered account",
+              "fullTitle": "JC Timbers - Selenium smoke suite logs in with the registered account",
+              "timedOut": false,
+              "duration": 1609,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await loginUser();\nconst currentUrl = await driver.getCurrentUrl();\nassert.ok(currentUrl.includes('/customer-home'), 'Should land on customer home');",
+              "err": {},
+              "uuid": "83c5087b-9432-41e3-8d1d-d1e19e378811",
+              "parentUUID": "2635a19d-3862-4f85-adad-7742f88403c8",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "adds a product to the cart",
+              "fullTitle": "JC Timbers - Selenium smoke suite adds a product to the cart",
+              "timedOut": false,
+              "duration": 6314,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await ensureLoggedIn();\nawait driver.get(`${BASE_URL}/product/${SAMPLE_PRODUCT_ID}`);\nawait driver.sleep(2000);\nconst addToCartBtn = await driver.wait(\n  until.elementLocated(By.xpath(\"//button[contains(., 'Add to Cart')]\")),\n  20000\n);\nawait driver.executeScript('arguments[0].scrollIntoView({block:\"center\"});', addToCartBtn);\nawait driver.wait(until.elementIsVisible(addToCartBtn), 5000);\nawait addToCartBtn.click();\nawait driver.sleep(2000);\nawait driver.get(`${BASE_URL}/cart`);\nconst selectAll = await driver.wait(\n  until.elementLocated(By.xpath(\"//*[contains(text(),'Select All')]\")),\n  20000\n);\nassert.ok(selectAll, 'Cart should display items and selection controls');\nconst removeButtons = await driver.findElements(By.xpath(\"//button[contains(., 'Remove')]\"));\nfor (const btn of removeButtons) {\n  const label = (await btn.getText()).trim().toLowerCase();\n  if (label === 'remove') {\n    await btn.click();\n    await driver.sleep(1000);\n    break;\n  }\n}",
+              "err": {},
+              "uuid": "b67d36e3-3a22-4c55-b86e-a94bee87508d",
+              "parentUUID": "2635a19d-3862-4f85-adad-7742f88403c8",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "adds a product to the wishlist",
+              "fullTitle": "JC Timbers - Selenium smoke suite adds a product to the wishlist",
+              "timedOut": false,
+              "duration": 6063,
+              "state": "passed",
+              "speed": "slow",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await ensureLoggedIn();\nawait driver.get(`${BASE_URL}/product/${SAMPLE_PRODUCT_ID}`);\nawait driver.sleep(2000);\nconst wishlistBtn = await driver.wait(\n  until.elementLocated(By.xpath(\"//button[contains(., 'Add to Wishlist')]\")),\n  20000\n);\nawait driver.executeScript('arguments[0].scrollIntoView({block:\"center\"});', wishlistBtn);\nawait driver.wait(until.elementIsVisible(wishlistBtn), 5000);\nawait wishlistBtn.click();\nawait driver.sleep(2000);\nawait driver.get(`${BASE_URL}/wishlist`);\nconst header = await driver.wait(\n  until.elementLocated(By.xpath(\"//*[contains(text(),'My Wishlist')]\")),\n  20000\n);\nassert.ok(header, 'Wishlist header should be visible');\nconst removeButtons = await driver.findElements(By.xpath(\"//button[contains(., 'Remove')]\"));\nassert.ok(removeButtons.length > 0, 'Wishlist should contain at least one item');\nawait removeButtons[0].click();\nawait driver.sleep(1000);",
+              "err": {},
+              "uuid": "b6f3e823-c426-4351-aada-0250a7ba176c",
+              "parentUUID": "2635a19d-3862-4f85-adad-7742f88403c8",
+              "isHook": false,
+              "skipped": false
+            }
+          ],
+          "suites": [],
+          "passes": [
+            "85cb7a02-cb86-469c-9ec5-2565bb938c92",
+            "83c5087b-9432-41e3-8d1d-d1e19e378811",
+            "b67d36e3-3a22-4c55-b86e-a94bee87508d",
+            "b6f3e823-c426-4351-aada-0250a7ba176c"
+          ],
+          "failures": [],
+          "pending": [],
+          "skipped": [],
+          "duration": 17824,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 90000
+        }
+      ],
+      "passes": [],
+      "failures": [],
+      "pending": [],
+      "skipped": [],
+      "duration": 0,
+      "root": true,
+      "rootEmpty": true,
+      "_timeout": 90000
+    }
+  ],
+  "meta": {
+    "mocha": {
+      "version": "11.7.5"
+    },
+    "mochawesome": {
+      "options": {
+        "quiet": true,
+        "reportFilename": "index",
+        "saveHtml": true,
+        "saveJson": true,
+        "consoleReporter": "spec",
+        "useInlineDiffs": false,
+        "code": true
+      },
+      "version": "7.1.4"
+    },
+    "marge": {
+      "options": {
+        "reportDir": "tests/selenium/report",
+        "reportFilename": "index",
+        "quiet": "true"
+      },
+      "version": "6.3.2"
+    }
+  }
+}

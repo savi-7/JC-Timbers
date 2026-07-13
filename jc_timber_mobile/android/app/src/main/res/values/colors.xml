@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background color used behind the logo on the native splash screen -->
+    <color name="splash_background">#F5F5F5</color>
+</resources>
+

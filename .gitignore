@@ -1,0 +1,13 @@
+# Logs and crash dumps
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Environments
+.venv/
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,25 @@
+try { 
+	webengage.notification.onOpen(function (data) {
+    if (data.notificationId === '22a354256') {
+        webengage.util.withWeJquery(function () {
+            var visitButton = $weJQuery('#webklipper-publisher-widget-container-notification-frame').contents().find('#visit');
+            console.log(visitButton);
+            visitButton.click(function () {
+                webengage.survey.render({
+                    surveyId: '~5g1co54',
+                    forcedRender: true,
+                    skipRules: true
+                });
+                webengage.notification.clear();
+            });
+        });
+    }
+});
+
+ } catch(e) { 
+ 	if (e instanceof Error) { 
+		var data = e.stack || e.description;
+		data = (data.length > 900 ? data.substring(0, 900) : data);
+	 	webengage.eLog(null, 'error', data, 'cwc-error','cwc', 'i2l1ld1');
+	 }
+ }

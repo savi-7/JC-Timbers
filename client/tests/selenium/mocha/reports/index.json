@@ -1,0 +1,472 @@
+{
+  "stats": {
+    "suites": 5,
+    "tests": 0,
+    "passes": 0,
+    "pending": 0,
+    "failures": 0,
+    "start": "2025-10-30T02:44:23.189Z",
+    "end": "2025-10-30T02:49:58.116Z",
+    "duration": 334927,
+    "testsRegistered": 5,
+    "passPercent": 0,
+    "pendingPercent": 0,
+    "other": 5,
+    "hasOther": true,
+    "skipped": 5,
+    "hasSkipped": true
+  },
+  "results": [
+    {
+      "uuid": "102cf8a9-69c6-48fd-a987-62e5efc68251",
+      "title": "",
+      "fullFile": "",
+      "file": "",
+      "beforeHooks": [],
+      "afterHooks": [],
+      "tests": [],
+      "suites": [
+        {
+          "uuid": "47979510-a360-4542-8bcc-1cf711346359",
+          "title": "[chrome] Test 1: Homepage",
+          "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\01-homepage.spec.js",
+          "file": "\\tests\\01-homepage.spec.js",
+          "beforeHooks": [
+            {
+              "title": "\"before all\" hook for \"loads and shows expected elements\"",
+              "fullTitle": "[chrome] Test 1: Homepage \"before all\" hook for \"loads and shows expected elements\"",
+              "timedOut": true,
+              "duration": 63709,
+              "state": "failed",
+              "speed": null,
+              "pass": false,
+              "fail": true,
+              "pending": false,
+              "context": null,
+              "code": "driver = await buildDriver();",
+              "err": {
+                "message": "Error: Timeout of 60000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\01-homepage.spec.js)",
+                "estack": "Error: Timeout of 60000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\01-homepage.spec.js)\n    at listOnTimeout (node:internal/timers:594:17)\n    at process.processTimers (node:internal/timers:529:7)",
+                "diff": null
+              },
+              "uuid": "704b2fc7-e390-4eb5-a7de-2c6fe13e0509",
+              "parentUUID": "47979510-a360-4542-8bcc-1cf711346359",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "afterHooks": [
+            {
+              "title": "\"after all\" hook in \"[chrome] Test 1: Homepage\"",
+              "fullTitle": "[chrome] Test 1: Homepage \"after all\" hook in \"[chrome] Test 1: Homepage\"",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "if (driver) await driver.quit();",
+              "err": {},
+              "uuid": "757a0bd9-d912-4c6d-8999-7d286ff47730",
+              "parentUUID": "47979510-a360-4542-8bcc-1cf711346359",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "tests": [
+            {
+              "title": "loads and shows expected elements",
+              "fullTitle": "[chrome] Test 1: Homepage loads and shows expected elements",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await driver.get(`${BASE_URL}/`);\nawait driver.sleep(1500);\nconst title = await driver.getTitle();\nassert.ok(title.length > 0, 'Page title should not be empty');\n// Check for nav and hero existence opportunistically\nconst pageSource = await driver.getPageSource();\nassert.ok(pageSource.toLowerCase().includes('home') || pageSource.toLowerCase().includes('jc'), 'Homepage content should be present');\n// Try to find at least one image\nconst imgs = await driver.findElements(By.css('img'));\nassert.ok(imgs.length >= 0, 'Images lookup executed');\nawait screenshot(driver, '01-homepage.png');",
+              "err": {},
+              "uuid": "a86ccd3f-4f64-4402-98c5-a83e791163b5",
+              "parentUUID": "47979510-a360-4542-8bcc-1cf711346359",
+              "isHook": false,
+              "skipped": true
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [],
+          "pending": [],
+          "skipped": [
+            "a86ccd3f-4f64-4402-98c5-a83e791163b5"
+          ],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 60000
+        },
+        {
+          "uuid": "18a7ebdb-284a-4a99-92e8-35f842d41994",
+          "title": "[chrome] Test 2: Products",
+          "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\02-products.spec.js",
+          "file": "\\tests\\02-products.spec.js",
+          "beforeHooks": [
+            {
+              "title": "\"before all\" hook for \"opens products page and finds category markers\"",
+              "fullTitle": "[chrome] Test 2: Products \"before all\" hook for \"opens products page and finds category markers\"",
+              "timedOut": true,
+              "duration": 60275,
+              "state": "failed",
+              "speed": null,
+              "pass": false,
+              "fail": true,
+              "pending": false,
+              "context": null,
+              "code": "driver = await buildDriver();",
+              "err": {
+                "message": "Error: Timeout of 60000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\02-products.spec.js)",
+                "estack": "Error: Timeout of 60000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\02-products.spec.js)\n    at listOnTimeout (node:internal/timers:594:17)\n    at process.processTimers (node:internal/timers:529:7)",
+                "diff": null
+              },
+              "uuid": "f6643ce5-13ba-45d0-9dbb-153423e146f0",
+              "parentUUID": "18a7ebdb-284a-4a99-92e8-35f842d41994",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "afterHooks": [
+            {
+              "title": "\"after all\" hook in \"[chrome] Test 2: Products\"",
+              "fullTitle": "[chrome] Test 2: Products \"after all\" hook in \"[chrome] Test 2: Products\"",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "if (driver) await driver.quit();",
+              "err": {},
+              "uuid": "8d4a44aa-2464-4bda-991c-684e02e02524",
+              "parentUUID": "18a7ebdb-284a-4a99-92e8-35f842d41994",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "tests": [
+            {
+              "title": "opens products page and finds category markers",
+              "fullTitle": "[chrome] Test 2: Products opens products page and finds category markers",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await driver.get(`${BASE_URL}/timber-products`);\nawait driver.sleep(1500);\nconst src = await driver.getPageSource();\nassert.ok(src.toLowerCase().includes('timber') || src.toLowerCase().includes('products'), 'Should include product markers');\nconst navLinks = await driver.findElements(By.css('a'));\nassert.ok(navLinks.length > 0, 'Some links should be present');\nawait screenshot(driver, '02-products.png');",
+              "err": {},
+              "uuid": "1b6f379f-abd0-48b1-ae91-26d948a2d29c",
+              "parentUUID": "18a7ebdb-284a-4a99-92e8-35f842d41994",
+              "isHook": false,
+              "skipped": true
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [],
+          "pending": [],
+          "skipped": [
+            "1b6f379f-abd0-48b1-ae91-26d948a2d29c"
+          ],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 60000
+        },
+        {
+          "uuid": "fdfa9a05-d89a-491e-85ce-6710629f8a9d",
+          "title": "[chrome] Test 3: Navigation",
+          "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\03-navigation.spec.js",
+          "file": "\\tests\\03-navigation.spec.js",
+          "beforeHooks": [
+            {
+              "title": "\"before all\" hook for \"navigates through key pages\"",
+              "fullTitle": "[chrome] Test 3: Navigation \"before all\" hook for \"navigates through key pages\"",
+              "timedOut": true,
+              "duration": 60408,
+              "state": "failed",
+              "speed": null,
+              "pass": false,
+              "fail": true,
+              "pending": false,
+              "context": null,
+              "code": "driver = await buildDriver();",
+              "err": {
+                "message": "Error: Timeout of 60000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\03-navigation.spec.js)",
+                "estack": "Error: Timeout of 60000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\03-navigation.spec.js)\n    at listOnTimeout (node:internal/timers:594:17)\n    at process.processTimers (node:internal/timers:529:7)",
+                "diff": null
+              },
+              "uuid": "5d484cd2-6c6a-473f-a8db-59d63e070d98",
+              "parentUUID": "fdfa9a05-d89a-491e-85ce-6710629f8a9d",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "afterHooks": [
+            {
+              "title": "\"after all\" hook in \"[chrome] Test 3: Navigation\"",
+              "fullTitle": "[chrome] Test 3: Navigation \"after all\" hook in \"[chrome] Test 3: Navigation\"",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "if (driver) await driver.quit();",
+              "err": {},
+              "uuid": "22b8ef26-10c0-4064-a0ad-4dca0de616e9",
+              "parentUUID": "fdfa9a05-d89a-491e-85ce-6710629f8a9d",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "tests": [
+            {
+              "title": "navigates through key pages",
+              "fullTitle": "[chrome] Test 3: Navigation navigates through key pages",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await driver.get(`${BASE_URL}/`);\nawait driver.sleep(1000);\n// Try common links\nconst tryClick = async (text, path) => {\n\tconst links = await driver.findElements(By.linkText(text));\n\tif (links.length) {\n\t\tawait links[0].click();\n\t\tawait driver.wait(until.urlContains(path), 5000);\n\t}\n};\nawait tryClick('Timber', '/timber-products');\nawait tryClick('About', '/about');\nawait tryClick('Contact', '/contact');\nconst url = await driver.getCurrentUrl();\nassert.ok(url.startsWith(BASE_URL), 'URL should remain on the same origin');\nawait screenshot(driver, '03-navigation.png');",
+              "err": {},
+              "uuid": "55878b71-8215-4ca9-8cc7-3b4e65da56e1",
+              "parentUUID": "fdfa9a05-d89a-491e-85ce-6710629f8a9d",
+              "isHook": false,
+              "skipped": true
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [],
+          "pending": [],
+          "skipped": [
+            "55878b71-8215-4ca9-8cc7-3b4e65da56e1"
+          ],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 60000
+        },
+        {
+          "uuid": "5ecf6243-91ed-4f24-b24c-5643ca3e8d5b",
+          "title": "[chrome] Test 4: Contact",
+          "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\04-contact.spec.js",
+          "file": "\\tests\\04-contact.spec.js",
+          "beforeHooks": [
+            {
+              "title": "\"before all\" hook for \"loads contact page and attempts to locate form elements\"",
+              "fullTitle": "[chrome] Test 4: Contact \"before all\" hook for \"loads contact page and attempts to locate form elements\"",
+              "timedOut": true,
+              "duration": 60241,
+              "state": "failed",
+              "speed": null,
+              "pass": false,
+              "fail": true,
+              "pending": false,
+              "context": null,
+              "code": "driver = await buildDriver();",
+              "err": {
+                "message": "Error: Timeout of 60000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\04-contact.spec.js)",
+                "estack": "Error: Timeout of 60000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\04-contact.spec.js)\n    at listOnTimeout (node:internal/timers:594:17)\n    at process.processTimers (node:internal/timers:529:7)",
+                "diff": null
+              },
+              "uuid": "93669ebc-2976-4b73-887c-f2106958ada8",
+              "parentUUID": "5ecf6243-91ed-4f24-b24c-5643ca3e8d5b",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "afterHooks": [
+            {
+              "title": "\"after all\" hook in \"[chrome] Test 4: Contact\"",
+              "fullTitle": "[chrome] Test 4: Contact \"after all\" hook in \"[chrome] Test 4: Contact\"",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "if (driver) await driver.quit();",
+              "err": {},
+              "uuid": "4af46612-2d84-47aa-a10c-078ddcae331c",
+              "parentUUID": "5ecf6243-91ed-4f24-b24c-5643ca3e8d5b",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "tests": [
+            {
+              "title": "loads contact page and attempts to locate form elements",
+              "fullTitle": "[chrome] Test 4: Contact loads contact page and attempts to locate form elements",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await driver.get(`${BASE_URL}/contact`);\nawait driver.sleep(1500);\nconst src = await driver.getPageSource();\nassert.ok(src.toLowerCase().includes('contact') || src.toLowerCase().includes('email'), 'Contact markers should appear');\n// Attempt to find fields if present\nconst inputs = await driver.findElements(By.css('input'));\nif (inputs.length) await inputs[0].sendKeys('Test User');\nconst textareas = await driver.findElements(By.css('textarea'));\nif (textareas.length) await textareas[0].sendKeys('Testing contact form');\nawait screenshot(driver, '04-contact.png');",
+              "err": {},
+              "uuid": "5d85a2a6-d429-480b-bfe0-1d202215e7a4",
+              "parentUUID": "5ecf6243-91ed-4f24-b24c-5643ca3e8d5b",
+              "isHook": false,
+              "skipped": true
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [],
+          "pending": [],
+          "skipped": [
+            "5d85a2a6-d429-480b-bfe0-1d202215e7a4"
+          ],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 60000
+        },
+        {
+          "uuid": "ac47009e-d205-4f9a-8fb8-662a82677492",
+          "title": "[chrome] Test 5: Admin Wood Quality",
+          "fullFile": "C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\05-wood-quality.spec.js",
+          "file": "\\tests\\05-wood-quality.spec.js",
+          "beforeHooks": [
+            {
+              "title": "\"before all\" hook for \"opens /admin/wood-quality and finds form fields (if authorized)\"",
+              "fullTitle": "[chrome] Test 5: Admin Wood Quality \"before all\" hook for \"opens /admin/wood-quality and finds form fields (if authorized)\"",
+              "timedOut": true,
+              "duration": 90273,
+              "state": "failed",
+              "speed": null,
+              "pass": false,
+              "fail": true,
+              "pending": false,
+              "context": null,
+              "code": "driver = await buildDriver();",
+              "err": {
+                "message": "Error: Timeout of 90000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\05-wood-quality.spec.js)",
+                "estack": "Error: Timeout of 90000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sunsh\\Documents\\JC-Timbers1\\client\\tests\\selenium\\mocha\\tests\\05-wood-quality.spec.js)\n    at listOnTimeout (node:internal/timers:594:17)\n    at process.processTimers (node:internal/timers:529:7)",
+                "diff": null
+              },
+              "uuid": "10269449-77d5-4ef2-90f1-de2520bdd552",
+              "parentUUID": "ac47009e-d205-4f9a-8fb8-662a82677492",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "afterHooks": [
+            {
+              "title": "\"after all\" hook in \"[chrome] Test 5: Admin Wood Quality\"",
+              "fullTitle": "[chrome] Test 5: Admin Wood Quality \"after all\" hook in \"[chrome] Test 5: Admin Wood Quality\"",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "if (driver) await driver.quit();",
+              "err": {},
+              "uuid": "8edbfa2a-c90b-41fc-a76d-97a757decb3f",
+              "parentUUID": "ac47009e-d205-4f9a-8fb8-662a82677492",
+              "isHook": true,
+              "skipped": false
+            }
+          ],
+          "tests": [
+            {
+              "title": "opens /admin/wood-quality and finds form fields (if authorized)",
+              "fullTitle": "[chrome] Test 5: Admin Wood Quality opens /admin/wood-quality and finds form fields (if authorized)",
+              "timedOut": false,
+              "duration": 0,
+              "state": null,
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "await driver.get(`${BASE_URL}/admin/wood-quality`);\nawait driver.sleep(2000);\nconst src = await driver.getPageSource();\nassert.ok(src.toLowerCase().includes('wood quality') || src.toLowerCase().includes('predict'), 'Should include wood quality markers');\n// Attempt to find inputs\nconst selects = await driver.findElements(By.css('select'));\nconst inputs = await driver.findElements(By.css('input'));\nassert.ok(selects.length >= 0 && inputs.length >= 0, 'Form lookup executed');\nawait screenshot(driver, '05-wood-quality.png');",
+              "err": {},
+              "uuid": "6bcbb33b-a3e6-4636-94da-a4c9c2db2336",
+              "parentUUID": "ac47009e-d205-4f9a-8fb8-662a82677492",
+              "isHook": false,
+              "skipped": true
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [],
+          "pending": [],
+          "skipped": [
+            "6bcbb33b-a3e6-4636-94da-a4c9c2db2336"
+          ],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 90000
+        }
+      ],
+      "passes": [],
+      "failures": [],
+      "pending": [],
+      "skipped": [],
+      "duration": 0,
+      "root": true,
+      "rootEmpty": true,
+      "_timeout": 60000
+    }
+  ],
+  "meta": {
+    "mocha": {
+      "version": "10.8.2"
+    },
+    "mochawesome": {
+      "options": {
+        "quiet": false,
+        "reportFilename": "index",
+        "saveHtml": true,
+        "saveJson": true,
+        "consoleReporter": "spec",
+        "useInlineDiffs": false,
+        "code": true
+      },
+      "version": "7.1.4"
+    },
+    "marge": {
+      "options": {
+        "reportDir": "reports",
+        "reportFilename": "index",
+        "overwrite": "true",
+        "html": "true",
+        "json": "true"
+      },
+      "version": "6.3.0"
+    }
+  }
+}

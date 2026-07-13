@@ -1,0 +1,8 @@
+At line:1 char:14
++ { vendor:V001,woodType:Teak,length:220,width:30,thickness:40,moisture ...
++              ~
+Missing argument in parameter list.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordEx 
+   ception
+    + FullyQualifiedErrorId : MissingArgument
+ 

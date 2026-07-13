@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Screenshots (optional - comment out if you want to commit screenshots)
+screenshots/*.png
+!screenshots/.gitkeep
+
+# Test results
+test-results/
+*.log
+
+# ChromeDriver
+chromedriver
+chromedriver.exe
+
